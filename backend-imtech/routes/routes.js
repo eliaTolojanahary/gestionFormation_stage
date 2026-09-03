@@ -7,17 +7,17 @@ const { verifyToken,checkRole } = require('../middlewares/authMiddleware');
 const {
   getAllUsers,
   getUserById,
-  createUser,
-  updateUser,
-  deleteUser
+  createUserController,
+  updateUserController,
+  deleteUserController
 } = require('../controllers/userController');
 
 // Toutes les routes utilisateurs nécessitent le token
 router.get('/utilisateurs', verifyToken, getAllUsers);
 router.get('/utilisateurs/:id', verifyToken, getUserById);
-router.post('/utilisateurs', verifyToken, createUser);
-router.put('/utilisateurs/:id', verifyToken, updateUser);
-router.delete('/utilisateurs/:id', verifyToken, deleteUser);
+router.post('/utilisateurs', verifyToken, createUserController);
+router.put('/utilisateurs/:id', verifyToken, updateUserController);
+router.delete('/utilisateurs/:id', verifyToken, deleteUserController);
 
 // Authentification (route publique)
 router.post('/auth/login', login);

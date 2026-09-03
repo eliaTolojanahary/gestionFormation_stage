@@ -1,4 +1,5 @@
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const {
   findAllUsers,
   findUserById,
@@ -31,7 +32,7 @@ async function getUserById(req, res) {
   }
 }
 
-async function createUser(req, res) {
+async function createUserController(req, res) {
   try {
     const { nom, prenom, email, mot_de_passe, role } = req.body;
 
@@ -49,7 +50,7 @@ async function createUser(req, res) {
   }
 }
 
-async function updateUser(req, res) {
+async function updateUserController(req, res) {
   try {
     const { id } = req.params;
     const { nom, prenom, email, role } = req.body;
@@ -66,7 +67,7 @@ async function updateUser(req, res) {
   }
 }
 
-async function deleteUser(req, res) {
+async function deleteUserController(req, res) {
   try {
     const { id } = req.params;
     const deleted = await deleteUser(id);
@@ -83,7 +84,7 @@ async function deleteUser(req, res) {
 module.exports = {
   getAllUsers,
   getUserById,
-  createUser,
-  updateUser,
-  deleteUser
+  createUserController,
+  updateUserController,
+  deleteUserController
 };
