@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { findUserByEmail, findUserById } = require('../models/userModel');
+const { findUserByEmail, findUserById,createResetToken,findValidResetToken,marquerTokenUtilise,updatePassword } = require('../models/userModel');
 
 async function login(req, res) {
   try {
@@ -57,5 +57,78 @@ async function getProfil(req, res) {
     return res.status(500).json({ status: "error", message: "Erreur serveur." });
   }
 }
+async function logout(req, res) {
+  return res.json({
+    status: "success",
+    message: "Déconnexion réussie. Supprimez le token côté client."
+  });
+}
 
-module.exports = { login, getProfil };
+
+async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ status: "error", message: "Email requis." });
+    }
+
+    const user = await findUserByEmail(email);
+
+    if (!user) {
+      return res.json({
+        status: "success",
+        message: "Si cet email existe, un lien de réinitialisation a été envoyé."
+      });
+    }
+
+    const token = await createResetToken(user.id_utilisateur);
+
+    return res.json({
+      status: "success",
+      message: "Si cet email existe, un lien de réinitialisation a été envoyé.",
+      debug_token: token //  temporaire, à retirer une fois Nodemailer branché
+    });
+
+  } catch (error) {
+    console.error("Erreur forgot-password :", error);
+    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+  }
+}
+async function resetPassword(req, res) {
+  try {
+    const { token, nouveau_mot_de_passe } = req.body;
+
+    if (!token || !nouveau_mot_de_passe) {
+      return res.status(400).json({
+        status: "error",
+        message: "token et nouveau_mot_de_passe sont requis."
+      });
+    }
+
+    const resetEntry = await findValidResetToken(token);
+
+    if (!resetEntry) {
+      return res.status(400).json({
+        status: "error",
+        message: "Token invalide ou expiré."
+      });
+    }
+
+    await updatePassword(resetEntry.id_utilisateur, nouveau_mot_de_passe);
+    await marquerTokenUtilise(resetEntry.id_reset);
+
+    return res.json({
+      status: "success",
+      message: "Mot de passe réinitialisé avec succès."
+    });
+
+  } catch (error) {
+    console.error("Erreur reset-password :", error);
+    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+  }
+}
+
+
+module.exports = { login, getProfil, logout, forgotPassword,resetPassword };
+

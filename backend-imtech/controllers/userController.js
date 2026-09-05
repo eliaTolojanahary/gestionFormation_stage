@@ -34,14 +34,14 @@ async function getUserById(req, res) {
 
 async function createUserController(req, res) {
   try {
-    const { nom, prenom, email, mot_de_passe, role } = req.body;
+    const { nom, prenom, email, mot_de_passe, telephone,id_role  } = req.body;
 
-    if (!nom || !email || !mot_de_passe || !role) {
+    if (!nom || !email || !mot_de_passe || !id_role) {
       return res.status(400).json({ status: "error", message: "Tous les champs requis ne sont pas remplis." });
     }
 
     const hashedPassword = await bcrypt.hash(mot_de_passe, 10);
-    const id = await createUser({ nom, prenom, email, mot_de_passe: hashedPassword, role });
+    const id = await createUser( nom, prenom, email, hashedPassword, telephone,id_role );
 
     return res.status(201).json({ status: "success", message: "Utilisateur créé avec succès !", id });
   } catch (error) {
@@ -53,9 +53,9 @@ async function createUserController(req, res) {
 async function updateUserController(req, res) {
   try {
     const { id } = req.params;
-    const { nom, prenom, email, role } = req.body;
+    const { nom, prenom, email, telephone,id_role } = req.body;
 
-    const updated = await updateUser(id, { nom, prenom, email, role });
+    const updated = await updateUser(id, nom, prenom, email,telephone, id_role );
     if (!updated) {
       return res.status(404).json({ status: "error", message: "Utilisateur introuvable." });
     }

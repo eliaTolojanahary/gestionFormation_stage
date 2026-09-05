@@ -1,4 +1,35 @@
 const db = require('../config/db');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+async function findValidResetToken(token) {
+  const sql = `
+    SELECT * FROM reset_password
+    WHERE token = ? AND utilise = false AND date_expiration > NOW()
+  `;
+  const [rows] = await db.query(sql, [token]);
+  return rows[0];
+}
+
+async function updatePassword(id_utilisateur, nouveauMotDePasse) {
+  const hash = await bcrypt.hash(nouveauMotDePasse, 10);
+  await db.query('UPDATE utilisateur SET mot_de_passe = ? WHERE id_utilisateur = ?', [hash, id_utilisateur]);
+}
+
+async function marquerTokenUtilise(id_reset) {
+  await db.query('UPDATE reset_password SET utilise = true WHERE id_reset = ?', [id_reset]);
+}
+async function createResetToken(id_utilisateur) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const dateExpiration = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+  const sql = `
+    INSERT INTO reset_password (id_utilisateur, token, date_expiration, utilise)
+    VALUES (?, ?, ?, false)
+  `;
+  await db.query(sql, [id_utilisateur, token, dateExpiration]);
+  return token;
+}
+
 
 async function findAllUsers() {
   const [rows] = await db.query(
@@ -11,26 +42,26 @@ async function findAllUsers() {
 }
 
 
-// Créer un utilisateur (Staff/Admin)
-async function createUser({ nom, prenom, email, mot_de_passe, role }) {
-  const sql = `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, role) VALUES (?, ?, ?, ?, ?)`;
-  const [result] = await db.query(sql, [nom, prenom, email, mot_de_passe, role]);
+
+async function createUser( nom, prenom, email, mot_de_passe, telephone,id_role ) {
+  const sql = `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe,telephone, id_role) VALUES (?, ?, ?, ?, ?,?)`;
+  const [result] = await db.query(sql, [nom, prenom, email, mot_de_passe, telephone,id_role]);
   return result.insertId;
 }
 
-// Modifier un utilisateur
-async function updateUser(id, { nom, prenom, email, role }) {
-  const sql = `UPDATE utilisateur SET nom = ?, prenom = ?, email = ?, role = ? WHERE id_utilisateur = ?`;
-  const [result] = await db.query(sql, [nom, prenom, email, role, id]);
+
+async function updateUser(id,  nom, prenom, email, telephone, id_role ) {
+  const sql = `UPDATE utilisateur SET nom = ?, prenom = ?, email = ?, telephone=?, id_role = ? WHERE id_utilisateur = ?`;
+  const [result] = await db.query(sql, [nom, prenom, email, telephone,id_role, id]);
   return result.affectedRows > 0;
 }
 
-// Supprimer un utilisateur
+
 async function deleteUser(id) {
-  const [result] = await db.query(`DELETE FROM utilisateur WHERE id_utilisateur = ?`, [id]);
+  const [result] = await db.query(`UPDATE utilisateur SET etat= false WHERE id_utilisateur=?`, [id]);
   return result.affectedRows > 0;
 }
-// Tables en minuscules, conformes au SQL (évite les soucis de casse sous Linux)
+
 async function findUserByEmail(email) {
   const sql = `
     SELECT u.*, r.nom AS role_nom 
@@ -53,4 +84,15 @@ async function findUserById(id) {
   return rows[0];
 }
 
-module.exports = { findUserByEmail, findUserById,findAllUsers,updateUser,deleteUser,createUser };
+module.exports = { 
+    findUserByEmail,
+    findUserById,
+    findAllUsers,
+    updateUser,
+    deleteUser,
+    createUser,
+    createResetToken,
+    findValidResetToken,
+    updatePassword,
+    marquerTokenUtilise
+  };

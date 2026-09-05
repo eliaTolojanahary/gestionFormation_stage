@@ -1,12 +1,13 @@
 const {
-  createInscription,
+  creerInscription,
   findInscriptionAvecTarif,
   genererEcheancierTx,
-  enregistrerPaiement
+  enregistrerPaiement,
+  validerInscription
 } = require('../models/inscriptionModel');
 
-// L'Accueil inscrit directement l'étudiant (pas de workflow "en attente" pour l'instant)
-async function creerInscription(req, res) {
+
+async function creerInscriptionController(req, res) {
   try {
     const { id_etudiant, id_formation, nombre_tranches, id_tranche } = req.body;
 
@@ -17,7 +18,7 @@ async function creerInscription(req, res) {
       });
     }
 
-    const id_inscription = await createInscription(id_etudiant, id_formation);
+    const id_inscription = await creerInscription(id_etudiant, id_formation);
 
     const inscription = await findInscriptionAvecTarif(id_inscription);
 
@@ -41,8 +42,25 @@ async function creerInscription(req, res) {
   }
 }
 
-// L'Accueil enregistre un paiement sur une échéance précise
-async function enregistrerUnPaiement(req, res) {
+
+async function validerInscriptionController(req, res) {
+  try {
+    const { id_inscription } = req.params;
+    const ok = await validerInscription(id_inscription);
+
+    if (!ok) {
+      return res.status(404).json({ status: "error", message: "Inscription introuvable." });
+    }
+
+    return res.json({ status: "success", message: "Inscription validée." });
+
+  } catch (error) {
+    console.error("Erreur validation inscription :", error);
+    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+  }
+}
+
+async function enregistrerPaiementController(req, res) {
   try {
     const { id_echeance, id_mode_paiement, montant, reference_virement } = req.body;
 
@@ -68,5 +86,4 @@ async function enregistrerUnPaiement(req, res) {
     return res.status(500).json({ status: "error", message: "Erreur serveur lors du paiement." });
   }
 }
-
-module.exports = { creerInscription, enregistrerUnPaiement };
+module.exports = { creerInscriptionController, enregistrerPaiementController,validerInscriptionController };

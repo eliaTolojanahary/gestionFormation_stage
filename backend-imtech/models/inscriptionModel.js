@@ -1,7 +1,6 @@
 const db = require('../config/db');
 
-// 1. Créer l'inscription
-async function createInscription(id_etudiant, id_formation) {
+async function creerInscription(id_etudiant, id_formation) {
   const sql = `
     INSERT INTO inscription (id_etudiant, id_formation, date_inscription, etat) 
     VALUES (?, ?, CURDATE(), true)
@@ -10,21 +9,26 @@ async function createInscription(id_etudiant, id_formation) {
   return result.insertId;
 }
 
-// 2. Récupérer l'inscription avec tarif ET durée de la formation
+async function validerInscription(id_inscription) {
+  const sql = `UPDATE inscription SET valide = true WHERE id_inscription = ?`;
+  const [result] = await db.query(sql, [id_inscription]);
+  return result.affectedRows > 0;
+}
+
 async function findInscriptionAvecTarif(id_inscription) {
   const sql = `
     SELECT i.id_inscription, i.id_etudiant, i.id_formation, i.etat,
            f.tarif, f.duree_jours
     FROM inscription i
     JOIN formation f ON i.id_formation = f.id_formation
-    WHERE i.id_inscription = ?
+    WHERE i.id_inscription = ? 
   `;
   const [rows] = await db.query(sql, [id_inscription]);
   return rows[0];
 }
 
-// 3. Générer l'échéancier automatiquement, à partir de la vraie durée de la formation
-async function genererEcheancierTx({ id_inscription, tarifTotal, dureeJours, nombreTranches, idTranche }) {
+
+async function genererEcheancierTx( id_inscription, tarifTotal, dureeJours, nombreTranches, idTranche ) {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
@@ -63,8 +67,8 @@ async function genererEcheancierTx({ id_inscription, tarifTotal, dureeJours, nom
   }
 }
 
-// 4. Enregistrer un paiement, lié à une échéance précise (pas à l'inscription directement)
-async function enregistrerPaiement({ id_echeance, id_mode_paiement, montant, reference_virement }) {
+
+async function enregistrerPaiement( id_echeance, id_mode_paiement, montant, reference_virement ) {
   const sql = `
     INSERT INTO paiement (id_echeance, id_mode_paiement, montant, date_paiement, reference_virement, etat)
     VALUES (?, ?, ?, CURDATE(), ?, true)
@@ -74,8 +78,9 @@ async function enregistrerPaiement({ id_echeance, id_mode_paiement, montant, ref
 }
 
 module.exports = {
-  createInscription,
+  creerInscription,
   findInscriptionAvecTarif,
   genererEcheancierTx,
-  enregistrerPaiement
+  enregistrerPaiement,
+  validerInscription
 };

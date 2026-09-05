@@ -51,13 +51,16 @@ GET /attestations/:id
 GET /fiche/:id
 GET /verification/:uuid
 
-## Supports de cours & Commentaires
+## Supports de cours & Commentaires & reactions
 GET    /formations/:id/supports    
 POST   /supports                  
 DELETE /supports/:id
 GET    /supports/:id/commentaires
 POST   /commentaires
 DELETE /commentaires/:id           
+POST	/supports/:id/reactions	 
+DELETE	/supports/:id/reactions	
+GET	/supports/:id/reactions
 
 ## Assistance / Tickets
 GET    /assistances
@@ -74,3 +77,4 @@ DELETE /notifications/:id
 GET /dashboard/kpi
 GET /dashboard/evolution
 GET /dashboard/export-csv
+

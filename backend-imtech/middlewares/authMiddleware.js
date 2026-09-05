@@ -1,12 +1,10 @@
 const jwt = require('jsonwebtoken');
 
-// Middleware pour vérifier la présence et la validité du Token JWT
+
 function verifyToken(req, res, next) {
-  // Récupération de l'en-tête Authorization (ex: "Bearer eyJhbGci...")
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  // Si aucun token n'est fourni
   if (!token) {
     return res.status(401).json({ 
       status: "error", 
@@ -15,13 +13,10 @@ function verifyToken(req, res, next) {
   }
 
   try {
-    // Vérification et décodage du token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_key_imtech');
     
-    // Injection des données de l'utilisateur (id, role) dans l'objet req
     req.user = decoded;
     
-    // Passage au contrôleur suivant
     next();
 
   } catch (error) {
