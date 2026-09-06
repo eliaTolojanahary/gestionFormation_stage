@@ -246,6 +246,10 @@ CREATE INDEX idx_paiement_echeance ON paiement(id_echeance);
 CREATE INDEX idx_commentaire_support ON commentaire(id_support);
 CREATE INDEX idx_notification_utilisateur ON notification_inapp(id_utilisateur, lu);
 CREATE INDEX idx_reaction_support ON reaction(id_support);
+
 ALTER TABLE inscription ADD COLUMN valide BOOLEAN DEFAULT true;
+
 ALTER TABLE etudiant 
 MODIFY COLUMN option_type VARCHAR(50) DEFAULT NULL;
+
+ALTER TABLE support MODIFY COLUMN id_type_support INT DEFAULT NULL;

@@ -36,32 +36,19 @@ async function getFormationsByEtudiant(id_etudiant) {
   return rows;
 }
 
+async function insertUtilisateurEtEtudiant(connection, { nom, prenom, email, mot_de_passe_hash, telephone, id_role_etudiant, photo_1, photo_2, certificat_residence, photocopie_cin }) {
+  const [userResult] = await connection.query(
+    `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, telephone, id_role, etat) VALUES (?, ?, ?, ?, ?, ?, true)`,
+    [nom, prenom, email, mot_de_passe_hash, telephone, id_role_etudiant]
+  );
+  const id_utilisateur = userResult.insertId;
 
-async function creerEtudiant({ nom, prenom, email, mot_de_passe, telephone, id_role_etudiant, photo_1, photo_2, certificat_residence, photocopie_cin }) {
-  const connection = await db.getConnection();
-  try {
-    await connection.beginTransaction();
-   
-    const hash = await bcrypt.hash(mot_de_passe, 10);
-    const [userResult] = await connection.query(
-      `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, telephone, id_role, etat) VALUES (?, ?, ?, ?, ?, ?, true)`,
-      [nom, prenom, email, hash, telephone, id_role_etudiant]
-    );
-    const id_utilisateur = userResult.insertId;
-    
-    const [etudiantResult] = await connection.query(
-      `INSERT INTO etudiant (id_utilisateur, photo_1, photo_2, certificat_residence, photocopie_cin, etat) VALUES (?, ?, ?, ?, ?, true)`,
-      [id_utilisateur, photo_1, photo_2, certificat_residence, photocopie_cin ]
-    );
+  const [etudiantResult] = await connection.query(
+    `INSERT INTO etudiant (id_utilisateur, photo_1, photo_2, certificat_residence, photocopie_cin, etat) VALUES (?, ?, ?, ?, ?, true)`,
+    [id_utilisateur, photo_1, photo_2, certificat_residence, photocopie_cin]
+  );
 
-    await connection.commit();
-    return etudiantResult.insertId;
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
+  return etudiantResult.insertId;
 }
 
 async function updateEtudiant(id_etudiant, { photo_1, photo_2, certificat_residence, photocopie_cin, option_type }) {
@@ -81,5 +68,5 @@ async function deleteEtudiant(id_etudiant) {
 
 module.exports = {
   getAllEtudiants, getEtudiantById, getFormationsByEtudiant,
-  creerEtudiant, updateEtudiant, deleteEtudiant
+insertUtilisateurEtEtudiant, updateEtudiant, deleteEtudiant
 };

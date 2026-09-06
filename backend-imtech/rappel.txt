@@ -1,0 +1,13 @@
+option type inutile ( update cahier , estimation )
+update estimation ( reaction)
+delete inscription unique
+refus inscription
+login etudiant
+reglage PDF
+
+code couleur:
+#efc32e (jaune)
+#5a9032 (vert)
+#002e4f (bleu)
+#7f8a97 (gris)
+

@@ -1,11 +1,4 @@
-const {
-  creerInscription,
-  findInscriptionAvecTarif,
-  genererEcheancierTx,
-  enregistrerPaiement,
-  validerInscription
-} = require('../models/inscriptionModel');
-
+const inscriptionService = require('../services/inscriptionService');
 
 async function creerInscriptionController(req, res) {
   try {
@@ -18,17 +11,7 @@ async function creerInscriptionController(req, res) {
       });
     }
 
-    const id_inscription = await creerInscription(id_etudiant, id_formation);
-
-    const inscription = await findInscriptionAvecTarif(id_inscription);
-
-    await genererEcheancierTx({
-      id_inscription,
-      tarifTotal: parseFloat(inscription.tarif),
-      dureeJours: inscription.duree_jours,
-      nombreTranches: parseInt(nombre_tranches, 10),
-      idTranche: id_tranche
-    });
+    const id_inscription = await inscriptionService.creerInscription({ id_etudiant, id_formation, nombre_tranches, id_tranche });
 
     return res.status(201).json({
       status: "success",
@@ -42,48 +25,53 @@ async function creerInscriptionController(req, res) {
   }
 }
 
-
 async function validerInscriptionController(req, res) {
   try {
-    const { id_inscription } = req.params;
-    const ok = await validerInscription(id_inscription);
-
+    const ok = await inscriptionService.validerInscription(req.params.id);
     if (!ok) {
       return res.status(404).json({ status: "error", message: "Inscription introuvable." });
     }
-
     return res.json({ status: "success", message: "Inscription validée." });
-
   } catch (error) {
     console.error("Erreur validation inscription :", error);
     return res.status(500).json({ status: "error", message: "Erreur serveur." });
   }
 }
 
-async function enregistrerPaiementController(req, res) {
+async function listerInscriptions(req, res) {
   try {
-    const { id_echeance, id_mode_paiement, montant, reference_virement } = req.body;
-
-    if (!id_echeance || !id_mode_paiement || !montant) {
-      return res.status(400).json({
-        status: "error",
-        message: "id_echeance, id_mode_paiement et montant sont requis."
-      });
-    }
-
-    const id_paiement = await enregistrerPaiement({
-      id_echeance, id_mode_paiement, montant, reference_virement
-    });
-
-    return res.status(201).json({
-      status: "success",
-      message: "Paiement enregistré.",
-      id_paiement
-    });
-
+    const inscriptions = await inscriptionService.listerInscriptions();
+    return res.json({ status: "success", data: inscriptions });
   } catch (error) {
-    console.error("Erreur enregistrement paiement :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur lors du paiement." });
+    console.error(error);
+    return res.status(500).json({ status: "error", message: "Erreur serveur." });
   }
 }
-module.exports = { creerInscriptionController, enregistrerPaiementController,validerInscriptionController };
+
+async function detailInscription(req, res) {
+  try {
+    const inscription = await inscriptionService.recupererInscription(req.params.id);
+    if (!inscription) {
+      return res.status(404).json({ status: "error", message: "Inscription introuvable." });
+    }
+    return res.json({ status: "success", data: inscription });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+  }
+}
+
+async function deleteInscriptionController(req, res) {
+  try {
+    const ok = await inscriptionService.supprimerInscription(req.params.id);
+    if (!ok) {
+      return res.status(404).json({ status: "error", message: "Inscription introuvable." });
+    }
+    return res.json({ status: "success", message: "Inscription désactivée." });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+  }
+}
+
+module.exports = { creerInscriptionController, validerInscriptionController, deleteInscriptionController, detailInscription, listerInscriptions };

@@ -1,15 +1,15 @@
 const db = require('../config/db');
 
-async function creerInscription(id_etudiant, id_formation) {
+async function insertInscription(id_etudiant, id_formation) {
   const sql = `
-    INSERT INTO inscription (id_etudiant, id_formation, date_inscription, etat) 
-    VALUES (?, ?, CURDATE(), true)
+    INSERT INTO inscription (id_etudiant, id_formation, date_inscription, etat, valide) 
+    VALUES (?, ?, CURDATE(), true, false)
   `;
   const [result] = await db.query(sql, [id_etudiant, id_formation]);
   return result.insertId;
 }
 
-async function validerInscription(id_inscription) {
+async function setInscriptionValidee(id_inscription) {
   const sql = `UPDATE inscription SET valide = true WHERE id_inscription = ?`;
   const [result] = await db.query(sql, [id_inscription]);
   return result.affectedRows > 0;
@@ -17,70 +17,50 @@ async function validerInscription(id_inscription) {
 
 async function findInscriptionAvecTarif(id_inscription) {
   const sql = `
-    SELECT i.id_inscription, i.id_etudiant, i.id_formation, i.etat,
+    SELECT i.id_inscription, i.id_etudiant, i.id_formation, i.etat, i.valide,
            f.tarif, f.duree_jours
     FROM inscription i
     JOIN formation f ON i.id_formation = f.id_formation
-    WHERE i.id_inscription = ? 
+    WHERE i.id_inscription = ?
   `;
   const [rows] = await db.query(sql, [id_inscription]);
   return rows[0];
 }
 
-
-async function genererEcheancierTx( id_inscription, tarifTotal, dureeJours, nombreTranches, idTranche ) {
-  const connection = await db.getConnection();
-  try {
-    await connection.beginTransaction();
-
-    const intervalle = Math.floor(dureeJours / nombreTranches);
-    const montantParTranche = Math.round((tarifTotal / nombreTranches) * 100) / 100;
-
-    const values = [];
-    for (let n = 1; n <= nombreTranches; n++) {
-      const dateEcheance = new Date();
-      dateEcheance.setDate(dateEcheance.getDate() + intervalle * n);
-
-      values.push([
-        id_inscription,
-        idTranche,
-        montantParTranche,
-        dateEcheance.toISOString().split('T')[0],
-        true,  // genere_auto
-        true   // etat
-      ]);
-    }
-
-    const sqlEcheance = `
-      INSERT INTO echeance (id_inscription, id_tranche, montant_prevu, date_echeance, genere_auto, etat) 
-      VALUES ?
-    `;
-    await connection.query(sqlEcheance, [values]);
-
-    await connection.commit();
-    return true;
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
+async function getAllInscriptions() {
+  const sql = `
+    SELECT i.id_inscription, i.date_inscription, i.etat, i.valide,
+           e.id_etudiant, u.nom AS nom_etudiant, u.prenom AS prenom_etudiant,
+           f.id_formation, f.nom AS nom_formation
+    FROM inscription i
+    JOIN etudiant e ON i.id_etudiant = e.id_etudiant
+    JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
+    JOIN formation f ON i.id_formation = f.id_formation
+    WHERE i.etat = true
+  `;
+  const [rows] = await db.query(sql);
+  return rows;
 }
 
-
-async function enregistrerPaiement( id_echeance, id_mode_paiement, montant, reference_virement ) {
+async function getInscriptionById(id_inscription) {
   const sql = `
-    INSERT INTO paiement (id_echeance, id_mode_paiement, montant, date_paiement, reference_virement, etat)
-    VALUES (?, ?, ?, CURDATE(), ?, true)
+    SELECT i.*, u.nom AS nom_etudiant, u.prenom AS prenom_etudiant, f.nom AS nom_formation
+    FROM inscription i
+    JOIN etudiant e ON i.id_etudiant = e.id_etudiant
+    JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
+    JOIN formation f ON i.id_formation = f.id_formation
+    WHERE i.id_inscription = ? AND i.etat = true
   `;
-  const [result] = await db.query(sql, [id_echeance, id_mode_paiement, montant, reference_virement || null]);
-  return result.insertId;
+  const [rows] = await db.query(sql, [id_inscription]);
+  return rows[0];
+}
+
+async function deleteInscription(id_inscription) {
+  const [result] = await db.query('UPDATE inscription SET etat = false WHERE id_inscription = ?', [id_inscription]);
+  return result.affectedRows > 0;
 }
 
 module.exports = {
-  creerInscription,
-  findInscriptionAvecTarif,
-  genererEcheancierTx,
-  enregistrerPaiement,
-  validerInscription
+  insertInscription, setInscriptionValidee, findInscriptionAvecTarif,
+  getAllInscriptions, getInscriptionById, deleteInscription
 };
