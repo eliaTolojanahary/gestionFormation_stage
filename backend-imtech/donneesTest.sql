@@ -26,3 +26,5 @@ INSERT INTO type_reaction (nom, icone, etat) VALUES
 ('like', '👍', true),
 ('coeur', '❤️', true),
 ('utile', '💡', true);
+
+INSERT INTO notification_inapp (id_utilisateur, message, lu) VALUES (1, 'Test de notification', false);

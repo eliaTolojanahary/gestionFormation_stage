@@ -1,0 +1,7 @@
+.profile-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.profile-password-note { margin: 14px 0 0; color: #8b6b24; font-size: 9px; }
+.profile-error, .profile-success { padding: 9px; border-radius: 5px; font-size: 9px; }
+.profile-error { color: #b64242; background: #ffe9e9; }
+.profile-success { color: #39874e; background: #eaf7ec; }
+.profile-modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+@media (max-width: 560px) { .profile-form-grid { grid-template-columns: 1fr; } .profile-modal-actions { flex-direction: column-reverse; } .profile-modal-actions button { width: 100%; } }

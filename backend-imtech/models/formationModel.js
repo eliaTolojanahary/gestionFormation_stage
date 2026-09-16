@@ -1,14 +1,15 @@
 const db = require('../config/db');
 
-async function getAllFormations() {
+async function getAllFormations(idUtilisateur) {
   const sql = `
-    SELECT f.id_formation, f.nom, f.description, f.tarif, f.duree, f.duree_jours, f.etat,
+    SELECT f.id_formation, f.id_utilisateur, f.nom, f.description, f.tarif, f.duree, f.duree_jours, f.etat,
            u.nom AS nom_formateur, u.prenom AS prenom_formateur 
     FROM formation f
     JOIN utilisateur u ON f.id_utilisateur = u.id_utilisateur
     WHERE f.etat = true
+    ${idUtilisateur ? 'AND f.id_utilisateur = ?' : ''}
   `;
-  const [rows] = await db.query(sql);
+  const [rows] = await db.query(sql, idUtilisateur ? [idUtilisateur] : []);
   return rows;
 }
 

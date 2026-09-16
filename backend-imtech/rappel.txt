@@ -1,13 +1,35 @@
 option type inutile ( update cahier , estimation )
-update estimation ( reaction)
 delete inscription unique
 refus inscription
 login etudiant
-reglage PDF
+reglage PDF, export , type support ( pdf, image...)
 
 code couleur:
 #efc32e (jaune)
 #5a9032 (vert)
 #002e4f (bleu)
 #7f8a97 (gris)
+
+boky (partie mbola tsy milamina): glossaire , tableau , graphe , le gantt ( realisation), conception de l'appli ( assistance )
+daisy UI
+
+
+
+
+
+regle de gestion: doublon , somme negative
+rapport (stat....)
+notif (test entier)
+parametre
+espace formateur
+
+comprehension:
+login ( formateur, acceuil, formateur)
+===> 
+dashboard ( composants ( focntionnement))
+communication avec les autres pages (sidebar, header)
+crud 
+main: paiement, echeance
+evenement + notifs 
+test formateur ( support + coms )
 

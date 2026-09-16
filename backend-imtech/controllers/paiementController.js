@@ -1,4 +1,15 @@
 const paiementService = require('../services/paiementService');
+
+async function listerPaiementsController(req, res) {
+  try {
+    const paiements = await paiementService.listerPaiements();
+    return res.json({ status: "success", data: paiements });
+  } catch (error) {
+    console.error("Erreur liste paiements :", error);
+    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+  }
+}
+
 async function enregistrerPaiementController(req, res) {
   try {
     const { id_echeance, id_mode_paiement, montant, reference_virement } = req.body;
@@ -57,4 +68,4 @@ async function updatePaiementController(req, res) {
 }
 
 
-module.exports = { enregistrerPaiementController,updatePaiementController,getPaiementByIdController};
+module.exports = { listerPaiementsController, enregistrerPaiementController, updatePaiementController, getPaiementByIdController };

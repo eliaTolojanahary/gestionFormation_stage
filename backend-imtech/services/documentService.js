@@ -44,5 +44,22 @@ async function creerAttestation(id_inscription) {
 async function verifierAuthenticite(uuid) {
   return await documentModel.findAttestationParUuid(uuid);
 }
+async function creerDocument(id_utilisateur, nom_document, fichier) {
+  return await documentModel.insertDocument(
+    id_utilisateur,
+    nom_document,
+    fichier
+  );
+}
 
-module.exports = { creerFiche, creerFacture, creerAttestation, verifierAuthenticite };
+async function obtenirDocuments() {
+  return await documentModel.getDocuments();
+}
+
+async function supprimerDocument(id) {
+  return await documentModel.deleteDocument(id);
+}
+module.exports = { creerFiche, creerFacture, creerAttestation, verifierAuthenticite,
+  creerDocument,
+obtenirDocuments,supprimerDocument
+ };

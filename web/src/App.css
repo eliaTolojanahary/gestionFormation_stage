@@ -1,0 +1,8 @@
+/* Styles communs au conteneur principal de l'application. */
+.dashboard-page {
+  min-height: 100svh;
+  display: flex;
+  color: var(--text-main);
+  background: var(--page-bg);
+  font-size: 12px;
+}

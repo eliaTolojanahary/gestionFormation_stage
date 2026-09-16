@@ -1,7 +1,7 @@
 const formationModel = require('../models/formationModel');
 
-async function listerFormations() {
-  return await formationModel.getAllFormations();
+async function listerFormations(idUtilisateur) {
+  return await formationModel.getAllFormations(idUtilisateur);
 }
 
 async function recupererFormation(id) {

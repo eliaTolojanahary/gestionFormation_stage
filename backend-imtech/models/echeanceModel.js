@@ -22,6 +22,7 @@ async function getAllEcheances() {
     SELECT 
       e.id_echeance, e.id_inscription, e.montant_prevu, e.date_echeance,
       e.etat AS echeance_active,
+      u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
       u.nom AS etudiant_nom, u.prenom AS etudiant_prenom,
       f.nom AS formation_nom,
       IFNULL(SUM(p.montant), 0) AS montant_paye,

@@ -2,7 +2,8 @@ const formationService = require('../services/formationService');
 
 async function listerFormations(req, res) {
   try {
-    const formations = await formationService.listerFormations();
+    const idUtilisateur = req.user?.role === 'Formateur' ? (req.user.id_utilisateur || req.user.id) : undefined;
+    const formations = await formationService.listerFormations(idUtilisateur);
     return res.json({ status: "success", data: formations });
   } catch (error) {
     console.error(error);

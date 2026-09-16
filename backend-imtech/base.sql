@@ -1,5 +1,5 @@
 -- ============================================
--- BASE DE DONNÉES IMTECH INFO - VERSION CORRIGÉE
+-- BASE DE DONNÉES IMTECH INFO - VERSION CORRIGÉE ET STRUCTURÉE
 -- ============================================
 
 -- 1. role
@@ -24,14 +24,7 @@ CREATE TABLE mode_paiement (
     etat BOOLEAN DEFAULT TRUE
 );
 
--- 4. type_support
-CREATE TABLE type_support (
-    id_type_support INT AUTO_INCREMENT PRIMARY KEY,
-    nom VARCHAR(50) NOT NULL,
-    etat BOOLEAN DEFAULT TRUE
-);
-
--- 5. type_reaction
+-- 4. type_reaction
 CREATE TABLE type_reaction (
     id_type_reaction INT AUTO_INCREMENT PRIMARY KEY,
     nom VARCHAR(50) NOT NULL UNIQUE,
@@ -39,14 +32,14 @@ CREATE TABLE type_reaction (
     etat BOOLEAN DEFAULT TRUE
 );
 
--- 6. statut
+-- 5. statut
 CREATE TABLE statut (
     id_statut INT AUTO_INCREMENT PRIMARY KEY,
     nom VARCHAR(50) NOT NULL,
     etat BOOLEAN DEFAULT TRUE
 );
 
--- 7. utilisateur
+-- 6. utilisateur
 CREATE TABLE utilisateur (
     id_utilisateur INT AUTO_INCREMENT PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
@@ -60,7 +53,7 @@ CREATE TABLE utilisateur (
     FOREIGN KEY (id_role) REFERENCES role(id_role)
 );
 
--- 8. etudiant
+-- 7. etudiant
 CREATE TABLE etudiant (
     id_etudiant INT AUTO_INCREMENT PRIMARY KEY,
     id_utilisateur INT NOT NULL UNIQUE,
@@ -68,12 +61,11 @@ CREATE TABLE etudiant (
     photo_2 VARCHAR(255),
     certificat_residence VARCHAR(255),
     photocopie_cin VARCHAR(255),
-    option_type VARCHAR(50),
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
 );
 
--- 9. formation
+-- 8. formation
 CREATE TABLE formation (
     id_formation INT AUTO_INCREMENT PRIMARY KEY,
     id_utilisateur INT NOT NULL,
@@ -86,19 +78,21 @@ CREATE TABLE formation (
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
 );
 
--- 10. inscription
+-- 9. inscription (intégration de ALTER TABLE : valide)
 CREATE TABLE inscription (
     id_inscription INT AUTO_INCREMENT PRIMARY KEY,
-    id_etudiant INT NOT NULL,
+    id_etudiant INT NULL,
+    id_utilisateur INT NULL,
     id_formation INT NOT NULL,
     date_inscription DATE DEFAULT CURRENT_DATE,
+    valide BOOLEAN DEFAULT TRUE,
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant),
-    FOREIGN KEY (id_formation) REFERENCES formation(id_formation),
-    CONSTRAINT uq_etudiant_formation UNIQUE (id_etudiant, id_formation)
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
+    FOREIGN KEY (id_formation) REFERENCES formation(id_formation)
 );
 
--- 11. echeance
+-- 10. echeance
 CREATE TABLE echeance (
     id_echeance INT AUTO_INCREMENT PRIMARY KEY,
     id_inscription INT NOT NULL,
@@ -111,34 +105,34 @@ CREATE TABLE echeance (
     FOREIGN KEY (id_tranche) REFERENCES tranche(id_tranche)
 );
 
--- 12. support (TABLE MANQUANTE - AJOUTÉE)
+-- 11. support
 CREATE TABLE support (
     id_support INT AUTO_INCREMENT PRIMARY KEY,
     id_formation INT NOT NULL,
     id_utilisateur INT NOT NULL,
-    id_type_support INT NOT NULL,
     titre VARCHAR(150) NOT NULL,
     fichier VARCHAR(255),
     date_publication DATETIME DEFAULT CURRENT_TIMESTAMP,
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_formation) REFERENCES formation(id_formation),
-    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
-    FOREIGN KEY (id_type_support) REFERENCES type_support(id_type_support)
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
 );
 
--- 13. commentaire
+-- 12. commentaire (intégration de ALTER TABLE : id_etudiant NULL + id_utilisateur + clé étrangère)
 CREATE TABLE commentaire (
     id_commentaire INT AUTO_INCREMENT PRIMARY KEY,
     id_support INT NOT NULL,
-    id_etudiant INT NOT NULL,
+    id_etudiant INT NULL,
+    id_utilisateur INT NULL,
     contenu TEXT NOT NULL,
     date_commentaire DATETIME DEFAULT CURRENT_TIMESTAMP,
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_support) REFERENCES support(id_support) ON DELETE CASCADE,
-    FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant)
+    FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant),
+    CONSTRAINT fk_commentaire_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
 );
 
--- 14. commentaire_mention
+-- 13. commentaire_mention
 CREATE TABLE commentaire_mention (
     id_mention INT AUTO_INCREMENT PRIMARY KEY,
     id_commentaire INT NOT NULL,
@@ -147,7 +141,7 @@ CREATE TABLE commentaire_mention (
     FOREIGN KEY (id_etudiant_mentionne) REFERENCES etudiant(id_etudiant)
 );
 
--- 15. reaction
+-- 14. reaction
 CREATE TABLE reaction (
     id_reaction INT AUTO_INCREMENT PRIMARY KEY,
     id_support INT NOT NULL,
@@ -160,7 +154,7 @@ CREATE TABLE reaction (
     CONSTRAINT uq_utilisateur_support_reaction UNIQUE (id_utilisateur, id_support)
 );
 
--- 16. paiement
+-- 15. paiement
 CREATE TABLE paiement (
     id_paiement INT AUTO_INCREMENT PRIMARY KEY,
     id_echeance INT NOT NULL,
@@ -173,20 +167,31 @@ CREATE TABLE paiement (
     FOREIGN KEY (id_mode_paiement) REFERENCES mode_paiement(id_mode_paiement)
 );
 
--- 17. facture
+-- 16. facture
 CREATE TABLE facture (
     id_facture INT AUTO_INCREMENT PRIMARY KEY,
-    id_paiement INT NOT NULL UNIQUE,
+    id_paiement INT NOT NULL,
     numero_facture VARCHAR(50) NOT NULL UNIQUE,
     date_emission DATE DEFAULT CURRENT_DATE,
     fichier_pdf VARCHAR(255),
     FOREIGN KEY (id_paiement) REFERENCES paiement(id_paiement)
 );
 
+-- 17. document_administratif
+CREATE TABLE document_administratif (
+    id_document INT AUTO_INCREMENT PRIMARY KEY,
+    id_utilisateur INT NOT NULL,
+    nom_document VARCHAR(150) NOT NULL,
+    fichier VARCHAR(255) NOT NULL,
+    date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
+    etat BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
+);
+
 -- 18. attestation
 CREATE TABLE attestation (
     id_attestation INT AUTO_INCREMENT PRIMARY KEY,
-    id_inscription INT NOT NULL UNIQUE,
+    id_inscription INT NOT NULL,
     uuid_verification VARCHAR(36) NOT NULL UNIQUE,
     date_delivrance DATE DEFAULT CURRENT_DATE,
     fichier_pdf VARCHAR(255),
@@ -239,6 +244,10 @@ CREATE TABLE reset_password (
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
 );
 
+-- ============================================
+-- INDEX D'OPTIMISATION
+-- ============================================
+
 CREATE INDEX idx_inscription_etudiant ON inscription(id_etudiant);
 CREATE INDEX idx_inscription_formation ON inscription(id_formation);
 CREATE INDEX idx_echeance_inscription ON echeance(id_inscription);
@@ -246,10 +255,3 @@ CREATE INDEX idx_paiement_echeance ON paiement(id_echeance);
 CREATE INDEX idx_commentaire_support ON commentaire(id_support);
 CREATE INDEX idx_notification_utilisateur ON notification_inapp(id_utilisateur, lu);
 CREATE INDEX idx_reaction_support ON reaction(id_support);
-
-ALTER TABLE inscription ADD COLUMN valide BOOLEAN DEFAULT true;
-
-ALTER TABLE etudiant 
-MODIFY COLUMN option_type VARCHAR(50) DEFAULT NULL;
-
-ALTER TABLE support MODIFY COLUMN id_type_support INT DEFAULT NULL;

@@ -1,0 +1,297 @@
+import { useEffect, useState } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
+import logoImtech from '../../assets/logoImtech.png'
+import Sidebar from '../../components/sidebar/Sidebar'
+import ProfileModal from '../../components/profile/ProfileModal'
+import { ProfileProvider } from '../../components/profile/ProfileContext'
+import DashboardContent from '../../components/dashboard/DashboardContent'
+import Etudiants from '../etudiants/Etudiants'
+import EtudiantDetail from '../etudiants/EtudiantDetail'
+import EtudiantForm from '../etudiants/EtudiantForm'
+import Users from '../users/Users'
+import UserForm from '../users/UserForm'
+import Formations from '../formations/Formations'
+import FormationDetail from '../formations/FormationDetail'
+import FormationForm from '../formations/FormationForm'
+import Inscriptions from '../inscriptions/Inscriptions'
+import InscriptionDetail from '../inscriptions/InscriptionDetail'
+import InscriptionForm from '../inscriptions/InscriptionForm'
+import Paiements from '../paiements/Paiements'
+import Echeances from '../echeances/Echeances'
+import Documents from '../documents/Documents'
+import Assistance from '../assistance/Assistance'
+import Notifications from '../notifications/Notifications'
+import Parametres from '../parametres/Parametres'
+import AccueilFormateur from '../formateur/AccueilFormateur'
+import { useNotification } from '../../hooks/useNotification'
+
+const INITIAL_VIEW = { type: 'list', id: null }
+
+function DashboardLayout(props) {
+  const user = props.user
+  const onLogout = props.onLogout
+
+  const navigate = useNavigate()
+
+  const notificationData = useNotification()
+  const notifications = notificationData.notifications
+
+  const unreadNotifications = []
+  for (let i = 0; i < notifications.length; i++) {
+    if (notifications[i].lu === false) {
+      unreadNotifications.push(notifications[i])
+    }
+  }
+
+  const [currentUser, setCurrentUser] = useState(user)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [studentView, setStudentView] = useState(INITIAL_VIEW)
+  const [userView, setUserView] = useState(INITIAL_VIEW)
+  const [formationView, setFormationView] = useState(INITIAL_VIEW)
+  const [inscriptionView, setInscriptionView] = useState(INITIAL_VIEW)
+
+  const [settings, setSettings] = useState(function () {
+    try {
+      const savedTheme = localStorage.getItem('app_theme')
+      const savedColor = localStorage.getItem('app_color')
+      const savedLogo = localStorage.getItem('app_logo')
+
+      return {
+        theme: savedTheme || 'light',
+        color: savedColor || '#063a5c',
+        logo: savedLogo || null,
+      }
+    } catch (err) {
+      return { theme: 'light', color: '#063a5c', logo: null }
+    }
+  })
+
+  useEffect(function () {
+    document.documentElement.dataset.theme = settings.theme
+    document.documentElement.style.setProperty('--accent', settings.color)
+
+    try {
+      localStorage.setItem('app_theme', settings.theme)
+      localStorage.setItem('app_color', settings.color)
+      if (settings.logo) {
+        localStorage.setItem('app_logo', settings.logo)
+      }
+    } catch (err) {
+      // Les préférences restent actives pendant la session si le stockage est indisponible.
+    }
+  }, [settings])
+
+  function handleProfileUpdated(updatedUser) {
+    setCurrentUser(updatedUser)
+
+    let storage = sessionStorage
+    if (localStorage.getItem('auth_user')) {
+      storage = localStorage
+    }
+    storage.setItem('auth_user', JSON.stringify(updatedUser))
+    setIsProfileOpen(false)
+  }
+
+  function openStudentView(type, id) {
+    if (id === undefined) {
+      id = null
+    }
+    setStudentView({ type: type, id: id })
+  }
+
+  function openUserView(type, id) {
+    if (id === undefined) {
+      id = null
+    }
+    setUserView({ type: type, id: id })
+  }
+
+  function openFormationView(type, id) {
+    if (id === undefined) {
+      id = null
+    }
+    setFormationView({ type: type, id: id })
+  }
+
+  function openInscriptionView(type, id) {
+    if (id === undefined) {
+      id = null
+    }
+    setInscriptionView({ type: type, id: id })
+  }
+
+  function renderStudentPage() {
+    const type = studentView.type
+    const id = studentView.id
+
+    if (type === 'detail') {
+      return (
+        <EtudiantDetail
+          user={currentUser}
+          studentId={id}
+          onBack={function () { openStudentView('list') }}
+          onEdit={function (studentId) { openStudentView('edit', studentId) }}
+        />
+      )
+    }
+
+    if (type === 'create' || type === 'edit') {
+      return (
+        <EtudiantForm
+          user={currentUser}
+          studentId={id}
+          onBack={function () { openStudentView('list') }}
+          onSaved={function () { openStudentView('list') }}
+        />
+      )
+    }
+
+    return (
+      <Etudiants
+        user={currentUser}
+        onCreate={function () { openStudentView('create') }}
+        onDetail={function (studentId) { openStudentView('detail', studentId) }}
+        onEdit={function (studentId) { openStudentView('edit', studentId) }}
+      />
+    )
+  }
+
+  function renderUserPage() {
+    const type = userView.type
+    const id = userView.id
+
+    if (type === 'create' || type === 'edit') {
+      return (
+        <UserForm
+          user={currentUser}
+          userId={id}
+          onBack={function () { openUserView('list') }}
+          onSaved={function () { openUserView('list') }}
+        />
+      )
+    }
+
+    return (
+      <Users
+        user={currentUser}
+        onCreate={function () { openUserView('create') }}
+        onEdit={function (userId) { openUserView('edit', userId) }}
+      />
+    )
+  }
+
+  function renderFormationPage() {
+    const type = formationView.type
+    const id = formationView.id
+
+    if (type === 'detail') {
+      return (
+        <FormationDetail
+          user={currentUser}
+          formationId={id}
+          onBack={function () { openFormationView('list') }}
+          onEdit={function (formationId) { openFormationView('edit', formationId) }}
+        />
+      )
+    }
+
+    if (type === 'create' || type === 'edit') {
+      return (
+        <FormationForm
+          user={currentUser}
+          formationId={id}
+          onBack={function () { openFormationView('list') }}
+          onSaved={function () { openFormationView('list') }}
+        />
+      )
+    }
+
+    return (
+      <Formations
+        user={currentUser}
+        onCreate={function () { openFormationView('create') }}
+        onDetail={function (formationId) { openFormationView('detail', formationId) }}
+        onEdit={function (formationId) { openFormationView('edit', formationId) }}
+      />
+    )
+  }
+
+  function renderInscriptionPage() {
+    const type = inscriptionView.type
+    const id = inscriptionView.id
+
+    if (type === 'detail') {
+      return (
+        <InscriptionDetail
+          user={currentUser}
+          inscriptionId={id}
+          onBack={function () { openInscriptionView('list') }}
+        />
+      )
+    }
+
+    if (type === 'create') {
+      return (
+        <InscriptionForm
+          user={currentUser}
+          onBack={function () { openInscriptionView('list') }}
+          onSaved={function () { openInscriptionView('list') }}
+        />
+      )
+    }
+
+    return (
+      <Inscriptions
+        user={currentUser}
+        onCreate={function () { openInscriptionView('create') }}
+        onDetail={function (inscriptionId) { openInscriptionView('detail', inscriptionId) }}
+      />
+    )
+  }
+
+  return (
+    <ProfileProvider value={{ onProfile: function () { setIsProfileOpen(true) } }}>
+    <main className="dashboard-page">
+      <Sidebar
+        user={currentUser}
+        onLogout={onLogout}
+        logo={settings.logo || logoImtech}
+        nbNotifs={unreadNotifications.length}
+      />
+
+      <Routes>
+        <Route
+          path="/"
+          element={currentUser.role === 'Formateur'
+            ? <AccueilFormateur user={currentUser} />
+            : <DashboardContent user={currentUser} />}
+        />
+        <Route path="etudiants" element={renderStudentPage()} />
+        <Route path="utilisateurs" element={renderUserPage()} />
+        <Route path="formations" element={renderFormationPage()} />
+        <Route path="inscriptions" element={renderInscriptionPage()} />
+        <Route path="paiements" element={<Paiements user={currentUser} />} />
+        <Route path="echeances" element={<Echeances user={currentUser} />} />
+        <Route path="documents" element={<Documents user={currentUser} />} />
+        <Route path="assistance" element={<Assistance user={currentUser} />} />
+        <Route path="formateur" element={<AccueilFormateur user={currentUser} />} />
+        <Route path="notifications" element={<Notifications user={currentUser} />} />
+        <Route
+          path="parametres"
+          element={<Parametres user={currentUser} settings={settings} onSettingsChange={setSettings} />}
+        />
+      </Routes>
+
+      {isProfileOpen && (
+        <ProfileModal
+          user={currentUser}
+          onClose={function () { setIsProfileOpen(false) }}
+          onUpdated={handleProfileUpdated}
+        />
+      )}
+    </main>
+    </ProfileProvider>
+  )
+}
+
+export default Dashboard

@@ -35,34 +35,70 @@ async function formationsEtudiant(req, res) {
 
 async function creerEtudiantController(req, res) {
   try {
-    const { nom, prenom, email, mot_de_passe, telephone, id_role_etudiant, photo_1, photo_2, certificat_residence, photocopie_cin } = req.body;
+    const { nom, prenom, email, mot_de_passe, telephone, id_role } = req.body;
 
-    if (!nom || !prenom || !email || !mot_de_passe || !id_role_etudiant) {
-      return res.status(400).json({ status: "error", message: "nom, prenom, email, mot_de_passe et id_role_etudiant sont requis." });
+    if (!nom || !prenom || !email || !mot_de_passe || !id_role) {
+      return res.status(400).json({ status: 'error', message: 'nom, prenom, email, mot_de_passe et id_role sont requis.' });
     }
 
-    const id_etudiant = await etudiantService.creerEtudiant({ nom, prenom, email, mot_de_passe, telephone, id_role_etudiant, photo_1, photo_2, certificat_residence, photocopie_cin });
+    const paths = Object.fromEntries(
+      Object.entries(req.files || {}).map(([field, files]) => [field, `etudiants/${files[0].filename}`])
+    );
 
-    return res.status(201).json({ status: "success", message: "Étudiant créé.", id_etudiant });
+    const id_etudiant = await etudiantService.creerEtudiant({
+      nom,
+      prenom,
+      email,
+      mot_de_passe,
+      telephone,
+      id_role,
+      photo_1: paths.photo_1,
+      photo_2: paths.photo_2,
+      certificat_residence: paths.certificat_residence,
+      photocopie_cin: paths.photocopie_cin,
+    });
+
+    return res.status(201).json({ status: 'success', message: 'Étudiant créé.', id_etudiant });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ status: "error", message: "Cet email existe déjà." });
+      return res.status(409).json({ status: 'error', message: 'Cet email existe déjà.' });
     }
     console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+    return res.status(500).json({ status: 'error', message: 'Erreur serveur.' });
   }
 }
 
 async function updateEtudiantController(req, res) {
   try {
-    const ok = await etudiantService.modifierEtudiant(req.params.id, req.body);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Étudiant introuvable." });
-    }
-    return res.json({ status: "success", message: "Étudiant mis à jour." });
+    console.log('--- DEBUG updateEtudiantController ---')
+    console.log('BODY:', req.body)
+    console.log('FILES:', req.files)
+
+    const { nom, prenom, email, telephone, id_role } = req.body;
+
+    const paths = Object.fromEntries(
+      Object.entries(req.files || {}).map(([field, files]) => [field, `etudiants/${files[0].filename}`])
+    );
+
+    console.log('PATHS:', paths)
+
+    const updateData = {
+      nom,
+      prenom,
+      email,
+      telephone,
+      id_role,
+      ...paths,
+    };
+
+    console.log('UPDATE DATA:', updateData)
+    console.log('---------------------------------------')
+
+    await etudiantService.modifierEtudiant(req.params.id, updateData);
+    return res.json({ status: 'success', data: updateData });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+    return res.status(500).json({ status: 'error', message: 'Erreur lors de la mise à jour de l\'étudiant.' });
   }
 }
 

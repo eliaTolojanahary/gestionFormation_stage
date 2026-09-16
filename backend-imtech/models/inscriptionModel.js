@@ -1,6 +1,14 @@
 const db = require('../config/db');
-
 async function insertInscription(id_etudiant, id_formation) {
+  const [existing] = await db.query(
+    'SELECT id_inscription FROM inscription WHERE id_etudiant = ? AND id_formation = ? AND etat = true',
+    [id_etudiant, id_formation]
+  );
+
+  if (existing.length > 0) {
+    throw new Error('Cet étudiant est déjà inscrit à cette formation.');
+  }
+
   const sql = `
     INSERT INTO inscription (id_etudiant, id_formation, date_inscription, etat, valide) 
     VALUES (?, ?, CURDATE(), true, false)
@@ -30,7 +38,8 @@ async function findInscriptionAvecTarif(id_inscription) {
 async function getAllInscriptions() {
   const sql = `
     SELECT i.id_inscription, i.date_inscription, i.etat, i.valide,
-           e.id_etudiant, u.nom AS nom_etudiant, u.prenom AS prenom_etudiant,
+           e.id_etudiant, u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
+           u.nom AS nom_etudiant, u.prenom AS prenom_etudiant,
            f.id_formation, f.nom AS nom_formation
     FROM inscription i
     JOIN etudiant e ON i.id_etudiant = e.id_etudiant

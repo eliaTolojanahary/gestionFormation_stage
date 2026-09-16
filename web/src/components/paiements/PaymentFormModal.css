@@ -1,0 +1,4 @@
+.payment-form-modal { display: grid; gap: 13px; }
+.payment-form-modal .form-field { display: grid; gap: 6px; }
+.payment-form-modal .form-field > span { color: #547383; font-size: 11px; font-weight: 600; }
+.payment-form-modal input, .payment-form-modal select { box-sizing: border-box; width: 100%; min-height: 37px; padding: 8px 10px; border: 1px solid #d5e0e6; border-radius: 5px; color: #163e52; background: #fff; font: inherit; }

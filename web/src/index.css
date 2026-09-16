@@ -1,0 +1,54 @@
+:root {
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --page-bg: #f8f9f4;
+  --surface: #fff;
+  --text-main: #17324a;
+  --text-muted: #8496a4;
+  --heading: #063a5c;
+  --accent: #063a5c;
+  --line: #e0e8ed;
+  color: var(--text-main);
+  background: var(--page-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  --page-bg: #15232b;
+  --surface: #333e20;
+  --text-main: #e5f0f3;
+  --text-muted: #a3b7bf;
+  --heading: #f4fbfc;
+  --line: #38515b;
+}
+
+:root[data-theme='dark'] .gestion-panel,
+:root[data-theme='dark'] .gestion-form,
+:root[data-theme='dark'] .information-card,
+:root[data-theme='dark'] .dashboard-card,
+:root[data-theme='dark'] .kpi-card,
+:root[data-theme='dark'] .form-field input,
+:root[data-theme='dark'] .form-field select,
+:root[data-theme='dark'] .form-field textarea {
+  border-color: var(--line);
+  color: var(--text-main);
+  background: var(--surface);
+}
+
+:root[data-theme='dark'] .gestion-heading h1,
+:root[data-theme='dark'] .dashboard-heading h1,
+:root[data-theme='dark'] .information-card h2,
+:root[data-theme='dark'] .card-heading h2 {
+  color: var(--heading);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+#root {
+  min-height: 100svh;
+}

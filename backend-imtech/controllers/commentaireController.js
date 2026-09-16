@@ -13,16 +13,22 @@ async function listerCommentaires(req, res) {
 async function creerCommentaireController(req, res) {
   try {
     const { id_support, contenu, mentions } = req.body;
-    const id_etudiant = await commentaireService.recupererIdEtudiant(req.user.id);
-
-    if (!id_etudiant) {
-      return res.status(403).json({ status: "error", message: "Seul un étudiant peut commenter." });
-    }
     if (!id_support || !contenu) {
       return res.status(400).json({ status: "error", message: "id_support et contenu sont requis." });
     }
 
-    const id_commentaire = await commentaireService.creerCommentaire({ id_support, id_etudiant, contenu, mentions });
+    const id_etudiant = req.user.role === 'Étudiant'
+      ? await commentaireService.recupererIdEtudiant(req.user.id)
+      : null;
+    const id_utilisateur = req.user.role === 'Formateur' || req.user.role === 'Super Admin'
+      ? (req.user.id_utilisateur || req.user.id)
+      : null;
+
+    if (!id_etudiant && !id_utilisateur) {
+      return res.status(403).json({ status: "error", message: "Utilisateur non autorisé à commenter." });
+    }
+
+    const id_commentaire = await commentaireService.creerCommentaire({ id_support, id_etudiant, id_utilisateur, contenu, mentions });
     return res.status(201).json({ status: "success", message: "Commentaire ajouté.", id_commentaire });
   } catch (error) {
     console.error(error);

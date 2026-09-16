@@ -20,21 +20,33 @@ async function creerInscriptionController(req, res) {
     });
 
   } catch (error) {
-    console.error("Erreur création inscription :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur lors de l'inscription." });
+   console.error("Erreur création inscription :", error);
+return res.status(500).json({ status: "error", message: error.message });
   }
 }
-
 async function validerInscriptionController(req, res) {
   try {
-    const ok = await inscriptionService.validerInscription(req.params.id);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Inscription introuvable." });
+    const { id_mode_paiement, reference_virement } = req.body;
+
+    if (!id_mode_paiement) {
+      return res.status(400).json({ status: 'error', message: 'id_mode_paiement est requis.' });
     }
-    return res.json({ status: "success", message: "Inscription validée." });
+
+    const result = await inscriptionService.validerInscription(
+      req.params.id,
+      id_mode_paiement,
+      reference_virement
+    );
+
+    return res.json({ status: 'success', message: 'Inscription validée et premier paiement enregistré.', data: result });
   } catch (error) {
-    console.error("Erreur validation inscription :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
+    console.error('Erreur validation inscription :', error);
+
+    if (error.message === 'Aucune échéance trouvée pour cette inscription.') {
+      return res.status(409).json({ status: 'error', message: error.message });
+    }
+
+    return res.status(500).json({ status: 'error', message: 'Erreur serveur.' });
   }
 }
 

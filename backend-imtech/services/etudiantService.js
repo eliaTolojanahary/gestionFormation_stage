@@ -14,7 +14,7 @@ async function recupererFormationsEtudiant(id) {
   return await etudiantModel.getFormationsByEtudiant(id);
 }
 
-async function creerEtudiant({ nom, prenom, email, mot_de_passe, telephone, id_role_etudiant, photo_1, photo_2, certificat_residence, photocopie_cin }) {
+async function creerEtudiant({ nom, prenom, email, mot_de_passe, telephone, id_role, photo_1, photo_2, certificat_residence, photocopie_cin }) {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
@@ -22,7 +22,7 @@ async function creerEtudiant({ nom, prenom, email, mot_de_passe, telephone, id_r
     const mot_de_passe_hash = await bcrypt.hash(mot_de_passe, 10);
 
     const id_etudiant = await etudiantModel.insertUtilisateurEtEtudiant(connection, {
-      nom, prenom, email, mot_de_passe_hash, telephone, id_role_etudiant,
+      nom, prenom, email, mot_de_passe_hash, telephone, id_role,
       photo_1, photo_2, certificat_residence, photocopie_cin
     });
 

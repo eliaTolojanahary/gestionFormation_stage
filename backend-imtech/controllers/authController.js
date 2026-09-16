@@ -1,5 +1,6 @@
 const authService = require('../services/authService');
 const userService= require('../services/utilisateurService');
+const { envoyerEmail } = require('../utils/mailer');
 async function login(req, res) {
   try {
     const { email, mot_de_passe } = req.body;
@@ -41,11 +42,17 @@ async function forgotPasswordController(req, res) {
       return res.status(400).json({ status: "error", message: "Email requis." });
     }
 
-    const token = await userService.demanderReinitialisation(email);
+    const resetRequest = await userService.demanderReinitialisation(email);
+    if (resetRequest) {
+      await envoyerEmail({
+        to: resetRequest.email,
+        subject: 'Réinitialisation de votre mot de passe IMTECH INFO',
+        html: `<p>Bonjour ${resetRequest.prenom || ''},</p><p>Votre code de réinitialisation est :</p><p><strong>${resetRequest.token}</strong></p><p>Ce code expire dans 30 minutes.</p>`,
+      });
+    }
     return res.json({
       status: "success",
-      message: "Si cet email existe, un lien de réinitialisation a été envoyé.",
-      debug_token: token || undefined 
+      message: "Si cet email existe, un code de réinitialisation a été envoyé."
     });
   } catch (error) {
     console.error("Erreur forgotPasswordController:", error);

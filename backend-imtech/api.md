@@ -116,12 +116,11 @@ creer etudiant:
   "email": "godrogodro.rasoa@example.com",
   "mot_de_passe": "etudiant123",
   "telephone": "0344444444",
-  "id_role_etudiant": 4,
+  "id_role": 4,
   "photo_1": "photo1.jpg",
   "photo_2": "photo2.jpg",
   "certificat_residence": "cert.jpg",
-  "photocopie_cin": "cin.jpg",
-  "option_type": "info"
+  "photocopie_cin": "cin.jpg"
 }
 
 creer formations :
@@ -155,4 +154,12 @@ creer inscriptions:
   "id_formation": 1,
   "nombre_tranches": 3,
   "id_tranche": 3
+}
+
+payer : 
+{
+  "id_echeance": 1,
+  "id_mode_paiement": 1,
+  "montant": 50000.00,
+  "reference": "MVOLA-REF-998823"
 }

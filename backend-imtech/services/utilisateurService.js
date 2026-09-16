@@ -30,7 +30,7 @@ async function demanderReinitialisation(email) {
   const token = crypto.randomBytes(32).toString('hex');
   const dateExpiration = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
   await userModel.insertResetToken(user.id_utilisateur, token, dateExpiration);
-  return token;
+  return { token, email: user.email, prenom: user.prenom };
 }
 
 async function reinitialiserMotDePasse(token, nouveauMotDePasse) {

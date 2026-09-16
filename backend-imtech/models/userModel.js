@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 async function findAllUsers() {
   const [rows] = await db.query(
-    `SELECT u.*, r.nom AS role_nom 
+    `SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.telephone, u.id_role, u.etat, r.nom AS role_nom 
      FROM utilisateur u 
      JOIN role r ON u.id_role = r.id_role 
      WHERE u.etat = true`
@@ -12,7 +12,7 @@ async function findAllUsers() {
 
 async function findUserById(id) {
   const sql = `
-    SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.telephone, r.nom AS role_nom 
+    SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.telephone, u.id_role, r.nom AS role_nom 
     FROM utilisateur u 
     JOIN role r ON u.id_role = r.id_role 
     WHERE u.id_utilisateur = ? AND u.etat = true

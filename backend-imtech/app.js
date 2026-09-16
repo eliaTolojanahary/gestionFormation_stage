@@ -22,7 +22,8 @@ app.get('/', (req, res) => {
 
 // Fichiers statiques (PDF générés : fiches, factures, attestations)
 app.use('/documents', express.static(path.join(__dirname, 'uploads', 'documents')));
-
+app.use('/etudiants', express.static(path.join(__dirname, 'uploads', 'etudiants')));
+app.use('/supports', express.static(path.join(__dirname, 'uploads', 'supports')));
 // Chargement du fichier de routes principal
 const taskRoutes = require('./routes/routes');
 app.use('/', taskRoutes); // Toutes les routes commencent par http://localhost:3000/...

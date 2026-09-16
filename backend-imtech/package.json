@@ -14,8 +14,11 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.3.0",
     "mysql2": "^3.24.2",
+    "nodemailer": "^10.0.10",
     "pdfkit": "^0.20.2",
     "qrcode": "^1.5.4"
   },
