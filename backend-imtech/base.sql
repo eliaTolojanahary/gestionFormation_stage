@@ -39,20 +39,19 @@ CREATE TABLE statut (
     etat BOOLEAN DEFAULT TRUE
 );
 
--- 6. utilisateur
 CREATE TABLE utilisateur (
     id_utilisateur INT AUTO_INCREMENT PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     prenom VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     mot_de_passe VARCHAR(255) NOT NULL,
+    photo VARCHAR(255) NULL, -- Libellé ajouté pour la photo de profil
     date_creation DATE DEFAULT CURRENT_DATE,
     telephone VARCHAR(20),
     id_role INT NOT NULL,
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_role) REFERENCES role(id_role)
 );
-
 -- 7. etudiant
 CREATE TABLE etudiant (
     id_etudiant INT AUTO_INCREMENT PRIMARY KEY,

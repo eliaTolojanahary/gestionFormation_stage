@@ -1,0 +1,136 @@
+/* ==========================================================================
+   Page Assistance — Styles spécifiques
+   ========================================================================== */
+
+.support-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) 1.1fr;
+  gap: 14px;
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.support-form {
+  display: grid;
+  gap: 13px;
+}
+
+.support-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.support-form input,
+.support-form select,
+.support-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  outline: 0;
+  color: var(--text-main);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+}
+
+.support-form textarea {
+  resize: vertical;
+}
+
+.support-form .primary-button {
+  justify-self: start;
+}
+
+.support-contact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.support-contact > .icon {
+  width: 18px;
+  color: var(--accent);
+}
+
+.support-contact strong,
+.support-contact small {
+  display: block;
+}
+
+.support-contact strong {
+  color: var(--heading);
+  font-size: 10px;
+}
+
+.support-contact small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.ticket-list {
+  display: grid;
+}
+
+.ticket-row {
+  display: grid;
+  grid-template-columns: 65px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+}
+
+.ticket-row:first-child {
+  border-top: 0;
+}
+
+.ticket-row strong,
+.ticket-row small {
+  display: block;
+}
+
+.ticket-row strong {
+  color: var(--heading);
+  font-size: 10px;
+}
+
+.ticket-row small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.ticket-id {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+@media (max-width: 820px) {
+  .support-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 500px) {
+  .ticket-row {
+    grid-template-columns: 1fr auto;
+  }
+  .ticket-id {
+    grid-column: span 2;
+  }
+  .support-contact {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}

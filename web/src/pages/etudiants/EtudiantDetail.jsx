@@ -4,14 +4,15 @@ import Informations from '../../components/form/Informations'
 import Tableau from '../../components/tableau/Tableau'
 import DocumentAffichage from '../../components/doc/DocumentAffichage'
 import { useEtudiant } from '../../hooks/useEtudiant'
-import './EtudiantPages.css'
+import { getFileUrl } from '../../utils/files'
+import './Etudiants.css'
+
 
 function EtudiantDetail({ user, studentId, onBack, onEdit }) {
   const { getEtudiant, getFormations } = useEtudiant()
   const [student, setStudent] = useState(null)
   const [formations, setFormations] = useState([])
   const [error, setError] = useState('')
-
 
   useEffect(() => {
     async function loadData() {
@@ -38,14 +39,12 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
     { key: 'date_inscription', header: 'Inscription' },
   ]
 
- 
   const documents = [
     ['Photo 1', student?.photo_1],
     ['Photo 2', student?.photo_2],
     ['Certificat de résidence', student?.certificat_residence],
     ['Photocopie CIN', student?.photocopie_cin],
   ]
-
 
   if (error) {
     return (
@@ -66,10 +65,15 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
     )
   }
 
+  // URL complète de la photo de profil ou image par défaut si vide
+  const photoUrl = student.photo
+    ? getFileUrl(student.photo)
+    : null
+
   const informationItems = [
     { label: 'Nom complet', value: `${student.prenom || ''} ${student.nom || ''}`.trim() },
     { label: 'Email', value: student.email },
-    { label: 'Téléphone', value: student.telephone }
+    { label: 'Téléphone', value: student.telephone },
   ]
 
   return (
@@ -77,13 +81,20 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
       <Header user={user} activeItem="Etudiants" />
 
       <div className="page-heading detail-heading">
-        <div>
+        <div className="student-header-info">
           <button type="button" className="back-link" onClick={onBack}>
             ← Retour aux étudiants
           </button>
-          <h1>{student.prenom} {student.nom}</h1>
-          <p>Fiche détaillée de l'étudiant</p>
+          
+          <div className="profile-identity">
+           
+            <div>
+              <h1>{student.prenom} {student.nom}</h1>
+              <p>Fiche détaillée de l'étudiant</p>
+            </div>
+          </div>
         </div>
+
         <button type="button" className="primary-button" onClick={() => onEdit(student.id_etudiant)}>
           Modifier
         </button>
@@ -92,6 +103,7 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
       <div className="detail-layout">
         <div className="detail-main-column">
           <Informations title="Informations personnelles" items={informationItems} />
+          
           <Informations title="Formations suivies">
             <Tableau
               columns={formationColumns}
@@ -102,13 +114,13 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
           </Informations>
         </div>
 
-      <Informations title="Documents">
-  <div className="document-list">
-    {documents.map(([label, value]) => (
-      <DocumentAffichage label={label} path={value} />
-    ))}
-  </div>
-</Informations>
+        <Informations title="Documents">
+          <div className="document-list">
+            {documents.map(([label, value], index) => (
+              <DocumentAffichage key={index} label={label} path={value} />
+            ))}
+          </div>
+        </Informations>
       </div>
     </main>
   )

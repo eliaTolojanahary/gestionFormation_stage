@@ -3,7 +3,8 @@ import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import { useFormation } from '../../hooks/useFormation'
 import SearchFilterBar from '../../components/form/Filter'
-import './GestionPages.css'
+import './Formations.css'
+
 
 function Formations({ user, onCreate, onDetail, onEdit }) {
   const { formations, isLoading, error, deleteFormation } = useFormation()

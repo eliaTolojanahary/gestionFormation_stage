@@ -3,7 +3,7 @@ import Header from '../../components/header/Header'
 import Informations from '../../components/form/Informations'
 import InputReutilisable from '../../components/form/InputReutilisable'
 import { useEtudiant } from '../../hooks/useEtudiant'
-import './EtudiantPages.css'
+import './Etudiants.css'
 
 const EMPTY_FORM = {
   nom: '',
@@ -11,7 +11,7 @@ const EMPTY_FORM = {
   email: '',
   mot_de_passe: '',
   telephone: '',
-  id_role: '3',
+  id_role: '4',
   photo_1: '',
   photo_2: '',
   certificat_residence: '',
@@ -163,14 +163,23 @@ async function handleSubmit(event) {
             )}
             {!isEdit && (
               <InputReutilisable
-                label="ID rôle étudiant"
-                name="id_role"
-                type="number"
+                label=""
+                name=""
+                type="hidden"
                 value={form.id_role}
                 onChange={handleChange}
                 required
               />
             )}
+            <InputReutilisable
+              as="file"
+              label="Photo de profil"
+              name="photo"
+              file={files.photo}
+              currentPath={form.photo}
+              onChange={handleFileChange}
+              accept="image/*"
+            />
           </div>
         </Informations>
 

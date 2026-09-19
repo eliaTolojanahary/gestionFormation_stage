@@ -29,12 +29,24 @@ const allowedMimeTypes = new Set([
   // CSV
   'text/csv'
 ]);
+
+// Champs dont le fichier doit être redirigé vers un autre dossier que celui par défaut
+const FIELD_OVERRIDES = {
+  photo: 'utilisateurs',
+};
+
 function createUploader(folderName, options = {}) {
-  const uploadDirectory = path.join(__dirname, '..', 'uploads', folderName);
-  fs.mkdirSync(uploadDirectory, { recursive: true });
+  const baseUploadDir = path.join(__dirname, '..', 'uploads');
+  const defaultDirectory = path.join(baseUploadDir, folderName);
+  fs.mkdirSync(defaultDirectory, { recursive: true });
 
   const storage = multer.diskStorage({
-    destination: (_req, _file, callback) => callback(null, uploadDirectory),
+    destination: (_req, file, callback) => {
+      const sousDossier = FIELD_OVERRIDES[file.fieldname] || folderName;
+      const dest = path.join(baseUploadDir, sousDossier);
+      fs.mkdirSync(dest, { recursive: true }); // s'assure que le dossier cible existe aussi
+      callback(null, dest);
+    },
     filename: (_req, file, callback) => {
       const extension = path.extname(file.originalname).toLowerCase();
       const baseName = path.basename(file.originalname, extension).replace(/[^a-z0-9]/gi, '-').toLowerCase();

@@ -10,7 +10,7 @@ import { useEcheance } from '../../hooks/useEcheance'
 import { usePaiement } from '../../hooks/usePaiement'
 import { useNotifEvent } from '../../hooks/useNotifEvent'
 
-import '../formations/GestionPages.css'
+import './Echeances.css'
 
 function Echeances({ user }) {
   const { echeances, isLoading, error } = useEcheance()

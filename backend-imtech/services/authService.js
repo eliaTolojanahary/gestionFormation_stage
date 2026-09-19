@@ -19,10 +19,14 @@ async function authentifier(email, mot_de_passe) {
     token,
     user: {
       id: user.id_utilisateur,
+      id_utilisateur: user.id_utilisateur,
       nom: user.nom,
       prenom: user.prenom,
       email: user.email,
-      role: user.role_nom
+      telephone: user.telephone,
+      id_role: user.id_role,
+      role: user.role_nom,
+      photo: user.photo 
     }
   };
 }

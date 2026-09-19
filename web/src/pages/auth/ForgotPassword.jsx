@@ -75,7 +75,9 @@ function ForgotPassword() {
           <div className="brand-lockup">
             <img className="brand-logo" src={logoImtech} alt="Logo IMTECH INFO" />
             <h1>PLATEFORME<br />DE<br />GESTION<br />DE<br /><span>FORMATION</span></h1>
+            
           </div>
+                    <div className="pattern" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>
         </div>
         <footer>
           <p>Gerez vos catalogues de cours, planifiez vos sessions de formation,<br />et suivez la progression de vos apprenants en toute simplicite</p>
@@ -97,7 +99,6 @@ function ForgotPassword() {
 
           {step === 1 && (
             <form onSubmit={handleSendEmail}>
-              <label htmlFor="recovery-email">Adresse e-mail</label>
               <div className="input-wrap">
                 <Icon name="users" />
                 <input

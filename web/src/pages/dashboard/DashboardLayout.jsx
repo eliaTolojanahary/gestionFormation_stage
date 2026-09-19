@@ -24,12 +24,14 @@ import Notifications from '../notifications/Notifications'
 import Parametres from '../parametres/Parametres'
 import AccueilFormateur from '../formateur/AccueilFormateur'
 import { useNotification } from '../../hooks/useNotification'
+import '../WorkspacePages.css'
 
 const INITIAL_VIEW = { type: 'list', id: null }
 
 function DashboardLayout(props) {
   const user = props.user
   const onLogout = props.onLogout
+  const updateCurrentUser = props.updateCurrentUser
 
   const navigate = useNavigate()
 
@@ -50,47 +52,67 @@ function DashboardLayout(props) {
   const [formationView, setFormationView] = useState(INITIAL_VIEW)
   const [inscriptionView, setInscriptionView] = useState(INITIAL_VIEW)
 
-  const [settings, setSettings] = useState(function () {
-    try {
-      const savedTheme = localStorage.getItem('app_theme')
-      const savedColor = localStorage.getItem('app_color')
-      const savedLogo = localStorage.getItem('app_logo')
+const [settings, setSettings] = useState(function () {
+  try {
+    const savedTheme = localStorage.getItem('app_theme')
+    const savedColor = localStorage.getItem('app_color')
+    const savedLogo = localStorage.getItem('app_logo')
+    const savedFontSize = localStorage.getItem('app_font_size')
+    const savedDensity = localStorage.getItem('app_density')
+    const savedSidebar = localStorage.getItem('app_sidebar_collapsed')
 
-      return {
-        theme: savedTheme || 'light',
-        color: savedColor || '#063a5c',
-        logo: savedLogo || null,
-      }
-    } catch (err) {
-      return { theme: 'light', color: '#063a5c', logo: null }
+    return {
+      theme: savedTheme || 'light',
+      color: savedColor || '#063a5c',
+      logo: savedLogo || null,
+      fontSize: savedFontSize || 'normale',
+      density: savedDensity || 'confortable',
+      collapsedSidebar: savedSidebar === 'true',
     }
-  })
-
-  useEffect(function () {
-    document.documentElement.dataset.theme = settings.theme
-    document.documentElement.style.setProperty('--accent', settings.color)
-
-    try {
-      localStorage.setItem('app_theme', settings.theme)
-      localStorage.setItem('app_color', settings.color)
-      if (settings.logo) {
-        localStorage.setItem('app_logo', settings.logo)
-      }
-    } catch (err) {
-      // Les préférences restent actives pendant la session si le stockage est indisponible.
+  } catch (err) {
+    return {
+      theme: 'light',
+      color: '#063a5c',
+      logo: null,
+      fontSize: 'normale',
+      density: 'confortable',
+      collapsedSidebar: false,
     }
-  }, [settings])
-
-  function handleProfileUpdated(updatedUser) {
-    setCurrentUser(updatedUser)
-
-    let storage = sessionStorage
-    if (localStorage.getItem('auth_user')) {
-      storage = localStorage
-    }
-    storage.setItem('auth_user', JSON.stringify(updatedUser))
-    setIsProfileOpen(false)
   }
+})
+ useEffect(function () {
+  const root = document.documentElement
+
+  // 1. Thème
+  root.dataset.theme = settings.theme
+
+  // 2. Couleur principale
+  root.style.setProperty('--accent', settings.color)
+
+  // 3. Taille de police
+  root.dataset.fontSize = settings.fontSize || 'normale'
+
+  // 4. Densité
+  root.dataset.density = settings.density || 'confortable'
+
+  // 5. Sidebar réduite
+  root.dataset.sidebar = settings.collapsedSidebar ? 'collapsed' : 'expanded'
+
+  // Persistance
+  try {
+    localStorage.setItem('app_theme', settings.theme)
+    localStorage.setItem('app_color', settings.color)
+    localStorage.setItem('app_font_size', settings.fontSize || 'normale')
+    localStorage.setItem('app_density', settings.density || 'confortable')
+    localStorage.setItem('app_sidebar_collapsed', String(!!settings.collapsedSidebar))
+
+    if (settings.logo) {
+      localStorage.setItem('app_logo', settings.logo)
+    }
+  } catch (err) {
+    // Les préférences restent actives pendant la session si le stockage est indisponible.
+  }
+}, [settings])
 
   function openStudentView(type, id) {
     if (id === undefined) {
@@ -250,7 +272,7 @@ function DashboardLayout(props) {
   }
 
   return (
-    <ProfileProvider value={{ onProfile: function () { setIsProfileOpen(true) } }}>
+    <ProfileProvider value={{ onProfile: function () { setIsProfileOpen(true) }, updateCurrentUser }}>
     <main className="dashboard-page">
       <Sidebar
         user={currentUser}
@@ -286,7 +308,7 @@ function DashboardLayout(props) {
         <ProfileModal
           user={currentUser}
           onClose={function () { setIsProfileOpen(false) }}
-          onUpdated={handleProfileUpdated}
+          onUpdated={function (updatedUser) { setCurrentUser(updatedUser); setIsProfileOpen(false) }}
         />
       )}
     </main>
@@ -294,4 +316,4 @@ function DashboardLayout(props) {
   )
 }
 
-export default Dashboard
+export default DashboardLayout

@@ -1,5 +1,5 @@
 const authService = require('../services/authService');
-const userService= require('../services/utilisateurService');
+const userService= require('../services/userService');
 const { envoyerEmail } = require('../utils/mailer');
 async function login(req, res) {
   try {

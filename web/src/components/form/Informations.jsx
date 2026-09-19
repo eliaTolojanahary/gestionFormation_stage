@@ -1,3 +1,4 @@
+import './Informations.css'
 function Informations({ title, items = [], children }) {
   return (
     <section className="information-card">
@@ -8,7 +9,7 @@ function Informations({ title, items = [], children }) {
         <div className="information-grid">
           {items.map((item) => (
             <div className="information-item" key={item.label}>
-              <span>{item.label}</span>
+              <span>{item.label} : </span> 
               <strong>{item.value || '-'}</strong>
             </div>
           ))}

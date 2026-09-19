@@ -4,7 +4,7 @@ import Icon from '../../components/icon/Icon'
 import Header from '../../components/header/Header'
 import { useNotification } from '../../hooks/useNotification'
 
-import '../WorkspacePages.css'
+import './Notifications.css'
 
 function formatNotification(notification) {
   const message = notification.message || 'Nouvelle notification.'

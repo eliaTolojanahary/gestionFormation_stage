@@ -5,7 +5,14 @@ import InputReutilisable from '../../components/form/InputReutilisable'
 import { useEtudiant } from '../../hooks/useEtudiant'
 import { useFormation } from '../../hooks/useFormation'
 import { useInscription } from '../../hooks/useInscription'
-import '../formations/GestionPages.css'
+
+
+const TRANCHE_OPTIONS = [
+  { value: '1', label: 'Paiement Comptant (1 tranche)' },
+  { value: '2', label: 'Paiement en 2 Tranches' },
+  { value: '3', label: 'Paiement en 3 Tranches' },
+  { value: '4', label: 'Paiement en 4 Tranches' },
+]
 
 function InscriptionForm({ user, onBack, onSaved }) {
   const { etudiants } = useEtudiant()
@@ -15,19 +22,108 @@ function InscriptionForm({ user, onBack, onSaved }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  function handleChange(event) { setForm((current) => ({ ...current, [event.target.name]: event.target.value })) }
+  function handleChange(event) {
+    const { name, value } = event.target
+    if (name === 'id_tranche') {
+      const selectedTranche = Number(value)
+      setForm((current) => ({
+        ...current,
+        id_tranche: selectedTranche,
+        nombre_tranches: selectedTranche, // Synchronise le nombre de tranches avec l'ID sélectionné
+      }))
+    } else {
+      setForm((current) => ({ ...current, [name]: value }))
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault()
     setSaving(true)
     setError('')
     try {
-      await createInscription({ ...form, id_etudiant: Number(form.id_etudiant), id_formation: Number(form.id_formation), nombre_tranches: Number(form.nombre_tranches), id_tranche: Number(form.id_tranche) })
+      await createInscription({
+        ...form,
+        id_etudiant: Number(form.id_etudiant),
+        id_formation: Number(form.id_formation),
+        nombre_tranches: Number(form.nombre_tranches),
+        id_tranche: Number(form.id_tranche),
+      })
       onSaved()
-    } catch (requestError) { setError(requestError.message) } finally { setSaving(false) }
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  return <main className="gestion-page"><Header user={user} activeItem="Inscriptions" /><div className="gestion-heading"><div><button type="button" className="back-link" onClick={onBack}>← Retour aux inscriptions</button><h1>Nouvelle inscription</h1></div></div><form className="gestion-form" onSubmit={handleSubmit}><Informations title="Détails de l'inscription"><div className="form-grid"><InputReutilisable label="Etudiant" name="id_etudiant" value={form.id_etudiant} onChange={handleChange} as="select" options={etudiants.map((item) => ({ value: item.id_etudiant, label: `${item.prenom} ${item.nom}` }))} required /><InputReutilisable label="Formation" name="id_formation" value={form.id_formation} onChange={handleChange} as="select" options={formations.map((item) => ({ value: item.id_formation, label: item.nom }))} required /><InputReutilisable label="Nombre de tranches" name="nombre_tranches" type="number" value={form.nombre_tranches} onChange={handleChange} required /><InputReutilisable label="ID tranche" name="id_tranche" type="number" value={form.id_tranche} onChange={handleChange} required /></div></Informations>{error && <p className="form-error">{error}</p>}<div className="form-actions"><button type="button" className="secondary-button" onClick={onBack}>Annuler</button><button type="submit" className="primary-button" disabled={saving}>{saving ? 'Enregistrement...' : 'Enregistrer'}</button></div></form></main>
+  const etudiantOptions = etudiants.map((item) => ({
+    value: item.id_etudiant,
+    label: `${item.prenom} ${item.nom}`.trim(),
+  }))
+
+  const formationOptions = formations.map((item) => ({
+    value: item.id_formation,
+    label: item.nom,
+  }))
+
+  return (
+    <main className="gestion-page">
+      <Header user={user} activeItem="Inscriptions" />
+      <div className="gestion-heading">
+        <div>
+          <button type="button" className="back-link" onClick={onBack}>
+            ← Retour aux inscriptions
+          </button>
+          <h1>Nouvelle inscription</h1>
+        </div>
+      </div>
+
+      <form className="gestion-form" onSubmit={handleSubmit}>
+        <Informations title="Détails de l'inscription">
+          <div className="form-grid">
+            <InputReutilisable
+              label="Étudiant"
+              name="id_etudiant"
+              as="select"
+              value={form.id_etudiant}
+              onChange={handleChange}
+              options={etudiantOptions}
+              required
+            />
+            <InputReutilisable
+              label="Formation"
+              name="id_formation"
+              as="select"
+              value={form.id_formation}
+              onChange={handleChange}
+              options={formationOptions}
+              required
+            />
+            <InputReutilisable
+              label="Option de paiement"
+              name="id_tranche"
+              as="select"
+              value={form.id_tranche}
+              onChange={handleChange}
+              options={TRANCHE_OPTIONS}
+              required
+            />
+          </div>
+        </Informations>
+
+        {error && <p className="form-error">{error}</p>}
+
+        <div className="form-actions">
+          <button type="button" className="secondary-button" onClick={onBack}>
+            Annuler
+          </button>
+          <button type="submit" className="primary-button" disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        </div>
+      </form>
+    </main>
+  )
 }
 
 export default InscriptionForm

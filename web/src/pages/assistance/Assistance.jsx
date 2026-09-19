@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import Icon from '../../components/icon/Icon'
 import Header from '../../components/header/Header'
-import '../WorkspacePages.css'
+import './Assistance.css'
+
 
 const initialTickets = [
   { id: '#SUP-1048', subject: 'Accès au tableau de bord', category: 'Technique', status: 'En cours', date: '12 sept. 2026' },

@@ -1,7 +1,7 @@
-import Icon from '../icon/Icon'
+
 import './Header.css'
 import { useProfile } from '../profile/ProfileContext'
-
+import Avatar from '../avatar/Avatar'
 function Header({ user, activeItem = 'Tableau de bord', onProfile }) {
   const profile = useProfile()
   const openProfile = onProfile || profile?.onProfile
@@ -22,12 +22,14 @@ function Header({ user, activeItem = 'Tableau de bord', onProfile }) {
 
       <div className="top-actions">
         <button
-        className="profile-box"
-        onClick={openProfile}
-        title="Ouvrir mon profil"
+          type="button"
+          className="profile-box"
+          onClick={openProfile}
+          title="Ouvrir mon profil"
         >
-          <span className="top-avatar">{displayUser.prenom?.[0] || 'A'}</span>
-          <span>{displayUser.prenom || 'Admin'}</span>
+         
+          <Avatar photo={displayUser.photo} prenom={displayUser.prenom} nom={displayUser.nom} shape="circle" size="lg" fallback="U" />
+          <strong>{displayUser.prenom || displayUser.nom || 'Admin'}</strong>
         </button>
       </div>
     </header>

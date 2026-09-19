@@ -16,12 +16,24 @@ daisy UI
 
 
 
+vibe coding :
+reaction 
+ajout d'input mdp modif user
+mettre un select de formateurs pour create formations
+mettre le mode de paiement en label 
+afficher les photo dans profil et detail etudiant et user 
 
-regle de gestion: doublon , somme negative
-rapport (stat....)
-notif (test entier)
-parametre
-espace formateur
+
+
+
+
+
+
+
+
+
+
+
 
 comprehension:
 login ( formateur, acceuil, formateur)

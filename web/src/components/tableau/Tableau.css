@@ -1,0 +1,52 @@
+/* ==========================================================================
+   Composant Tableau : styles génériques et respect du thème Dark / Light
+   ========================================================================== */
+.tableau-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+  font-size: 9px;
+  color: var(--text-main);
+}
+
+.tableau th {
+  height: 34px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: left;
+  background: transparent;
+}
+
+.tableau td {
+  height: 38px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-main);
+  background: transparent;
+}
+
+.tableau tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.tableau tbody tr:hover {
+  background-color: var(--accent-soft);
+}
+
+.tableau tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tableau-empty {
+  padding: 28px 10px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}

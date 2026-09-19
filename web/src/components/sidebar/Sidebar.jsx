@@ -28,13 +28,11 @@ function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
   if (user?.role === 'Super Admin') {
     allowedItems = navigationItems
   } else if (user?.role === 'Accueil') {
-    allowedItems = navigationItems.filter(([icon, label]) =>
+    allowedItems = navigationItems.filter(([, label]) =>
       ['Tableau de bord', 'Paiements', 'Échéances', 'Assistance', 'Notifications', 'Formations', 'Rapports', 'Documents', 'Inscriptions', 'Etudiants'].includes(label)
     )
   } else if (user?.role === 'Formateur') {
     allowedItems = navigationItems.filter(([, label]) => ['Espace formateur', 'Assistance'].includes(label))
-  } else {
-    allowedItems = []
   }
 
   return (
@@ -60,33 +58,42 @@ function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
                 onClick={() => navigate(path)}
               >
                 <Icon name={icon} />
-                {label}
+                <span>{label}</span>
                 {label === 'Notifications' && <b>{notifCount}</b>}
               </button>
             )
           })}
         </nav>
       ) : (
-        <p>Veuillez vous connecter</p>
+        <div className="main-nav">
+          <p className="logout-message">Veuillez vous connecter</p>
+        </div>
       )}
 
-      <button
-        className="profile-box"
-        type="button"
-        onClick={onLogout}
-        title="Ouvrir mon profil"
-      >
-        <span className="avatar">
-          {user?.prenom?.[0] || 'A'}
-        </span>
-        <span>
-          <strong>
-            {user?.prenom || 'Admin'} {user?.nom || ''}
-          </strong>
-          <small>{user?.role || ''}</small>
-        </span>
-        <Icon name="logout" />
-      </button>
+      {/* Bloc de bas de page : Profil + Bouton Déconnexion */}
+      <div className="sidebar-footer">
+        <div className="profile-box">
+          <span className="avatar">
+            {user?.prenom?.[0] || 'A'}
+          </span>
+          <div className="profile-info">
+            <strong>
+              {user?.prenom || 'Admin'} {user?.nom || ''}
+            </strong>
+            <small>{user?.role || 'Utilisateur'}</small>
+          </div>
+        </div>
+
+        <button
+          className="logout-button"
+          type="button"
+          onClick={onLogout}
+          title="Se déconnecter"
+        >
+          <Icon name="logout" />
+          <span>Déconnexion</span>
+        </button>
+      </div>
     </aside>
   )
 }

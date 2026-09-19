@@ -1,8 +1,78 @@
-.modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(6, 31, 48, .38); }
-.modal { width: min(520px, 100%); padding: 20px; border: 1px solid #e0e8ed; border-radius: 8px; background: #fff; box-shadow: 0 18px 45px rgba(6, 31, 48, .2); }
-.modal-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
-.modal-heading span { color: #81929f; font-size: 9px; }
-.modal-heading h2 { margin: 4px 0 0; color: #063a5c; font-size: 17px; }
-.modal-close { width: 28px; height: 28px; border: 0; border-radius: 50%; color: #547383; background: #f1f5f7; font-size: 20px; line-height: 1; cursor: pointer; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
-@media (max-width: 560px) { .modal-actions { flex-direction: column-reverse; } .modal-actions button { width: 100%; } }
+.modal-backdrop {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(6, 31, 48, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+:root[data-theme='dark'] .modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.modal {
+  width: min(520px, 100%);
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-main);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2);
+}
+
+.modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.modal-heading span {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.modal-heading h2 {
+  margin: 4px 0 0;
+  color: var(--heading);
+  font-size: 17px;
+}
+
+.modal-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--page-bg);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.modal-close:hover {
+  color: var(--text-main);
+  background: var(--line);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+@media (max-width: 560px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  .modal-actions button {
+    width: 100%;
+  }
+}

@@ -24,6 +24,7 @@ app.get('/', (req, res) => {
 app.use('/documents', express.static(path.join(__dirname, 'uploads', 'documents')));
 app.use('/etudiants', express.static(path.join(__dirname, 'uploads', 'etudiants')));
 app.use('/supports', express.static(path.join(__dirname, 'uploads', 'supports')));
+app.use('/utilisateurs', express.static(path.join(__dirname, 'uploads', 'utilisateurs')));
 // Chargement du fichier de routes principal
 const taskRoutes = require('./routes/routes');
 app.use('/', taskRoutes); // Toutes les routes commencent par http://localhost:3000/...

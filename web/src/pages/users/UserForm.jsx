@@ -5,8 +5,13 @@ import InputReutilisable from '../../components/form/InputReutilisable'
 import { useUser } from '../../hooks/useUser'
 import './Users.css'
 
-const EMPTY_FORM = { nom: '', prenom: '', email: '', mot_de_passe: '', telephone: '', id_role: '' }
-const ROLE_OPTIONS = [{ value: '1', label: 'Super Admin' }, { value: '2', label: 'Accueil' }, { value: '3', label: 'Formateur' }, { value: '4', label: 'Étudiant' }]
+const EMPTY_FORM = { nom: '', prenom: '', email: '', mot_de_passe: '', telephone: '', id_role: '', photo: '' }
+const ROLE_OPTIONS = [
+  { value: '1', label: 'Super Admin' },
+  { value: '2', label: 'Accueil' },
+  { value: '3', label: 'Formateur' },
+  { value: '4', label: 'Étudiant' },
+]
 
 function UserForm({ user, userId, onBack, onSaved }) {
   const isEdit = Boolean(userId)
@@ -15,10 +20,20 @@ function UserForm({ user, userId, onBack, onSaved }) {
   const [isLoading, setIsLoading] = useState(isEdit)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [file, setFile] = useState(null)
 
   useEffect(() => {
     if (!isEdit) return
-    getUser(userId).then((data) => setForm((current) => ({ ...current, ...data, id_role: String(data.id_role || '') }))).catch((requestError) => setError(requestError.message)).finally(() => setIsLoading(false))
+    getUser(userId)
+      .then((data) =>
+        setForm((current) => ({
+          ...current,
+          ...data,
+          id_role: String(data.id_role || ''),
+        }))
+      )
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setIsLoading(false))
   }, [isEdit, userId])
 
   function handleChange(event) {
@@ -26,25 +41,104 @@ function UserForm({ user, userId, onBack, onSaved }) {
     setForm((current) => ({ ...current, [name]: value }))
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setIsSaving(true)
-    try {
-      const payload = { nom: form.nom, prenom: form.prenom, email: form.email, telephone: form.telephone, id_role: Number(form.id_role) }
-      if (!isEdit) payload.mot_de_passe = form.mot_de_passe
-      await (isEdit ? updateUser(userId, payload) : createUser(payload))
-      onSaved()
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setIsSaving(false)
-    }
+  function handleFileChange(name, selectedFile) {
+    setFile(selectedFile)
   }
 
-  if (isLoading) return <main className="users-page"><Header user={user} activeItem="Utilisateurs" /><p>Chargement...</p></main>
+  async function handleSubmit(event) {
+  event.preventDefault()
+  setError('')
+  setIsSaving(true)
 
-  return <main className="users-page"><Header user={user} activeItem="Utilisateurs" /><div className="page-heading"><div><button type="button" className="back-link" onClick={onBack}>← Retour aux utilisateurs</button><h1>{isEdit ? "Modifier l'utilisateur" : 'Nouvel utilisateur'}</h1><p>Gérer les informations et les droits d'accès.</p></div></div><form className="user-form" onSubmit={handleSubmit}><Informations title="Informations du compte"><div className="form-grid"><InputReutilisable label="Nom" name="nom" value={form.nom} onChange={handleChange} required /><InputReutilisable label="Prénom" name="prenom" value={form.prenom} onChange={handleChange} required /><InputReutilisable label="Email" name="email" type="email" value={form.email} onChange={handleChange} required /><InputReutilisable label="Téléphone" name="telephone" value={form.telephone} onChange={handleChange} /><InputReutilisable label="Rôle" name="id_role" as="select" value={form.id_role} onChange={handleChange} options={ROLE_OPTIONS} required />{!isEdit && <InputReutilisable label="Mot de passe" name="mot_de_passe" type="password" value={form.mot_de_passe} onChange={handleChange} required />}</div></Informations>{error && <p className="form-error">{error}</p>}<div className="form-actions"><button type="button" className="secondary-button" onClick={onBack}>Annuler</button><button type="submit" className="primary-button" disabled={isSaving}>{isSaving ? 'Enregistrement...' : 'Enregistrer'}</button></div></form></main>
+  try {
+    const formData = new FormData()
+    formData.append('nom', form.nom)
+    formData.append('prenom', form.prenom)
+    formData.append('email', form.email)
+    if (form.mot_de_passe.trim()) {
+      formData.append('mot_de_passe', form.mot_de_passe)
+    }
+    formData.append('telephone', form.telephone)
+    formData.append('id_role', form.id_role)
+
+   
+
+    if (file) {
+      formData.append('photo', file)
+    }
+
+    // Affichage de toutes les paires clé/valeur du FormData dans la console
+    for (let [key, value] of formData.entries()) {
+      console.log(key, value)
+    }
+
+    await (isEdit ? updateUser(userId, formData) : createUser(formData))
+    onSaved()
+  } catch (requestError) {
+    setError(requestError.message)
+  } finally {
+    setIsSaving(false)
+  }
+}
+
+  if (isLoading) {
+    return (
+      <main className="users-page">
+        <Header user={user} activeItem="Utilisateurs" />
+        <p>Chargement...</p>
+      </main>
+    )
+  }
+
+  return (
+    <main className="users-page">
+      <Header user={user} activeItem="Utilisateurs" />
+      <div className="page-heading">
+        <div>
+          <button type="button" className="back-link" onClick={onBack}>
+            ← Retour aux utilisateurs
+          </button>
+          <h1>{isEdit ? "Modifier l'utilisateur" : 'Nouvel utilisateur'}</h1>
+          <p>Gérer les informations et les droits d'accès.</p>
+        </div>
+      </div>
+
+      <form className="user-form" onSubmit={handleSubmit}>
+        <Informations title="Informations du compte">
+          <div className="form-grid">
+            <InputReutilisable label="Nom" name="nom" value={form.nom} onChange={handleChange} required />
+            <InputReutilisable label="Prénom" name="prenom" value={form.prenom} onChange={handleChange} required />
+            <InputReutilisable label="Email" name="email" type="email" value={form.email} onChange={handleChange} required />
+            <InputReutilisable label="Téléphone" name="telephone" value={form.telephone} onChange={handleChange} />
+            <InputReutilisable label="Rôle" name="id_role" as="select" value={form.id_role} onChange={handleChange} options={ROLE_OPTIONS} required />
+            
+            <InputReutilisable label={isEdit ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe'} name="mot_de_passe" type="password" value={form.mot_de_passe} onChange={handleChange} required={!isEdit} />
+
+            <InputReutilisable
+              as="file"
+              label="Photo de profil"
+              name="photo"
+              file={file}
+              currentPath={form.photo}
+              onChange={handleFileChange}
+              accept="image/*"
+            />
+          </div>
+        </Informations>
+
+        {error && <p className="form-error">{error}</p>}
+
+        <div className="form-actions">
+          <button type="button" className="secondary-button" onClick={onBack}>
+            Annuler
+          </button>
+          <button type="submit" className="primary-button" disabled={isSaving}>
+            {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        </div>
+      </form>
+    </main>
+  )
 }
 
 export default UserForm

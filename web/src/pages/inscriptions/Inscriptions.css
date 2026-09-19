@@ -1,0 +1,17 @@
+/* ==========================================================================
+   Page Inscriptions — Styles spécifiques
+   ========================================================================== */
+
+.inscriptions-page .gestion-table {
+  min-width: 800px;
+}
+
+.inscription-status-valide {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
+}
+
+.inscription-status-attente {
+  color: #b77921;
+  background: rgba(183, 121, 33, 0.12);
+}

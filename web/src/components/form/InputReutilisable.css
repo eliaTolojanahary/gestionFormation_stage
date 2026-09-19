@@ -1,0 +1,143 @@
+/* ==========================================================================
+   InputRéutilisable — champs, selects, textareas, file
+   ========================================================================== */
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Label
+   -------------------------------------------------------------------------- */
+.form-field > span {
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* --------------------------------------------------------------------------
+   Inputs, selects, textareas
+   -------------------------------------------------------------------------- */
+.form-field input,
+.form-field select,
+.form-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  outline: 0;
+  color: var(--text-main);
+  background: var(--surface);
+  font: inherit;
+  font-size: var(--fs-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-field textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.form-field input:disabled,
+.form-field select:disabled,
+.form-field textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-field input::placeholder,
+.form-field textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* --------------------------------------------------------------------------
+   Champ FILE — correction de la taille de police
+   -------------------------------------------------------------------------- */
+
+/* Conteneur du champ file */
+.form-field input[type='file'] {
+  padding: 6px;
+  border: 1px dashed var(--line);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--page-bg);
+  font-size: var(--fs-xs);          /* ⭐ la police du champ reste petite */
+  cursor: pointer;
+}
+
+.form-field input[type='file']:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Bouton interne "Choisir un fichier" */
+.form-field input[type='file']::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: #fff;
+  background: var(--accent);
+  font: inherit;
+  font-size: var(--fs-xs);          /* ⭐ le bouton reste petit lui aussi */
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.form-field input[type='file']::file-selector-button:hover {
+  filter: brightness(1.08);
+}
+
+/* Texte "Aucun fichier sélectionné" / nom du fichier */
+.form-field input[type='file'] + small,
+.form-field > small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);          /* ⭐ petit aussi */
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   SELECT — garde une flèche cohérente
+   -------------------------------------------------------------------------- */
+.form-field select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 560px) {
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    font-size: var(--fs-sm);
+    padding: 8px;
+  }
+}

@@ -6,7 +6,8 @@ import SearchFilterBar from '../../components/form/Filter'
 import { useInscription } from '../../hooks/useInscription'
 import { useDocument } from '../../hooks/useDocument'
 import { useNotifEvent } from '../../hooks/useNotifEvent'
-import '../formations/GestionPages.css'
+import './Inscriptions.css'
+
 
 
 function Inscriptions({ user, onCreate, onDetail }) {

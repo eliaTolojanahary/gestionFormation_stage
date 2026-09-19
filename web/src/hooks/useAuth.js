@@ -81,6 +81,32 @@ export function useAuth() {
       return null
     }
   }
-
-  return { user, isLoading, error, login, logout, forgotPassword, resetPassword }
+  function updateCurrentUser(updatedUser) {
+    const nextUser = {
+      ...user,
+      ...updatedUser,
+      id: updatedUser?.id || updatedUser?.id_utilisateur || user?.id,
+      role: updatedUser?.role || updatedUser?.role_nom || user?.role,
+    }
+    const storage = localStorage.getItem('auth_user') ? localStorage : sessionStorage
+    storage.setItem('auth_user', JSON.stringify(nextUser))
+    setUser(nextUser)
+    return nextUser
+  }
+async function changePassword(ancienMotDePasse, nouveauMotDePasse) {
+    setError('')
+    try {
+      return await apiRequest('/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify({
+          ancien_mot_de_passe: ancienMotDePasse,
+          nouveau_mot_de_passe: nouveauMotDePasse,
+        }),
+      })
+    } catch (requestError) {
+      setError(requestError.message || 'Impossible de modifier le mot de passe.')
+      throw requestError
+    }
+  }
+  return { user, isLoading, error, login, logout, forgotPassword, resetPassword, changePassword, updateCurrentUser }
 }

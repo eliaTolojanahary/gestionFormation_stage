@@ -3,24 +3,8 @@ import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import SearchFilterBar from '../../components/form/Filter'
 import { useEtudiant } from '../../hooks/useEtudiant'
-import { getFileUrl } from '../../utils/files'
 import './Etudiants.css'
-
-function StudentAvatar({ student }) {
-  const initials = `${student.prenom?.[0] || ''}${student.nom?.[0] || ''}`.toUpperCase() || 'ET'
-
-  if (student.photo_1) {
-    return (
-      <img
-        className="student-avatar student-avatar-image"
-        src={getFileUrl(student.photo_1)}
-        alt={`${student.prenom} ${student.nom}`}
-      />
-    )
-  }
-
-  return <span className="student-avatar">{initials}</span>
-}
+import Avatar from '../../components/avatar/Avatar'
 
 function Etudiants({ user, onCreate, onDetail, onEdit }) {
   const { etudiants, isLoading, error, deleteEtudiant } = useEtudiant()
@@ -69,7 +53,7 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
       header: 'Etudiant',
       render: (student) => (
         <div className="student-name">
-          <StudentAvatar student={student} />
+          <Avatar photo={student.photo} prenom={student.prenom} nom={student.nom} />
           <strong>{student.prenom} {student.nom}</strong>
         </div>
       ),

@@ -3,7 +3,8 @@ import Header from '../../components/header/Header'
 import Informations from '../../components/form/Informations'
 import Tableau from '../../components/tableau/Tableau'
 import { useFormation } from '../../hooks/useFormation'
-import './GestionPages.css'
+import './Formations.css'
+
 
 function FormationDetail({ user, formationId, onBack, onEdit }) {
   const { getFormation, getEtudiants } = useFormation()

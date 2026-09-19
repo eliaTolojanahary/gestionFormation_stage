@@ -1,3 +1,4 @@
+import "./InputReutilisable.css"
 function InputReutilisable({
   label,
   name,

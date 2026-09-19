@@ -5,7 +5,7 @@ async function getAllEtudiants() {
   const sql = `
     SELECT e.id_etudiant, e.photo_1, e.photo_2, e.certificat_residence, 
            e.photocopie_cin, e.etat,
-           u.nom, u.prenom, u.email, u.telephone
+           u.nom, u.prenom, u.email, u.telephone, u.photo as photo
     FROM etudiant e
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
     WHERE e.etat = true
@@ -16,7 +16,7 @@ async function getAllEtudiants() {
 
 async function getEtudiantById(id_etudiant) {
   const sql = `
-    SELECT e.*, u.nom, u.prenom, u.email, u.telephone
+    SELECT e.*, u.nom, u.prenom, u.email, u.telephone, u.photo
     FROM etudiant e
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
     WHERE e.id_etudiant = ? AND e.etat = true
@@ -36,10 +36,11 @@ async function getFormationsByEtudiant(id_etudiant) {
   return rows;
 }
 
-async function insertUtilisateurEtEtudiant(connection, { nom, prenom, email, mot_de_passe_hash, telephone, id_role, photo_1, photo_2, certificat_residence, photocopie_cin }) {
+async function insertUtilisateurEtEtudiant(connection, { nom, prenom, email, mot_de_passe_hash, telephone, id_role, photo,photo_1, photo_2, certificat_residence, photocopie_cin }) {
+  // insertion dans utilisateur (photo prend la valeur de photo_1)
   const [userResult] = await connection.query(
-    `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, telephone, id_role, etat) VALUES (?, ?, ?, ?, ?, ?, true)`,
-    [nom, prenom, email, mot_de_passe_hash, telephone, id_role]
+    `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, telephone, id_role, photo, etat) VALUES (?, ?, ?, ?, ?, ?, ?, true)`,
+    [nom, prenom, email, mot_de_passe_hash, telephone, id_role, photo || null]
   );
   const id_utilisateur = userResult.insertId;
 
@@ -50,20 +51,23 @@ async function insertUtilisateurEtEtudiant(connection, { nom, prenom, email, mot
 
   return etudiantResult.insertId;
 }
-async function updateEtudiant(id_etudiant, { nom, prenom, email, telephone, id_role, photo_1, photo_2, certificat_residence, photocopie_cin }) {
+
+async function updateEtudiant(id_etudiant, { nom, prenom, email, telephone, id_role,photo, photo_1, photo_2, certificat_residence, photocopie_cin }) {
+  // mise à jour utilisateur (photo synchronisée avec photo_1 si transmise)
   const sqlUtilisateur = `
     UPDATE utilisateur u
     JOIN etudiant e ON e.id_utilisateur = u.id_utilisateur
-    SET u.nom = ?, u.prenom = ?, u.email = ?, u.telephone = ?, u.id_role = ?
+    SET u.nom = ?, u.prenom = ?, u.email = ?, u.telephone = ?, u.id_role = ?, u.photo = COALESCE(?, u.photo)
     WHERE e.id_etudiant = ?
   `;
-  await db.query(sqlUtilisateur, [nom, prenom, email, telephone, id_role, id_etudiant]);
+  await db.query(sqlUtilisateur, [nom, prenom, email, telephone, id_role, photo, id_etudiant]);
+
   const sqlEtudiant = `
     UPDATE etudiant 
     SET photo_1 = COALESCE(?, photo_1),
-      photo_2 = COALESCE(?, photo_2),
-      certificat_residence = COALESCE(?, certificat_residence),
-      photocopie_cin = COALESCE(?, photocopie_cin)
+        photo_2 = COALESCE(?, photo_2),
+        certificat_residence = COALESCE(?, certificat_residence),
+        photocopie_cin = COALESCE(?, photocopie_cin)
     WHERE id_etudiant = ?
   `;
   const [result] = await db.query(sqlEtudiant, [photo_1, photo_2, certificat_residence, photocopie_cin, id_etudiant]);
@@ -78,5 +82,5 @@ async function deleteEtudiant(id_etudiant) {
 
 module.exports = {
   getAllEtudiants, getEtudiantById, getFormationsByEtudiant,
-insertUtilisateurEtEtudiant, updateEtudiant, deleteEtudiant
+  insertUtilisateurEtEtudiant, updateEtudiant, deleteEtudiant
 };

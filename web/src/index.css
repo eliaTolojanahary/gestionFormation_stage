@@ -1,12 +1,26 @@
+/* ==========================================
+   VARIABLES GLOBALES
+   ========================================== */
 :root {
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+
   --page-bg: #f8f9f4;
-  --surface: #fff;
+  --surface: #ffffff;
   --text-main: #17324a;
   --text-muted: #8496a4;
   --heading: #063a5c;
-  --accent: #063a5c;
   --line: #e0e8ed;
+
+  --accent: #063a5c;
+  --accent-soft: rgba(6, 58, 92, 0.1);
+
+  /* Densité (par défaut : confortable) */
+  --density-gap: 14px;
+  --density-pad: 12px;
+
+  /* Largeur de sidebar (par défaut : pleine) */
+  --sidebar-width: 205px;
+
   color: var(--text-main);
   background: var(--page-bg);
   font-synthesis: none;
@@ -15,40 +29,255 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ==========================================
+   THÈME SOMBRE
+   ========================================== */
 :root[data-theme='dark'] {
-  --page-bg: #15232b;
-  --surface: #333e20;
-  --text-main: #e5f0f3;
-  --text-muted: #a3b7bf;
-  --heading: #f4fbfc;
-  --line: #38515b;
+  --page-bg: #0f172a;
+  --surface: #1e293b;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --heading: #f8fafc;
+  --line: #334155;
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.15);
 }
 
-:root[data-theme='dark'] .gestion-panel,
-:root[data-theme='dark'] .gestion-form,
-:root[data-theme='dark'] .information-card,
-:root[data-theme='dark'] .dashboard-card,
-:root[data-theme='dark'] .kpi-card,
-:root[data-theme='dark'] .form-field input,
-:root[data-theme='dark'] .form-field select,
-:root[data-theme='dark'] .form-field textarea {
-  border-color: var(--line);
-  color: var(--text-main);
-  background: var(--surface);
+/* ==========================================
+   TAILLE DE POLICE — échelle en px
+   ========================================== */
+/* Normale (par défaut) */
+:root,
+:root[data-font-size='normale'] {
+  --fs-xs:  9px;   /* labels, méta */
+  --fs-sm:  10px;  /* textes secondaires */
+  --fs-md:  12px;  /* texte courant */
+  --fs-lg:  14px;  /* sous-titres */
+  --fs-xl:  22px;  /* titres de page */
 }
 
-:root[data-theme='dark'] .gestion-heading h1,
-:root[data-theme='dark'] .dashboard-heading h1,
-:root[data-theme='dark'] .information-card h2,
-:root[data-theme='dark'] .card-heading h2 {
-  color: var(--heading);
+/* Petite */
+:root[data-font-size='petite'] {
+  --fs-xs:  8px;
+  --fs-sm:  9px;
+  --fs-md:  10px;
+  --fs-lg:  12px;
+  --fs-xl:  19px;
 }
 
+/* Grande */
+:root[data-font-size='grande'] {
+  --fs-xs:  10px;
+  --fs-sm:  11px;
+  --fs-md:  13px;
+  --fs-lg:  15px;
+  --fs-xl:  25px;
+}
+
+/* ==========================================
+   DENSITÉ DE L'INTERFACE
+   ========================================== */
+:root[data-density='compacte'] {
+  --density-gap: 8px;
+  --density-pad: 8px;
+}
+
+:root[data-density='confortable'] {
+  --density-gap: 14px;
+  --density-pad: 12px;
+}
+
+/* ==========================================
+   SIDEBAR RÉDUITE
+   ========================================== */
+:root[data-sidebar='collapsed'] { --sidebar-width: 60px; }
+:root[data-sidebar='expanded']  { --sidebar-width: 205px; }
+
+/* ==========================================
+   BASE
+   ========================================== */
 body {
   margin: 0;
   min-width: 320px;
+  background-color: var(--page-bg);
+  color: var(--text-main);
 }
 
 #root {
   min-height: 100svh;
+}
+
+/* ==========================================
+   PAGE DASHBOARD
+   ========================================== */
+.dashboard-page {
+  min-height: 100svh;
+  display: flex;
+  color: var(--text-main);
+  background: var(--page-bg);
+  font-size: var(--fs-md);
+  transition: font-size 0.2s ease;
+}
+
+/* ==========================================
+   SURFACES & CARTES
+   ========================================== */
+.gestion-panel,
+.gestion-form,
+.information-card,
+.dashboard-card,
+.kpi-card,
+.workspace-panel {
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text-main);
+}
+
+/* ==========================================
+   CHAMPS DE SAISIE
+   ========================================== */
+input, select, textarea {
+  background-color: var(--surface);
+  color: var(--text-main);
+  border: 1px solid var(--line);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+
+/* ==========================================
+   TITRES (couleur)
+   ========================================== */
+h1, h2, h4,
+.gestion-heading h1,
+.dashboard-heading h1,
+.information-card h2,
+.card-heading h2 {
+  color: var(--heading);
+}
+
+/* ==========================================
+   ÉCHELLE TYPOGRAPHIQUE — utilise les variables
+   ========================================== */
+
+/* Titres principaux de page */
+.page-heading h1,
+.data-heading h1,
+.students-heading h1,
+.users-heading h1,
+.workspace-heading h1,
+.dashboard-heading h1 {
+  font-size: var(--fs-xl);
+}
+
+/* Descriptions de page */
+.page-heading p,
+.data-heading p,
+.students-heading p,
+.users-heading p,
+.workspace-heading p,
+.dashboard-heading p {
+  font-size: var(--fs-sm);
+}
+
+/* Titres de cartes */
+.information-card h2,
+.information-card-heading h2,
+.panel-heading h2,
+.card-heading h2 {
+  font-size: var(--fs-md);
+}
+
+/* Paragraphes sous les titres de panneaux */
+.panel-heading p {
+  font-size: var(--fs-sm);
+}
+
+/* Contenu d'informations */
+.information-item strong { font-size: var(--fs-sm); }
+.information-item span   { font-size: var(--fs-xs); }
+
+/* Profil / détail étudiant */
+.profile-identity h1 { font-size: var(--fs-lg); }
+.profile-identity p  { font-size: var(--fs-sm); }
+
+/* Boutons */
+.primary-button,
+.secondary-button,
+.back-link,
+.reset-button {
+  font-size: var(--fs-sm);
+}
+
+/* Documents */
+.document-item strong { font-size: var(--fs-sm); }
+.document-item > span { font-size: var(--fs-xs); }
+.document-actions a   { font-size: var(--fs-xs); }
+
+/* Tableaux */
+.data-table,
+.students-table,
+.users-table {
+  font-size: var(--fs-sm);
+}
+
+/* ==========================================
+   DENSITÉ RÉACTIVE
+   ========================================== */
+.detail-layout,
+.detail-main-column,
+.student-form,
+.entity-form,
+.settings-layout,
+.settings-content,
+.workspace-content {
+  gap: var(--density-gap);
+}
+
+.setting-line {
+  padding: var(--density-pad) 0;
+}
+
+.information-grid,
+.form-grid {
+  gap: var(--density-gap) 22px;
+}
+
+/* Utilitaires optionnels */
+.density-gap { gap: var(--density-gap); }
+.density-pad { padding: var(--density-pad); }
+
+/* ==========================================
+   PAGE MAIN (toutes les pages)
+   ========================================== */
+.page-main,
+.students-main,
+.etudiant-page,
+.users-main,
+.users-page,
+.workspace-page {
+  width: calc(100% - var(--sidebar-width));
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 26px 42px;
+  box-sizing: border-box;
+  color: var(--text-main);
+  transition: width 0.2s ease;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 900px) {
+  .page-main,
+  .students-main,
+  .etudiant-page,
+  .users-main,
+  .users-page,
+  .workspace-page {
+    width: 100%;
+    padding: 0 14px 28px;
+  }
 }

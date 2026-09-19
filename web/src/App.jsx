@@ -6,8 +6,7 @@ import DashboardLayout from './pages/dashboard/DashboardLayout'
 import './App.css'
 
 function App() {
-  const { user, isLoading, error, login, logout } = useAuth()
-
+  const { user, isLoading, error, login, logout, updateCurrentUser } = useAuth()
   return (
     <Routes>
       <Route
@@ -28,7 +27,7 @@ function App() {
         path="/dashboard/*"
         element={
           user ? (
-            <DashboardLayout user={user} onLogout={logout} />
+            <DashboardLayout user={user} onLogout={logout} updateCurrentUser={updateCurrentUser} />
           ) : (
             <Navigate to="/login" replace />
           )

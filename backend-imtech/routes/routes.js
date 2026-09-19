@@ -26,7 +26,8 @@ const {
   getUserById,
   createUserController,
   updateUserController,
-  deleteUserController
+  deleteUserController,
+  changePasswordController
 } = require('../controllers/userController');
 
 
@@ -55,8 +56,12 @@ const {
 
 router.get('/utilisateurs', verifyToken, getAllUsers);
 router.get('/utilisateurs/:id', verifyToken, getUserById);
-router.post('/utilisateurs', verifyToken, createUserController);
-router.put('/utilisateurs/:id', verifyToken, updateUserController);
+const utilisateurUpload = createUploader('utilisateurs');
+// Route POST mise à jour avec gestion de l'upload de photo
+router.post('/utilisateurs', verifyToken, utilisateurUpload.single('photo'), createUserController);
+
+// Si vous avez une route PUT pour modifier un utilisateur :
+router.put('/utilisateurs/:id', verifyToken, utilisateurUpload.single('photo'), updateUserController);
 router.delete('/utilisateurs/:id', verifyToken, deleteUserController);
 
 // Authentification 
@@ -65,7 +70,7 @@ router.get('/auth/profil', verifyToken, getProfil);
 router.post('/auth/logout', logout);
 router.post('/auth/forgot-password', forgotPasswordController);
 router.post('/auth/reset-password', resetPasswordController);
-
+router.put('/auth/change-password', verifyToken, changePasswordController);
 // Inscriptions et paiements (Accueil / Super Admin)
 router.post('/inscriptions', verifyToken, checkRole('Accueil', 'Super Admin'), creerInscriptionController);
 router.get('/inscriptions', verifyToken, checkRole('Super Admin', 'Accueil'), listerInscriptions);
@@ -82,6 +87,7 @@ router.delete('/etudiants/:id', verifyToken, checkRole('Super Admin', 'Accueil')
 const etudiantUpload = createUploader('etudiants');
 
 const documentFields = etudiantUpload.fields([
+  { name: 'photo', maxCount: 1 }, // <--- Champ ajouté pour la photo de profil utilisateur
   { name: 'photo_1', maxCount: 1 },
   { name: 'photo_2', maxCount: 1 },
   { name: 'certificat_residence', maxCount: 1 },

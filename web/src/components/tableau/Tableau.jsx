@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import ImageLightbox from '../form/ImageLightBox'
 import './Tableau.css'
+
 
 function Tableau({
   columns,
@@ -8,9 +11,21 @@ function Tableau({
   className = '',
   wrapperClassName = '',
 }) {
+  const [previewImage, setPreviewImage] = useState(null)
+
+  function handleTableClick(event) {
+    const target = event.target
+    if (target.tagName === 'IMG' && target.src) {
+      setPreviewImage({
+        src: target.src,
+        alt: target.alt || 'Aperçu image',
+      })
+    }
+  }
+
   return (
     <div className={`tableau-wrap ${wrapperClassName}`.trim()}>
-      <table className={`tableau ${className}`.trim()}>
+      <table className={`tableau ${className}`.trim()} onClick={handleTableClick}>
         <thead>
           <tr>
             {columns.map((column) => (
@@ -36,10 +51,14 @@ function Tableau({
           )}
         </tbody>
       </table>
+
+      <ImageLightbox
+        src={previewImage?.src}
+        alt={previewImage?.alt}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   )
 }
 
 export default Tableau
-          
-

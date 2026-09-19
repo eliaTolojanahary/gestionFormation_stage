@@ -1,0 +1,24 @@
+/* ==========================================================================
+   Page Formations — Styles spécifiques
+   ========================================================================== */
+
+.formations-page .gestion-table {
+  min-width: 760px;
+}
+
+.formation-status-badge {
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.formation-status-badge.actif {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
+}
+
+.formation-status-badge.inactif {
+  color: var(--text-muted);
+  background: var(--line);
+}

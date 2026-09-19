@@ -1,0 +1,22 @@
+/* ==========================================================================
+   Page Échéances — Styles spécifiques
+   ========================================================================== */
+
+.echeances-page .gestion-table {
+  min-width: 800px;
+}
+
+.echeance-statut-rouge {
+  color: #d32f2f;
+  background: rgba(211, 47, 47, 0.12);
+}
+
+.echeance-statut-orange {
+  color: #b77921;
+  background: rgba(183, 121, 33, 0.12);
+}
+
+.echeance-statut-vert {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
+}

@@ -1,14 +1,289 @@
-.sidebar { position: sticky; top: 0; display: flex; flex: 0 0 205px; flex-direction: column; width: 205px; min-height: 100svh; box-sizing: border-box; padding: 14px 10px 12px; color: #d9e6ed; background: #063a5c; }
-.sidebar-brand { display: flex; align-items: center; gap: 7px; height: 48px; padding: 0 4px 15px; border-bottom: 1px solid rgba(255, 255, 255, .12); }
-.sidebar-brand img { width: 49px; height: 43px; object-fit: contain; border-radius: 2px; background: #fff; }
-.sidebar-brand span { font-size: 7px; line-height: 1.2; color: #fff; }
-.main-nav { display: flex; flex: 1; flex-direction: column; gap: 2px; padding-top: 13px; }
-.nav-item { display: flex; align-items: center; gap: 9px; min-height: 31px; padding: 0 8px; border: 0; border-left: 3px solid transparent; color: #d1e1e9; background: transparent; font: inherit; font-size: 11px; text-align: left; cursor: pointer; }
-.nav-item:hover, .nav-item.active { border-left-color: #f3c82c; color: #fff; background: rgba(255, 255, 255, .1); }
-.nav-item .icon { width: 14px; height: 14px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
-.nav-item b { display: grid; place-items: center; width: 15px; height: 15px; margin-left: auto; border-radius: 50%; color: #fff; background: #ed5359; font-size: 8px; }
-.profile-box { display: flex; align-items: center; gap: 7px; padding: 8px 7px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 6px; color: #fff; background: rgba(255, 255, 255, .07); font: inherit; text-align: left; cursor: pointer; }
-.logout-button { margin-top: 6px; padding: 5px; border: 0; color: #8db1c4; background: transparent; font: inherit; font-size: 8px; cursor: pointer; }
-.logout-button:hover { color: #fff; }
-.profile-box strong, .profile-box small { display: block; white-space: nowrap; }.profile-box strong { font-size: 9px; }.profile-box small { margin-top: 2px; color: #8db1c4; font-size: 8px; }.profile-box .icon { width: 13px; margin-left: auto; fill: none; stroke: currentColor; }
-.avatar, .top-avatar { display: grid; place-items: center; border-radius: 50%; color: #fff; background: #597a8a; font-weight: 700; }.avatar { width: 24px; height: 24px; font-size: 10px; }
+/* ==========================================
+   SIDEBAR
+   ========================================== */
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: 0 0 var(--sidebar-width);
+  flex-direction: column;
+  width: var(--sidebar-width);
+  height: 100vh;
+  min-height: 100svh;
+  box-sizing: border-box;
+  padding: 14px 10px 12px;
+  color: #d9e6ed;
+  background: var(--accent, #063a5c);
+  border-right: 1px solid var(--line);
+  transition: width 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+}
+
+:root[data-theme='dark'] .sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+/* ==========================================
+   BRAND
+   ========================================== */
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 48px;
+  padding: 0 4px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+
+.sidebar-brand img {
+  width: 49px;
+  height: 43px;
+  object-fit: contain;
+  border-radius: 2px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.sidebar-brand span {
+  font-size: var(--fs-xs);
+  line-height: 1.2;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ==========================================
+   NAVIGATION
+   ========================================== */
+.main-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 13px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 31px;
+  padding: 0 8px;
+  border: 0;
+  border-left: 3px solid transparent;
+  color: #d1e1e9;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-item:hover,
+.nav-item.active {
+  border-left-color: #f3c82c;
+  color: #fff;
+  background: rgba(255, 255, 255, .1);
+}
+
+.nav-item .icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.nav-item b {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-left: auto;
+  border-radius: 50%;
+  color: #fff;
+  background: #ed5359;
+  font-size: var(--fs-xs);
+}
+
+/* Scrollbar personnalisée */
+.main-nav::-webkit-scrollbar { width: 5px; }
+.main-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+.main-nav::-webkit-scrollbar-thumb {
+  background: #f3c82c;
+  border-radius: 4px;
+}
+.main-nav::-webkit-scrollbar-thumb:hover {
+  background: #e2a019;
+}
+.main-nav {
+  scrollbar-width: thin;
+  scrollbar-color: #f3c82c rgba(255, 255, 255, 0.05);
+}
+
+/* ==========================================
+   FOOTER & PROFIL
+   ========================================== */
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+}
+
+.profile-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .05);
+  cursor: default;
+  transition: none;
+}
+
+.profile-box:hover {
+  background: rgba(255, 255, 255, .05);
+  color: inherit;
+  border-color: transparent;
+  transform: none;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  background: #597a8a;
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  flex-shrink: 0;
+}
+
+.profile-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-info strong,
+.profile-info small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-info strong {
+  color: #fff;
+  font-size: var(--fs-sm);
+}
+
+.profile-info small {
+  margin-top: 1px;
+  color: #8db1c4;
+  font-size: var(--fs-xs);
+}
+
+/* ==========================================
+   DÉCONNEXION
+   ========================================== */
+.logout-message {
+  font-size: var(--fs-sm);
+  color: #8db1c4;
+  padding: 8px;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px;
+  border: 1px solid rgba(237, 83, 89, 0.3);
+  border-radius: 6px;
+  color: #f7aab0;
+  background: rgba(237, 83, 89, 0.08);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.logout-button:hover {
+  color: #fff;
+  background: #ed5359;
+  border-color: #ed5359;
+}
+
+.logout-button .icon {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+}
+
+/* ==========================================
+   MODE RÉDUIT (data-sidebar="collapsed")
+   — masque les textes, ne garde que les icônes
+   ========================================== */
+:root[data-sidebar='collapsed'] .sidebar {
+  padding: 14px 6px 12px;
+}
+
+/* Marque : logo seul, centré */
+:root[data-sidebar='collapsed'] .sidebar-brand {
+  justify-content: center;
+  padding: 0 0 15px;
+}
+:root[data-sidebar='collapsed'] .sidebar-brand span {
+  display: none;
+}
+:root[data-sidebar='collapsed'] .sidebar-brand img {
+  width: 40px;
+  height: 36px;
+}
+
+/* Items de navigation : icône seule, centrée */
+:root[data-sidebar='collapsed'] .nav-item {
+  justify-content: center;
+  padding: 0;
+  border-left-width: 3px;
+}
+:root[data-sidebar='collapsed'] .nav-item .label,
+:root[data-sidebar='collapsed'] .nav-item > span:not(.icon),
+:root[data-sidebar='collapsed'] .nav-item b {
+  display: none;
+}
+
+/* Profil : avatar seul */
+:root[data-sidebar='collapsed'] .profile-box {
+  justify-content: center;
+  padding: 8px 0;
+}
+:root[data-sidebar='collapsed'] .profile-info {
+  display: none;
+}
+
+/* Logout : icône seule, centrée */
+:root[data-sidebar='collapsed'] .logout-button {
+  padding: 7px 0;
+}
+:root[data-sidebar='collapsed'] .logout-button span {
+  display: none;
+}

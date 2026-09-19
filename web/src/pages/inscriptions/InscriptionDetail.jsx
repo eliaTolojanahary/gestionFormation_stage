@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Header from '../../components/header/Header'
 import Informations from '../../components/form/Informations'
 import { useInscription } from '../../hooks/useInscription'
-import '../formations/GestionPages.css'
+
 
 function InscriptionDetail({ user, inscriptionId, onBack }) {
   const { getInscription } = useInscription()

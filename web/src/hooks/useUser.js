@@ -33,11 +33,12 @@ export function useUser() {
   }
 
   function createUser(userData) {
-    return apiRequest('/utilisateurs', { method: 'POST', body: JSON.stringify(userData) })
+   // console.log(userData)
+    return apiRequest('/utilisateurs', { method: 'POST', body: userData })
   }
 
   function updateUser(id, userData) {
-    return apiRequest(`/utilisateurs/${id}`, { method: 'PUT', body: JSON.stringify(userData) })
+    return apiRequest(`/utilisateurs/${id}`, { method: 'PUT', body: userData })
   }
 
   async function deleteUser(id) {

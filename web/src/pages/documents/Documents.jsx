@@ -5,6 +5,7 @@ import SearchFilterBar from '../../components/form/Filter'
 import { useDocument } from '../../hooks/useDocument'
 import { useFormation } from '../../hooks/useFormation'
 import { getFileUrl } from '../../utils/files'
+import './Documents.css'
 
 
 function getExtension(document) {

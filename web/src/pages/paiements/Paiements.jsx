@@ -8,8 +8,9 @@ import Modal from '../../components/modal/Modal'
 import { usePaiement } from '../../hooks/usePaiement'
 import { useDocument } from '../../hooks/useDocument'
 import { useNotifEvent } from '../../hooks/useNotifEvent'
+import './Paiements.css'
 
-import '../formations/GestionPages.css'
+
 
 function Paiements({ user }) {
   const { paiements, isLoading, error, createPaiement } = usePaiement()
@@ -34,31 +35,48 @@ function Paiements({ user }) {
     }
   }
 
-  async function handleGenerateInvoice(payment) {
+ async function handleGenerateInvoice(payment) {
+  console.log("Clic détecté sur le paiement")
+  console.log(payment)
+  try {
+    setActionError('')
     const result = await getFacture(payment.id_paiement)
+    console.log("Résultat de getFacture :", result)
 
-    if (result?.fichier) {
-      const fileUrl = `${import.meta.env.VITE_URL_BASE}/${result.fichier.replace(/^\//, '')}`
-      window.open(fileUrl, '_blank')
-
-      if (payment.id_utilisateur_etudiant && payment.email_etudiant) {
-        const response = await fetch(fileUrl)
-        if (!response.ok) throw new Error('Impossible de récupérer la facture générée.')
-
-        const blob = await response.blob()
-        const fileName = result.fichier.split('/').pop() || `facture_${payment.id_paiement}.pdf`
-        const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
-
-        await facturePaiement({
-          idDestinataire: payment.id_utilisateur_etudiant,
-          email: payment.email_etudiant,
-          contenuHtml: `<p>Votre facture concernant le paiement de ${Number(payment.montant).toLocaleString('fr-FR')} MGA est disponible en pièce jointe.</p>`,
-          fichier: file,
-          nomFichier: fileName,
-        })
-      }
+    if (!result?.fichier) {
+      console.warn("La propriété 'fichier' est absente du résultat de getFacture.")
+      return
     }
+
+    const fileUrl = `${import.meta.env.VITE_URL_BASE}/${result.fichier.replace(/^\//, '')}`
+    window.open(fileUrl, '_blank')
+
+    console.log("ID étudiant :", payment.id_utilisateur_etudiant, "| Email :", payment.email_etudiant)
+
+    if (payment.id_utilisateur_etudiant && payment.email_etudiant) {
+      const response = await fetch(fileUrl)
+      if (!response.ok) throw new Error('Impossible de récupérer la facture générée.')
+
+      const blob = await response.blob()
+      const fileName = result.fichier.split('/').pop() || `facture_${payment.id_paiement}.pdf`
+      const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
+
+      await facturePaiement({
+        idDestinataire: payment.id_utilisateur_etudiant,
+        email: payment.email_etudiant,
+        contenuHtml: `<p>Votre facture concernant le paiement de ${Number(payment.montant).toLocaleString('fr-FR')} MGA est disponible en pièce jointe.</p>`,
+        fichier: file,
+        nomFichier: fileName,
+      })
+      console.log("Notification envoyée avec succès.")
+    } else {
+      console.warn("L'étudiant n'a pas d'ID utilisateur ou d'email associé.")
+    }
+  } catch (err) {
+    console.error("Erreur attrapée dans handleGenerateInvoice :", err)
+    setActionError(err.message || "Erreur lors de la génération de la facture.")
   }
+}
   const filteredPaiements = useMemo(() => {
     const searchLower = search.toLowerCase().trim()
 
