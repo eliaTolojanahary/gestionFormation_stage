@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import logoImtech from '../../assets/logoImtech.png'
 import Sidebar from '../../components/sidebar/Sidebar'
 import ProfileModal from '../../components/profile/ProfileModal'
@@ -27,6 +27,7 @@ import SupportsFormateur from '../formateur/SupportsFormateur'
 import ProgrammesFormateur from '../formateur/ProgrammesFormateur'
 import { useNotification } from '../../hooks/useNotification'
 import { apiRequest } from '../../utils/api'
+import { peutOuvrir } from '../../utils/navigation'
 import '../WorkspacePages.css'
 
 // Vue affichée dans une section : 'list', 'detail', 'create' ou 'edit' (+ id de l'élément)
@@ -298,6 +299,12 @@ const [settings, setSettings] = useState(function () {
     )
   }
 
+  // Page /dashboard/<segment> : affichée seulement si le rôle y a droit (même règle que le menu,
+  // utils/navigation.js) ; sinon, une URL tapée à la main ramène à l'accueil du tableau de bord
+  function pageAutorisee(segment, page) {
+    return peutOuvrir(currentUser.role, segment) ? page : <Navigate to="/dashboard" replace />
+  }
+
   return (
     <ProfileProvider value={{ onProfile: function () { setIsProfileOpen(true) }, updateCurrentUser }}>
     <main className="dashboard-page">
@@ -316,21 +323,21 @@ const [settings, setSettings] = useState(function () {
             ? <AccueilFormateur user={currentUser} />
             : <DashboardContent user={currentUser} />}
         />
-        <Route path="etudiants" element={renderStudentPage()} />
-        <Route path="utilisateurs" element={renderUserPage()} />
-        <Route path="formations" element={renderFormationPage()} />
-        <Route path="inscriptions" element={renderInscriptionPage()} />
-        <Route path="paiements" element={<Paiements user={currentUser} />} />
-        <Route path="echeances" element={<Echeances user={currentUser} />} />
-        <Route path="documents" element={<Documents user={currentUser} />} />
-        <Route path="assistance" element={<Assistance user={currentUser} />} />
-        <Route path="formateur" element={<AccueilFormateur user={currentUser} />} />
-        <Route path="supports" element={<SupportsFormateur user={currentUser} />} />
-        <Route path="programmes" element={<ProgrammesFormateur user={currentUser} />} />
-        <Route path="notifications" element={<Notifications user={currentUser} />} />
+        <Route path="etudiants" element={pageAutorisee('etudiants', renderStudentPage())} />
+        <Route path="utilisateurs" element={pageAutorisee('utilisateurs', renderUserPage())} />
+        <Route path="formations" element={pageAutorisee('formations', renderFormationPage())} />
+        <Route path="inscriptions" element={pageAutorisee('inscriptions', renderInscriptionPage())} />
+        <Route path="paiements" element={pageAutorisee('paiements', <Paiements user={currentUser} />)} />
+        <Route path="echeances" element={pageAutorisee('echeances', <Echeances user={currentUser} />)} />
+        <Route path="documents" element={pageAutorisee('documents', <Documents user={currentUser} />)} />
+        <Route path="assistance" element={pageAutorisee('assistance', <Assistance user={currentUser} />)} />
+        <Route path="formateur" element={pageAutorisee('formateur', <AccueilFormateur user={currentUser} />)} />
+        <Route path="supports" element={pageAutorisee('supports', <SupportsFormateur user={currentUser} />)} />
+        <Route path="programmes" element={pageAutorisee('programmes', <ProgrammesFormateur user={currentUser} />)} />
+        <Route path="notifications" element={pageAutorisee('notifications', <Notifications user={currentUser} />)} />
         <Route
           path="parametres"
-          element={<Parametres user={currentUser} settings={settings} onSettingsChange={setSettings} />}
+          element={pageAutorisee('parametres', <Parametres user={currentUser} settings={settings} onSettingsChange={setSettings} />)}
         />
       </Routes>
 

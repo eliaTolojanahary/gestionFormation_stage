@@ -1,25 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import Icon from '../icon/Icon'
+import { menuDuRole } from '../../utils/navigation'
 import './Sidebar.css'
-
-// Menu latéral : [icône, libellé, chemin]. Les entrées affichées dépendent du rôle (voir Sidebar).
-const navigationItems = [
-  ['book', 'Espace formateur', '/dashboard/formateur'],
-  ['upload', 'Supports', '/dashboard/supports'],
-  ['calendar', 'Supports programmés', '/dashboard/programmes'],
-  ['chart', 'Tableau de bord', '/dashboard'],
-  ['users', 'Etudiants', '/dashboard/etudiants'],
-  ['users', 'Utilisateurs', '/dashboard/utilisateurs'],
-  ['book', 'Formations', '/dashboard/formations'],
-  ['card', 'Inscriptions', '/dashboard/inscriptions'],
-  ['wallet', 'Paiements', '/dashboard/paiements'],
-  ['calendar', 'Échéances', '/dashboard/echeances'],
-  ['book', 'Documents', '/dashboard/documents'],
-  ['bell', 'Notifications', '/dashboard/notifications'],
-  ['users', 'Assistance', '/dashboard/assistance'],
-  ['gear', 'Parametres', '/dashboard/parametres'],
-  
-]
 
 // Barre latérale : logo, menu filtré selon le rôle, badge du nombre de notifications,
 // profil et bouton de déconnexion.
@@ -28,19 +10,9 @@ function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
   const navigate = useNavigate()
   const location = useLocation()
 
-  let allowedItems = []
+  // Entrées autorisées pour le rôle (utils/navigation.js, partagé avec les routes)
+  const allowedItems = user ? menuDuRole(user.role) : []
   const notifCount = Number.isFinite(Number(nbNotifs)) ? Number(nbNotifs) : 0
-
-  if (user?.role === 'Super Admin') {
-    allowedItems = navigationItems
-  } else if (user?.role === 'Accueil') {
-    allowedItems = navigationItems.filter(([, label]) =>
-      ['Tableau de bord', 'Paiements', 'Échéances', 'Assistance', 'Notifications', 'Formations', 'Rapports', 'Documents', 'Inscriptions', 'Etudiants','Parametres'].includes(label)
-    )
-  } else if (user?.role === 'Formateur') {
-    // L'assistance traite les demandes des étudiants : réservée à l'Accueil et au Super Admin
-    allowedItems = navigationItems.filter(([, label]) => ['Espace formateur', 'Supports', 'Supports programmés', 'Formations', 'Etudiants', 'Parametres'].includes(label))
-  }
 
   return (
     <aside className="sidebar">

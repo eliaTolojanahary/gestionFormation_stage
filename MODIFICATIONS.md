@@ -1145,12 +1145,34 @@ Nouveau menu du formateur : **Espace formateur**, **Supports**, **Supports progr
 | `web/src/pages/formateur/AccueilFormateur.jsx` / `.css` | Ne garde que les formations (cartes + fenêtre des étudiants) et le classement / notes d'attestation ; titre « Mes formations et notes » |
 | `web/src/pages/formateur/SupportsFormateur.jsx` / `.css` (nouveaux) | Page « Supports » (`/dashboard/supports`) : formulaire de publication (styles déplacés depuis `AccueilFormateur.css`) + `ListeSupports`. Confirmation après envoi ; après une programmation, lien « Voir les supports programmés » |
 | `web/src/pages/formateur/ProgrammesFormateur.jsx` (nouveau) | Page « Supports programmés » (`/dashboard/programmes`) : `SupportsProgrammes` + bouton « Programmer un support » vers la page Supports |
-| `web/src/components/sidebar/Sidebar.jsx` | Entrées « Supports » (icône upload) et « Supports programmés » (icône calendrier), visibles par le formateur (et le Super Admin, qui voit tout le menu) |
-| `web/src/pages/dashboard/DashboardLayout.jsx` | Routes `supports` et `programmes` |
+| `web/src/components/sidebar/Sidebar.jsx` | Entrées « Supports » (icône upload) et « Supports programmés » (icône calendrier), visibles par le formateur seulement. « Espace formateur » aussi est masqué pour le Super Admin : il n'a pas de formation attribuée, ces pages seraient vides |
+| `web/src/pages/dashboard/DashboardLayout.jsx` | Routes `supports` et `programmes`. `pageFormateur()` : les routes `formateur`, `supports` et `programmes` redirigent tout autre rôle (Super Admin, Accueil) vers `/dashboard` s'il tape l'URL |
 
 Chemin `/dashboard/programmes` (et non `/dashboard/supports-programmes`) : la barre latérale marque un lien actif quand l'URL *commence* par son chemin ; « Supports » aurait été surligné aussi.
 
 ### Vérifications
 
 - Web : 0 erreur, 0 avertissement ESLint sur les pages formateur, `vite build` OK.
+
+## 30. Web : chaque rôle ne peut ouvrir que les pages de son menu, même en tapant l'URL
+
+**Problème :** le menu latéral masquait les pages interdites, mais une URL tapée à la main les ouvrait quand même (ex. l'Accueil sur `/dashboard/utilisateurs`). L'API refusait déjà les actions interdites, mais la page s'affichait.
+
+| Fichier | Changements |
+|---|---|
+| `web/src/utils/navigation.js` (nouveau) | **Source unique** : `NAVIGATION` = [icône, libellé, chemin, rôles autorisés] ; `menuDuRole(role)` (entrées du menu) et `peutOuvrir(role, segment)` (droit d'ouvrir `/dashboard/<segment>`) |
+| `web/src/components/sidebar/Sidebar.jsx` | Le menu vient de `menuDuRole()` (les listes par rôle codées en dur sont supprimées) |
+| `web/src/pages/dashboard/DashboardLayout.jsx` | Chaque route passe par `pageAutorisee(segment, page)` : sans droit, redirection vers `/dashboard` (remplace `pageFormateur()`). La page d'accueil `/dashboard` reste ouverte à tous (espace formateur pour un formateur, tableau de bord pour les autres) |
+
+| Rôle | Pages |
+|---|---|
+| Super Admin | Tableau de bord, Étudiants, Utilisateurs, Formations, Inscriptions, Paiements, Échéances, Documents, Notifications, Assistance, Paramètres |
+| Accueil | Les mêmes, sans Utilisateurs |
+| Formateur | Espace formateur, Supports, Supports programmés, Étudiants, Formations, **Notifications**, Paramètres |
+
+Les menus sont identiques à avant (vérifié avec un script sur `menuDuRole` / `peutOuvrir`), sauf un ajout : **Notifications pour le formateur**. Il en reçoit (envoi automatique de ses supports programmés) mais n'avait pas la page. La page ne fait que lire / marquer comme lu / supprimer, routes ouvertes à tout utilisateur connecté ; l'envoi (`POST /notifications/...`) reste réservé au personnel. Pour donner une page à un rôle, il suffit d'ajouter le rôle dans `NAVIGATION` : le menu et la route suivent.
+
+### Vérifications
+
+- Web : 0 erreur ESLint, `vite build` OK.
 
