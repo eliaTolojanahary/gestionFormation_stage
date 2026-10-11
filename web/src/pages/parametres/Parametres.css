@@ -43,7 +43,7 @@
   color: var(--text-muted);
   background: transparent;
   font: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -79,7 +79,7 @@
   display: grid;
   gap: 6px;
   color: var(--text-muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
 }
 
 .settings-form input {
@@ -92,7 +92,7 @@
   color: var(--text-main);
   background: var(--surface);
   font: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
 }
 
 /* Le lien "Mot de passe oublié ?" placé dans la grille */
@@ -104,7 +104,7 @@
   color: var(--accent);
   background: transparent;
   font: inherit;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition: color 0.15s ease;
 }
@@ -132,13 +132,13 @@
 
 .setting-line strong {
   color: var(--heading);
-  font-size: var(--fs-md);
+  font-size: calc(var(--fs-md) + 1px);
 }
 
 .setting-line small {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
 }
 
 /* --------------------------------------------------------------------------
@@ -160,7 +160,7 @@
   color: var(--text-muted);
   background: var(--surface);
   font: inherit;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -250,7 +250,7 @@
   align-items: center;
   gap: 5px;
   color: var(--success);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
 }
 
 .saved-label .icon {

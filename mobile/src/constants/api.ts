@@ -62,6 +62,9 @@ export const ENDPOINTS = {
 
   REACTIONS_SUPPORT: (id: number | string) => `/supports/${id}/reactions`,
 
+  // Recherche globale (formations et supports de l'étudiant)
+  RECHERCHE: '/recherche',
+
   // Vitrine publique (sans connexion)
   VITRINE: '/public/vitrine',
   INSCRIPTION_EN_LIGNE: '/public/inscriptions',

@@ -8,9 +8,10 @@ import { useRouter } from 'expo-router';
 import { createDetailHeaderStyles } from '@/styles/components/detail-header.styles';
 import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 import {
-  ChevronLeft, EllipsisVertical, X,
+  ChevronLeft, EllipsisVertical, X, Search,
   Wallet, LifeBuoy, Settings, ChevronRight,
 } from 'lucide-react-native';
+import { RechercheGlobale } from '@/components/recherche/recherche-globale';
 
 interface MenuItem {
   key: string;
@@ -29,14 +30,17 @@ interface DetailHeaderProps {
    * Sinon, un menu par défaut avec les 4 liens standards s'affiche.
    */
   menuItems?: MenuItem[];
+  /** Bouton 🔍 de la recherche globale (affiché par défaut) */
+  recherche?: boolean;
 }
 
-// Barre du haut des écrans secondaires : bouton retour, titre, et menu "⋮"
+// Barre du haut des écrans secondaires : bouton retour, titre, recherche globale 🔍 et menu "⋮"
 // (Paiement, Assistance, Paramètres par défaut)
-export function DetailHeader({ title, onBack, menuItems }: DetailHeaderProps) {
+export function DetailHeader({ title, onBack, menuItems, recherche = true }: DetailHeaderProps) {
   const styles = useThemedStyles(createDetailHeaderStyles);
   const { palette } = useSettings();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [rechercheVisible, setRechercheVisible] = useState(false);
   const router = useRouter();
 
   // Menu par défaut : historique paiement, assistance, paramètres
@@ -72,26 +76,45 @@ export function DetailHeader({ title, onBack, menuItems }: DetailHeaderProps) {
   return (
     <>
       <View style={styles.headerBar}>
-        <TouchableOpacity
-          style={styles.headerIconBtn}
-          onPress={onBack}
-          activeOpacity={0.7}
-        >
-          <ChevronLeft size={22} color={palette.heading} />
-        </TouchableOpacity>
+        {/* Même largeur des deux côtés : le titre reste centré */}
+        <View style={[styles.headerSide, recherche && styles.headerSideLarge]}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={onBack}
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={22} color={palette.heading} />
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.headerTitle} numberOfLines={1}>
           {title}
         </Text>
 
-        <TouchableOpacity
-          style={styles.headerIconBtn}
-          onPress={() => setMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <EllipsisVertical size={20} color={palette.heading} />
-        </TouchableOpacity>
+        <View style={[styles.headerSide, styles.headerSideRight, recherche && styles.headerSideLarge]}>
+          {recherche ? (
+            <TouchableOpacity
+              style={styles.headerIconBtn}
+              onPress={() => setRechercheVisible(true)}
+              activeOpacity={0.7}
+              accessibilityLabel="Rechercher"
+            >
+              <Search size={20} color={palette.heading} />
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => setMenuVisible(true)}
+            activeOpacity={0.7}
+          >
+            <EllipsisVertical size={20} color={palette.heading} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {recherche ? (
+        <RechercheGlobale visible={rechercheVisible} onClose={() => setRechercheVisible(false)} />
+      ) : null}
 
       {/* ─── Menu déroulant ─── */}
       <Modal

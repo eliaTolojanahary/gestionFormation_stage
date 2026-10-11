@@ -1,4 +1,4 @@
-// Model de la recherche globale (barre de recherche du tableau de bord web).
+// Model de la recherche globale (barre de recherche du web et de l'application mobile).
 // Chaque fonction renvoie au plus `limite` résultats ; `motif` est déjà de la forme "%texte%".
 const db = require('../config/db');
 
@@ -84,4 +84,37 @@ async function chercherSupports(motif, limite, idFormateur) {
   return rows;
 }
 
-module.exports = { chercherEtudiants, chercherFormations, chercherInscriptions, chercherUtilisateurs, chercherSupports };
+// Formations auxquelles l'étudiant est inscrit (application mobile) ; valide = inscription validée
+async function chercherFormationsEtudiant(motif, limite, idEtudiant) {
+  const [rows] = await db.query(
+    `SELECT f.id_formation, f.nom, f.duree, i.valide
+     FROM formation f
+     JOIN inscription i ON i.id_formation = f.id_formation AND i.etat = true AND i.id_etudiant = ?
+     WHERE f.etat = true AND (f.nom LIKE ? OR f.description LIKE ?)
+     ORDER BY f.nom
+     LIMIT ?`,
+    [idEtudiant, motif, motif, limite]
+  );
+  return rows;
+}
+
+// Supports publiés des formations où l'inscription de l'étudiant est validée
+// (mêmes droits que la consultation des fichiers), par titre ou texte
+async function chercherSupportsEtudiant(motif, limite, idEtudiant) {
+  const [rows] = await db.query(
+    `SELECT s.id_support, s.id_formation, s.titre, s.fichier, s.date_publication, f.nom AS nom_formation
+     FROM support s
+     JOIN formation f ON f.id_formation = s.id_formation AND f.etat = true
+     JOIN inscription i ON i.id_formation = s.id_formation AND i.etat = true AND i.valide = true AND i.id_etudiant = ?
+     WHERE s.etat = true AND s.statut = 'publie' AND (s.titre LIKE ? OR s.contenu LIKE ?)
+     ORDER BY s.date_publication DESC
+     LIMIT ?`,
+    [idEtudiant, motif, motif, limite]
+  );
+  return rows;
+}
+
+module.exports = {
+  chercherEtudiants, chercherFormations, chercherInscriptions, chercherUtilisateurs, chercherSupports,
+  chercherFormationsEtudiant, chercherSupportsEtudiant,
+};

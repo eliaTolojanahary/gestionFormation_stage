@@ -18,6 +18,16 @@ export const createDetailHeaderStyles = ({
       borderBottomWidth: 1,
       borderBottomColor: t.line,
     },
+    headerSide: {
+      width: 38,
+      flexDirection: 'row',
+    },
+    headerSideLarge: {
+      width: 76,
+    },
+    headerSideRight: {
+      justifyContent: 'flex-end',
+    },
     headerIconBtn: {
       width: 38,
       height: 38,

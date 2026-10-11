@@ -133,7 +133,7 @@ router.put('/etudiants/:id', staff, piecesEtudiant, etudiant.updateEtudiantContr
 router.delete('/etudiants/:id', staff, etudiant.deleteEtudiantController);
 
 // ─── Recherche globale (barre du tableau de bord web) ───
-router.get('/recherche', roles(SUPER_ADMIN, ACCUEIL, FORMATEUR), recherche.rechercheController);
+router.get('/recherche', roles(...TOUS), recherche.rechercheController);
 
 // ─── Formations ─────────────────────────────
 router.get('/formations', verifyToken, formation.listerFormations);

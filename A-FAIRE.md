@@ -1,86 +1,74 @@
-# À faire — état au 11/10/2026
+# À faire — état au 11/10/2026 (soir)
 
-Note de l'audit du 11/10/2026 : **7/10** (structure backend 8,5 · sécurité 7,5 · tests 7 ·
-structure web / mobile 6,5 · scalabilité 5,5 · documentation 9).
-Les points ci-dessous sont ce qui reste pour aller plus haut, par ordre d'importance.
+Note actuelle : **8/10** (structure backend 8,5 · sécurité 8 · tests 7,5 · structure web / mobile 7,5 ·
+scalabilité 7 · documentation 9,5). Audit du matin : 7/10.
+
+Documents à jour :
+- [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md) : **seul support de référence** (mémoire, soutenance) ;
+  l'historique des évolutions, les failles et les bugs corrigés sont en §12 (`MODIFICATIONS.md` supprimé).
+- [`SCENARIOS-TESTS.md`](SCENARIOS-TESTS.md) : un scénario par fonctionnalité + parcours de soutenance ⭐.
+- [`CHEAT-SHEET.md`](CHEAT-SHEET.md) : aide-mémoire du projet, sans IA (démarrage, ajout d'une fonctionnalité, requêtes, dépannage).
+- [`cheat-sheets/`](cheat-sheets/) : aide-mémoires généraux `node.md`, `react.md` (+ React Native), `mysql.md`.
 
 ---
 
-## 1. Améliorations restantes (audit)
+## 1. Améliorations
 
-### ✅ 1.1 à 1.3 — faits le 11/10/2026
-- [x] **Pagination côté serveur** : `GET /etudiants`, `/paiements`, `/inscriptions`, `/echeances`
-      acceptent `?page=&limite=` + filtres (SQL) ; pages web branchées (`useListePaginee`).
-      Restent chargées en entier : formations, documents, assistances, utilisateurs, notifications
-      (petites listes, à paginer seulement si elles grossissent).
-- [x] **Limite des essais de connexion** : 5 échecs / 15 min par compte, 20 par IP ; mot de passe
-      oublié 5 / heure ; réinitialisation 10 échecs / 15 min (`tests/limiteConnexion.test.js`).
-- [x] **Fiches dans l'URL** : `/dashboard/etudiants/:id`, `/formations/:id/modifier`… (`SectionsRoutes.jsx`).
-- Documenté : `FLUX-APPLICATION.md` §7.1, §7.19, §7.20 (+ §6, 8 à 14), `MODIFICATIONS.md` §35 à 38, `api.md`.
+### ✅ Fait le 11/10/2026
+- [x] Pagination côté serveur (étudiants, paiements, inscriptions, échéances) — flux §7.20
+- [x] Limite des essais de connexion et de « mot de passe oublié » — flux §7.1
+- [x] Une adresse par fiche (web) — flux §7.19
+- [x] Recherche globale sur le mobile (loupe de l'en-tête) — flux §7.18
+- [x] `Parametres.jsx` découpé (531 → 80 lignes) et `DashboardLayout.jsx` (415 → 144)
+- [x] Documentation : flux = seul support, scénarios refaits, cheat sheet
 
-### 1.4 Préparer plusieurs serveurs (seulement si l'application grandit)
-Aujourd'hui tout vit dans un seul processus Node, ce qui suffit pour IMTECH INFO.
-- [ ] Limiteur de requêtes et tâches automatiques (rappels, supports programmés) : compteur dans
-      Redis / tâches dans un seul processus dédié. (Les mises à jour sont déjà atomiques : pas de
-      double envoi, mais des vérifications en double.)
+### 1.1 Pour viser 8,5 (par ordre de rapport effort / gain)
+- [ ] **Tests front** (Vitest sur le web) : `utils/navigation.js` (`peutOuvrir`, `cheminResultat`),
+      `utils/pagination.js` (`numerosDePages`), `utils/appareil.js`. Environ 1 h ; répond à la
+      question « comment testez-vous l'interface ? ».
+- [ ] **`helmet`** sur le backend (en-têtes de sécurité HTTP) : 10 min.
+- [ ] Découper les gros écrans mobiles : `mobile/src/app/(tabs)/index.tsx` (569 lignes : carte
+      paiement, supports, commentaires), `mobile/src/app/parametres.tsx` (409).
+- [ ] Corriger les avertissements ESLint : **15 web**, **14 mobile** (surtout `exhaustive-deps`).
+
+### 1.2 Seulement si l'application grandit (à présenter comme perspectives, flux §13)
+- [ ] Plusieurs serveurs : compteurs d'essais et tâches automatiques dans Redis / un processus dédié.
 - [ ] Fichiers uploadés : stockage objet (S3, Cloudinary…) au lieu du disque local `uploads/`.
-- [ ] Pool MySQL : `connectionLimit` dans le `.env` (10 aujourd'hui).
-
-### 1.5 Qualité du code — en cours
-- [ ] Découper les gros fichiers : `web/src/pages/parametres/Parametres.jsx` (531 lignes : un
-      composant par onglet), `mobile/src/app/(tabs)/index.tsx` (569), `mobile/src/app/parametres.tsx` (409).
-      (`DashboardLayout.jsx` : fait, 415 → 144 lignes avec les fiches dans l'URL.)
-- [ ] Corriger les avertissements ESLint : **15 web** (17 avant), **14 mobile** (surtout `exhaustive-deps`).
-- [ ] Ajouter quelques tests front (Vitest + Testing Library sur le web) : recherche globale,
-      redirection par rôle (`utils/navigation.js`), formulaire de paiement.
-- [ ] En-têtes de sécurité HTTP (`helmet`) sur le backend.
+- [ ] Hébergement en ligne en HTTPS + intégration continue (tests et lint à chaque push).
 
 ---
 
-## 2. Tester les nouveautés du 11/10 (dans l'application)
+## 2. Tester dans l'application avant la soutenance
 
-Avant : **relancer le backend** (`cd backend-imtech && npm run dev`), le web et Expo.
-Base déjà à jour (bloc **010** de `alter2.sql` exécuté).
+Suivre [`SCENARIOS-TESTS.md`](SCENARIOS-TESTS.md) (préparation, comptes de démo, résultat attendu de
+chaque étape). Relancer le backend, le web et Expo avant ; base remise en état de démo.
 
-### Web
-- [ ] **Recherche globale** : bouton « Rechercher… » ou **Ctrl+K** ; essayer un nom d'étudiant,
-      une formation, « paie » (page Paiements) ; ↑ ↓ + Entrée ouvre la bonne fiche.
-- [ ] Recherche en **formateur** : un étudiant ouvre l'espace formateur avec la fenêtre des
-      étudiants ; un support ouvre la page Supports filtrée.
-- [ ] **Mode sombre** : parcourir Paiements, Échéances, Espace formateur, Classement, Paramètres,
-      Profil → plus de texte illisible ; tester aussi avec une autre couleur principale.
-- [ ] **Redirection par rôle** : en Accueil, taper `/dashboard/utilisateurs` → retour au tableau
-      de bord ; en formateur, `/dashboard/paiements` → idem.
-- [ ] **Formateur** : menus Espace formateur / Supports / Supports programmés / Notifications ;
-      clic sur une formation → fenêtre des étudiants ; recherche, filtres, tri et « Voir plus »
-      des supports ; tableau des notes (saisie + Entrée, couleurs de la note finale).
-- [ ] **Fond de la vitrine** (Super Admin, Paramètres > Apparence) : remplacer l'image, puis
-      « Par défaut ».
-- [ ] **Se déconnecter partout** (Paramètres > Sécurité) avec **deux navigateurs différents**
-      (ou web + téléphone) : l'autre est renvoyé à la connexion en moins d'une minute.
+Pas encore testés à la main (nouveautés du 11/10) :
+- [ ] **S2** Limite de connexion (web et mobile)
+- [ ] **S4** Se déconnecter partout (deux navigateurs + téléphone)
+- [ ] **T1** Recherche globale web (Ctrl+K, Accueil et formateur) et **mobile** (loupe)
+- [ ] **T2** Fiches dans l'URL (F5, « Précédent », lien ouvert sans être connecté)
+- [ ] **T3** Pagination (Paiements, Étudiants, Inscriptions, Échéances)
+- [ ] **T4** Apparence : mode sombre partout, Paramètres après découpage, fond de la vitrine
+- [ ] **F1 / F3 / F4** Espace formateur, supports programmés, tableau des notes
+- [ ] **M1** Découvrir (fond plein écran) ; lecteur : retour sans avertissement « GO_BACK »
 
-- [ ] **Fiches dans l'URL** : ouvrir une fiche étudiant → adresse `/dashboard/etudiants/12` ; F5 garde
-      la fiche ; « Précédent » revient à la liste ; même chose pour formation, inscription,
-      modification d'un compte ; `/dashboard/etudiants/abc` → liste.
-- [ ] Copier le lien d'une fiche dans un **autre navigateur non connecté** → connexion → arrivée sur la fiche.
-- [ ] **Pagination** : Paiements, Étudiants, Inscriptions, Échéances → pied « 1–20 sur N », changer
-      de page, rechercher / filtrer (retour page 1, total à jour) ; valider un paiement → bandeau
-      « à valider » mis à jour ; supprimer la dernière ligne d'une page → page précédente.
-- [ ] **Limite de connexion** : 6 mauvais mots de passe sur un compte → message « Réessayez dans
-      15 minutes » (web et mobile) ; un autre compte reste accessible. (Redémarrer le backend
-      remet les compteurs à zéro.)
-
-### Mobile
-- [ ] Page **Découvrir** : le fond remplit tout le haut (sous la barre d'état) et affiche le fond
-      choisi par le Super Admin.
-- [ ] Session révoquée depuis le web → alerte « Session fermée » puis écran de connexion.
-- [ ] Lecteur de support : bouton retour sans l'avertissement « GO_BACK ».
+Puis répéter le **parcours ⭐** en entier, chronomètre en main (≈ 20 min).
 
 ---
 
-## 3. Transformer l'application mobile en APK (Android) — pas encore fait
+## 3. Préparer la soutenance
+- [ ] Relire le flux : §6 (flux par page), §7 (règles), §8 (sécurité), §12 (évolutions), §13 (limites).
+- [ ] Exporter 3 ou 4 schémas Mermaid en image pour le mémoire (<https://mermaid.live>) :
+      connexion (§7.1), paiement (§7.6), note d'attestation (§7.13), pagination (§7.20).
+- [ ] Préparer les réponses aux questions du jury (fin de `SCENARIOS-TESTS.md`).
+- [ ] Le jour J : base de démo rechargée, IP du PC vérifiée (`ipconfig`), `CHEAT-SHEET.md` ouvert.
 
-### 3.1 Préparer le projet
+---
+
+## 4. Transformer l'application mobile en APK (Android) — pas encore fait
+
+### 4.1 Préparer le projet
 - [ ] **`app.json`** : vrai nom et identifiant Android (aujourd'hui `"name": "mobile"`)
   ```json
   "name": "IMTECH INFO",
@@ -111,7 +99,7 @@ Base déjà à jour (bloc **010** de `alter2.sql` exécuté).
   ```
   ⚠️ Vérifier l'IP du PC le jour du test (`ipconfig`).
 
-### 3.2 Lancer le build
+### 4.2 Lancer le build
 ```bash
 npm install -g eas-cli
 eas login                 # compte gratuit sur expo.dev
@@ -121,35 +109,29 @@ eas build -p android --profile preview
 ```
 - 10 à 30 min ; à la fin, lien + QR code pour installer l'APK (autoriser les sources inconnues).
 
-### 3.3 Pour que l'app fonctionne
+### 4.3 Pour que l'app fonctionne
 - [ ] PC du backend allumé, **même Wi-Fi** que le téléphone, port **3000** autorisé dans le pare-feu.
 - [ ] Tester : connexion, Découvrir, formations, lecteur (filigrane, capture bloquée), paiement,
       assistance, session révoquée.
 
-### 3.4 Plus tard
+### 4.4 Plus tard
 - [ ] Héberger backend + MySQL en ligne **en HTTPS** (Railway, Render, VPS…), mettre l'URL dans
       `eas.json`, retirer `usesCleartextTraffic`, rebuild.
 - iPhone : compte Apple Developer obligatoire → pour une démo, **Expo Go**.
 
 ---
 
-## 4. Commit (à faire soi-même)
+## 5. Commit (à faire soi-même)
 
-Fichiers encore **non suivis** à ajouter :
-- Backend : `controllers/rechercheController.js`, `models/rechercheModel.js`,
-  `services/rechercheService.js`, `tests/recherche.test.js`
-- Web : `src/components/recherche/` (RechercheGlobale.jsx / .css), `src/utils/theme.js`
-- Backend : `utils/pagination.js`, `tests/pagination.test.js`, `tests/limiteConnexion.test.js`
-- Web : `src/components/pagination/`, `src/hooks/useListePaginee.js`, `src/hooks/usePreferences.js`,
-  `src/pages/dashboard/SectionsRoutes.jsx`, `src/utils/pagination.js`
-- Doc : `SCENARIOS-TESTS.md`
+Fichiers **non suivis** à ajouter :
+- Web : `src/pages/parametres/OngletApparence.jsx`, `OngletSecurite.jsx`, `FormulaireMotDePasse.jsx`,
+  `src/utils/appareil.js`
+- Mobile : `src/components/recherche/`, `src/hooks/use-recherche.ts`,
+  `src/styles/components/recherche-globale.styles.ts`
+- Doc : `CHEAT-SHEET.md`, dossier `cheat-sheets/`
 
+Fichier **supprimé** : `MODIFICATIONS.md` (`git add -A` ou `git rm MODIFICATIONS.md`).
 Plus les fichiers modifiés (`git status`). Messages proposés, si commit séparé :
-- `feat(web): recherche globale (Ctrl+K) selon le rôle`
-- `fix(web): couleurs lisibles en mode sombre`
-- `feat(web): pages par rôle, notifications du formateur`
-- `fix(mobile): retour du lecteur sans écran précédent`
-- `feat(api): limite des essais de connexion et de mot de passe oublié`
-- `feat: pagination côté serveur (étudiants, paiements, inscriptions, échéances)`
-- `feat(web): une adresse par fiche (étudiant, formation, inscription, compte)`
-- Doc : `MODIFICATIONS.md` (sections 24 à 38), `FLUX-APPLICATION.md`, `api.md`, `A-FAIRE.md`
+- `refactor(web): Paramètres découpé en un composant par onglet`
+- `feat(mobile): recherche globale dans l'en-tête (formations, supports, écrans)`
+- `docs: flux seul support de référence, scénarios par fonctionnalité, cheat sheet`

@@ -22,6 +22,7 @@ import { usePaiement } from '@/hooks/use-paiement';
 import  {PaiementModal} from "@/components/paiement/paiement-modal"
 import { getFileUrl,getInitiales,timestamp,formatMontant,formatRelativeDate,formatDateCourte } from '@/utils/format';
 import { createAccueilStyles } from '@/styles/acceuil.styles';
+import { RechercheGlobale } from '@/components/recherche/recherche-globale';
 import { useThemedStyles } from '@/context/SettingsContext';
 
 // Couleurs de fond / d'icône utilisées en alternance pour les cartes
@@ -57,6 +58,7 @@ export default function StudentHomeScreen() {
   const [commentaires, setCommentaires] = useState<Commentaire[]>([]);
   const [commentairesLoading, setCommentairesLoading] = useState(false);
 const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
+  const [rechercheVisible, setRechercheVisible] = useState(false);
   const prenom = user?.prenom || 'Étudiant';
   const nom = user?.nom || '';
   const initiales = getInitiales(prenom, nom);
@@ -235,7 +237,11 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
             <Text style={styles.greetingName}>{prenom}</Text>
           </View>
           <View style={styles.headerRightActions}>
-            <TouchableOpacity style={{ padding: 6 }}>
+            <TouchableOpacity
+              style={{ padding: 6 }}
+              onPress={() => setRechercheVisible(true)}
+              accessibilityLabel="Rechercher"
+            >
               <Search size={22} color="#6B7280" />
             </TouchableOpacity>
             <TouchableOpacity
@@ -564,6 +570,8 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
           </>
         )}
       </ScrollView>
+
+      <RechercheGlobale visible={rechercheVisible} onClose={() => setRechercheVisible(false)} />
     </SafeAreaView>
   );
 }
