@@ -17,7 +17,7 @@ const TRANCHE_OPTIONS = [
 // Nouvelle inscription : choix de l'étudiant, de la formation et du nombre de tranches.
 // À l'enregistrement, l'API crée l'inscription et calcule l'échéancier.
 function InscriptionForm({ user, onBack, onSaved }) {
-  const { etudiants } = useEtudiant()
+  const { etudiants } = useEtudiant({ chargerListe: true })
   const { formations } = useFormation()
   const { createInscription } = useInscription()
   const [form, setForm] = useState({ id_etudiant: '', id_formation: '', nombre_tranches: 1, id_tranche: 1 })

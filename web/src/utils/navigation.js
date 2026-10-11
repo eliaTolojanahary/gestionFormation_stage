@@ -36,3 +36,47 @@ export function peutOuvrir(role, segment) {
   const page = NAVIGATION.find(([, , chemin]) => chemin === `/dashboard/${segment}`)
   return Boolean(page && page[3].includes(role))
 }
+
+// Adresses des fiches (sous-routes de SectionsRoutes.jsx) : une vue = une URL
+export const CHEMINS = {
+  etudiants: '/dashboard/etudiants',
+  etudiant: (id) => `/dashboard/etudiants/${id}`,
+  modifierEtudiant: (id) => `/dashboard/etudiants/${id}/modifier`,
+  utilisateurs: '/dashboard/utilisateurs',
+  modifierUtilisateur: (id) => `/dashboard/utilisateurs/${id}/modifier`,
+  formations: '/dashboard/formations',
+  formation: (id) => `/dashboard/formations/${id}`,
+  modifierFormation: (id) => `/dashboard/formations/${id}/modifier`,
+  inscriptions: '/dashboard/inscriptions',
+  inscription: (id) => `/dashboard/inscriptions/${id}`,
+}
+
+// Où mène un résultat de la recherche globale : { chemin, state } pour navigate().
+// Le formateur n'a pas accès aux fiches étudiant / formation du personnel : on ouvre son
+// espace avec la fenêtre des étudiants de la formation concernée.
+export function cheminResultat(resultat, role) {
+  const estFormateur = role === FO
+  switch (resultat.type) {
+    case 'page':
+      return { chemin: resultat.chemin }
+    case 'etudiant':
+      return estFormateur
+        ? { chemin: '/dashboard/formateur', state: { formationOuverte: resultat.idFormation } }
+        : { chemin: CHEMINS.etudiant(resultat.id) }
+    case 'formation':
+      return estFormateur
+        ? { chemin: '/dashboard/formateur', state: { formationOuverte: resultat.id } }
+        : { chemin: CHEMINS.formation(resultat.id) }
+    case 'inscription':
+      return { chemin: CHEMINS.inscription(resultat.id) }
+    case 'utilisateur':
+      return { chemin: CHEMINS.modifierUtilisateur(resultat.id) }
+    case 'support':
+      return resultat.statut === 'programme'
+        ? { chemin: '/dashboard/programmes' }
+        : { chemin: '/dashboard/supports', state: { recherche: resultat.titre } }
+    default:
+      return null
+  }
+}
+

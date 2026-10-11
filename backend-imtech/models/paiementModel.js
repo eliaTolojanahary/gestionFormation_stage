@@ -1,6 +1,7 @@
 // Model des paiements. Un paiement porte sur une échéance et a un statut :
 // en_attente (envoyé par l'étudiant) -> valide ou refuse (décision de l'Accueil).
 const db = require('../config/db');
+const { motifLike, clauseLimite } = require('../utils/pagination');
 
 const STATUTS_PAIEMENT = Object.freeze({
   EN_ATTENTE: 'en_attente',
@@ -56,7 +57,9 @@ async function getPaiementById(id_paiement) {
 }
 
 // Filtres optionnels : { id_etudiant, statut }
-async function getAllPaiements({ id_etudiant, statut } = {}) {
+// Filtres de la liste : étudiant (rôle Étudiant), statut, mode de paiement (nom), recherche
+// dans le nom de l'étudiant ou de la formation
+function filtresPaiements({ id_etudiant, statut, mode, recherche } = {}) {
   const conditions = ['p.etat = true'];
   const params = [];
   if (id_etudiant) {
@@ -67,12 +70,35 @@ async function getAllPaiements({ id_etudiant, statut } = {}) {
     conditions.push('p.statut = ?');
     params.push(statut);
   }
+  if (mode) {
+    conditions.push('mp.nom = ?');
+    params.push(mode);
+  }
+  if (recherche) {
+    const motif = motifLike(recherche);
+    conditions.push(`(u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ? OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR f.nom LIKE ?)`);
+    params.push(motif, motif, motif, motif, motif);
+  }
+  return { where: conditions.join(' AND '), params };
+}
 
+// Paiements détaillés, du plus récent au plus ancien ; `pagination` = page demandée (ou null : tous)
+async function getAllPaiements(filtres = {}, pagination = null) {
+  const { where, params } = filtresPaiements(filtres);
+  const limite = clauseLimite(pagination);
   const sql = `${SELECT_PAIEMENT_DETAILLE}
-    WHERE ${conditions.join(' AND ')}
-    ORDER BY p.date_paiement DESC, p.id_paiement DESC`;
-  const [rows] = await db.query(sql, params);
+    WHERE ${where}
+    ORDER BY p.date_paiement DESC, p.id_paiement DESC${limite.sql}`;
+  const [rows] = await db.query(sql, [...params, ...limite.params]);
   return rows;
+}
+
+// Nombre de paiements correspondant aux mêmes filtres (total de la pagination)
+async function compterPaiements(filtres = {}) {
+  const { where, params } = filtresPaiements(filtres);
+  const depuis = SELECT_PAIEMENT_DETAILLE.slice(SELECT_PAIEMENT_DETAILLE.indexOf('FROM paiement p'));
+  const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${depuis} WHERE ${where}`, params);
+  return Number(total);
 }
 
 async function updatePaiement(id_paiement, { id_mode_paiement, montant, reference_virement }) {
@@ -203,6 +229,7 @@ async function getTotauxPaiementEtudiant(id_etudiant) {
 
 module.exports = {
   getPaiementEnAttenteEcheance,
+  compterPaiements,
   validerPaiementDeclare,
   STATUTS_PAIEMENT,
   PAIEMENT_VALIDE,

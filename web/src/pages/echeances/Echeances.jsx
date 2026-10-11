@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import Modal from '../../components/modal/Modal'
 import SearchFilterBar from '../../components/form/Filter'
 import PaymentFormModal from '../../components/paiements/PaymentFormModal'
+import Pagination from '../../components/pagination/Pagination'
 
 import { useEcheance } from '../../hooks/useEcheance'
 import { usePaiement } from '../../hooks/usePaiement'
+import { useListePaginee } from '../../hooks/useListePaginee'
 import { formatDate } from '../../utils/time'
 import { getPaymentStatus } from '../../utils/dashboardUtils'
 
@@ -16,11 +18,14 @@ import './Echeances.css'
 // VERT : payée ou encore loin · JAUNE : J-2, J-1, J (l'Accueil est notifié) · ROUGE : en retard
 const LIBELLE_STATUT = (statut) => getPaymentStatus(statut).label
 const FILTRES_STATUT = ['Tous', ...['VERT', 'JAUNE', 'ROUGE'].map(LIBELLE_STATUT)]
+// Libellé du filtre -> couleur envoyée à l'API (?statut=VERT|JAUNE|ROUGE)
+const CODE_STATUT = Object.fromEntries(['VERT', 'JAUNE', 'ROUGE'].map((code) => [LIBELLE_STATUT(code), code]))
 
 // Page Échéances : suivi de toutes les échéances avec leur statut de couleur,
 // paiement au guichet (bouton Payer) et rappel manuel à l'étudiant (bouton Rappeler).
+// Liste paginée côté serveur : recherche et couleur sont envoyées à GET /echeances.
 function Echeances({ user }) {
-  const { echeances, isLoading, error, rappelerEcheance } = useEcheance()
+  const { rappelerEcheance } = useEcheance()
   const { createPaiement } = usePaiement()
 
   const [selectedEcheance, setSelectedEcheance] = useState(null)
@@ -32,6 +37,12 @@ function Echeances({ user }) {
   // Filtres
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('Tous')
+
+  const liste = useListePaginee('/echeances', {
+    recherche: search.trim(),
+    statut: CODE_STATUT[statusFilter] || '',
+  })
+  const { lignes: echeances, isLoading, error } = liste
 
   // L'Accueil est prévenu automatiquement à J-2 (notification « doit être rappelé ») ;
   // c'est lui qui décide d'envoyer le rappel à l'étudiant avec ce bouton.
@@ -45,6 +56,11 @@ function Echeances({ user }) {
     try {
       const result = await rappelerEcheance(echeance.id_echeance)
       setActionMessage(`${nom} : ${result.message}`)
+      // Mise à jour locale de la date du dernier rappel, sans recharger la page
+      const maintenant = new Date().toISOString()
+      liste.setLignes((lignes) =>
+        lignes.map((e) => (e.id_echeance === echeance.id_echeance ? { ...e, date_dernier_rappel: maintenant } : e))
+      )
     } catch (requestError) {
       setActionError(requestError.message)
     } finally {
@@ -60,34 +76,12 @@ function Echeances({ user }) {
       await createPaiement(payload)
 
       setPaymentEcheance(null)
+      liste.recharger() // montant payé, reste et couleur recalculés par le serveur
     } catch (requestError) {
       setActionError(requestError.message)
       throw requestError
     }
   }
-
-  // Filtrer les échéances
-  const filteredEcheances = useMemo(() => {
-    const searchLower = search.toLowerCase().trim()
-
-    return echeances.filter((echeance) => {
-      const studentName =
-        `${echeance.etudiant_prenom} ${echeance.etudiant_nom}`.toLowerCase()
-
-      const formation =
-        echeance.formation_nom?.toLowerCase() || ''
-
-      const matchesSearch =
-        !searchLower ||
-        studentName.includes(searchLower) ||
-        formation.includes(searchLower)
-
-      const matchesStatus =
-        statusFilter === 'Tous' || LIBELLE_STATUT(echeance.statut_paiement) === statusFilter
-
-      return matchesSearch && matchesStatus
-    })
-  }, [echeances, search, statusFilter])
 
   // Réinitialiser les filtres
   function resetFilters() {
@@ -196,8 +190,7 @@ function Echeances({ user }) {
           <h1>Échéances</h1>
 
           <p>
-            {filteredEcheances.length} échéance
-            {filteredEcheances.length !== 1 ? 's' : ''} à suivre
+            {liste.total} échéance{liste.total !== 1 ? 's' : ''} à suivre
           </p>
         </div>
       </div>
@@ -231,13 +224,22 @@ function Echeances({ user }) {
         ) : (
           <Tableau
             columns={columns}
-            rows={filteredEcheances}
+            rows={echeances}
             rowKey="id_echeance"
             emptyMessage="Aucune échéance trouvée."
             wrapperClassName="gestion-table-wrap"
             className="gestion-table"
           />
         )}
+
+        <Pagination
+          page={liste.page}
+          pages={liste.pages}
+          total={liste.total}
+          limite={liste.limite}
+          onChange={liste.setPage}
+          libelle="échéance(s)"
+        />
 
       </article>
       {selectedEcheance && (

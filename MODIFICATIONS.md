@@ -886,7 +886,7 @@ n'avait que `z-index: 30`.
 Le formateur ne déposait qu'un fichier (PDF ou image). Il peut maintenant **rédiger** un support
 dans un éditeur (gras, italique, souligné, barré, titres, listes à puces / numérotées, citation,
 liens) et / ou joindre un **PDF, une image, un audio ou une vidéo**. Un support peut donc être un
-texte seul, un fichier seul, ou les deux. Détail du flux : `FLUX-APPLICATION.md` §6.18.
+texte seul, un fichier seul, ou les deux. Détail du flux : `FLUX-APPLICATION.md` §7.18.
 
 ### Base de données (bloc **008** de `alter2.sql`, intégré dans `base.sql`)
 
@@ -1248,4 +1248,80 @@ Un bouton **Rechercher… (Ctrl K)** dans le header de chaque page ouvre une fen
 
 - Backend : **87 tests** verts ; service essayé sur la base locale (SA / Accueil / formateur, `%` cherché tel quel).
 - Web : 0 erreur ESLint, `vite build` OK.
+
+## 34. Documentation : flux par page et scénarios de soutenance
+
+| Fichier | Changements |
+|---|---|
+| `FLUX-APPLICATION.md` | Nouvelle **section 6 « Flux par page »** : chaque écran (pages communes, web Super Admin / Accueil, web Formateur, mobile, traitements automatiques) → action → route API et rôles → fonctions métier (service puis model) → tables lues / écrites. Correspondances extraites du code (routes → controllers → services → models → requêtes SQL), puis vérifiées. L'ancienne section 6 devient **7. Règles métier détaillées** ; sections suivantes décalées (Sécurité = 8 … Glossaire = 14), sommaire et renvois (`§`) mis à jour |
+| `SCENARIOS-TESTS.md` (nouveau) | 10 scénarios de recette / soutenance au même format (page → action → fonctions → base → attendu), tests automatisés à montrer, questions probables du jury |
+| `MODIFICATIONS.md` | Renvoi `§6.18` → `§7.18` |
+
+## 35. Sécurité : limite des essais de connexion et de « mot de passe oublié »
+
+Avant, `POST /auth/login`, `/auth/forgot-password` et `/auth/reset-password` n'avaient aucune limite : on pouvait essayer des mots de passe à l'infini (force brute) ou envoyer des centaines d'e-mails de réinitialisation.
+
+| Route | Limite (réponse 429 au-delà) |
+|---|---|
+| `POST /auth/login` | 5 **échecs** / 15 min par adresse IP + e-mail ; 20 échecs / 15 min par adresse IP ; une connexion réussie remet le compteur du compte à zéro |
+| `POST /auth/forgot-password` | 5 demandes / heure par adresse IP (toutes comptent : chacune envoie un e-mail) |
+| `POST /auth/reset-password` | 10 échecs / 15 min par adresse IP |
+
+| Fichier | Changements |
+|---|---|
+| `backend-imtech/middlewares/limiteRequetes.js` | Options `cle(req)` (regroupement des essais, IP par défaut) et `echecsSeulement` (compté à la fin de la réponse si code ≥ 400, remis à zéro sinon) ; nettoyage régulier des compteurs expirés (`setInterval(...).unref()`) ; `reinitialiser()` pour les tests |
+| `backend-imtech/routes/routes.js` | Quatre limiteurs sur les routes d'authentification ; e-mail mis en minuscules et sans espaces dans la clé |
+| `backend-imtech/tests/limiteConnexion.test.js` (nouveau) | 4 tests : blocage d'un compte après 5 échecs (même e-mail en majuscules), autre compte encore possible, réussite qui remet à zéro, blocage par IP après 20 échecs, mot de passe oublié limité |
+
+### Vérifications
+
+- Backend : **99 tests** verts (avec la section 36).
+- Le message 429 est affiché tel quel par les écrans de connexion web et mobile (`apiRequest` lève une erreur avec le message du serveur).
+
+## 36. Pagination côté serveur des listes (étudiants, paiements, inscriptions, échéances)
+
+Avant, ces routes renvoyaient toute la table ; la page filtrait et découpait dans le navigateur. Désormais, avec `?page=&limite=`, le serveur renvoie 20 lignes, le total et le nombre de pages ; les filtres et la recherche sont faits en SQL. Sans `?page=`, la route répond comme avant (mobile, tableau de bord, menus de choix inchangés).
+
+| Fichier | Changements |
+|---|---|
+| `backend-imtech/utils/pagination.js` (nouveau) | `lirePagination` (page ≥ 1, limite 20 par défaut, 100 max), `clauseLimite` (`LIMIT ? OFFSET ?`), `motifLike` (déplacé de `rechercheService`, `%` / `_` échappés), `texteRecherche`, `reponsePaginee` |
+| `backend-imtech/models/etudiantModel.js`, `paiementModel.js`, `inscriptionModel.js`, `echeanceModel.js` | Fonction de filtres partagée (recherche nom / prénom / nom complet, + e-mail / téléphone ou formation ; statut, mode, validée, origine, couleur de suivi calculée en SQL) ; `getAllXxx(filtres, pagination)` avec tri stable ; nouvelles fonctions `compterXxx(filtres)` |
+| `backend-imtech/services/…Service.js` (mêmes domaines) | Sans pagination : liste comme avant ; avec : page + total en parallèle (`Promise.all`). Paiements : nombre total de paiements **en attente** en plus (`compteurs.en_attente`) ; un étudiant reste limité aux siens |
+| `backend-imtech/controllers/…Controller.js` (mêmes domaines) | Lecture de `?page`, `?limite`, `?recherche` et des filtres ; valeurs inconnues ignorées |
+| `backend-imtech/tests/pagination.test.js` (nouveau) | 8 tests (bornes, offset, nombre de pages, filtres transmis, compteur en attente, étudiant, liste complète sans `?page`) |
+| `web/src/hooks/useListePaginee.js` (nouveau) | Page + filtres en query string, retour à la page 1 si un filtre change, 250 ms après la dernière frappe, réponse dépassée ignorée, recul d'une page si la page devient vide, `recharger()` |
+| `web/src/components/pagination/` (nouveau), `web/src/utils/pagination.js` (nouveau) | Pied de tableau « 21–40 sur 95 » et boutons `1 … 5 6 7 … 12` (`numerosDePages`) |
+| `web/src/pages/etudiants/Etudiants.jsx` / `.css`, `paiements/Paiements.jsx`, `inscriptions/Inscriptions.jsx`, `echeances/Echeances.jsx` | Liste via `useListePaginee` ; filtres envoyés au serveur ; bandeau « à valider » des paiements compté sur toute la base. Le formateur garde sa liste d'étudiants par formation |
+| `web/src/hooks/useEtudiant.js`, `usePaiement.js`, `useInscription.js`, `useEcheance.js` | Plus de chargement de toute la liste au montage (option `chargerListe` pour le menu de choix du formulaire d'inscription) ; les actions renvoient la réponse, la page recharge sa page courante |
+
+### Vérifications
+
+- Backend : **99 tests** verts.
+- Web : `vite build` OK. À tester dans le navigateur avec la base locale (voir `A-FAIRE.md` §2).
+
+## 37. Web : une adresse (URL) par fiche
+
+Avant, la fiche ouverte (étudiant, formation, inscription, formulaire) était gardée en mémoire dans `DashboardLayout` : F5 revenait à la liste, « Précédent » quittait la page et aucun lien ne menait à une fiche.
+
+| Fichier | Changements |
+|---|---|
+| `web/src/pages/dashboard/SectionsRoutes.jsx` (nouveau) | Sous-routes `EtudiantsRoutes`, `FormationsRoutes`, `InscriptionsRoutes`, `UtilisateursRoutes` : liste, `:id`, `nouveau` / `nouvelle`, `:id/modifier` ; id non numérique ou chemin inconnu → liste |
+| `web/src/utils/navigation.js` | `CHEMINS` (adresses des fiches) et `cheminResultat()` (où mène un résultat de la recherche globale, selon le rôle) |
+| `web/src/pages/dashboard/DashboardLayout.jsx` | Suppression de `studentView`, `formationView`, `inscriptionView`, `userView` ; routes `etudiants/*`, `formations/*`… toujours protégées par le rôle ; `ouvrirResultat()` devient un `navigate()` ; préférences d'affichage sorties dans `hooks/usePreferences.js` (nouveau). 415 → 144 lignes |
+| `web/src/App.jsx` | Lien ouvert sans être connecté : retour à cette adresse après la connexion (`state.depuis`) |
+| `web/src/pages/inscriptions/InscriptionForm.jsx` | Liste des étudiants du menu de choix chargée explicitement (`useEtudiant({ chargerListe: true })`) |
+
+### Vérifications
+
+- Web : `vite build` OK, 0 erreur ESLint (15 avertissements, contre 17 avant).
+- À tester dans le navigateur (voir `A-FAIRE.md` §2) : F5 sur une fiche, « Précédent », lien d'une fiche ouvert dans un autre navigateur (connexion puis fiche), `/dashboard/etudiants/abc` → liste, Accueil sur `/dashboard/utilisateurs/5/modifier` → tableau de bord.
+
+## 38. Documentation des sections 35 à 37
+
+| Fichier | Changements |
+|---|---|
+| `FLUX-APPLICATION.md` | §6.1 (lecture des adresses et des listes paginées) ; §6.2 / §6.3 (limites sur les routes d'authentification, adresses des fiches, routes de liste avec `?page=` et fonctions `compterXxx`) ; §7.1 *Limite des essais de connexion* (diagramme mis à jour) ; §7.2 ; nouvelles **§7.19 Fiches dans l'URL** et **§7.20 Pagination côté serveur** ; §8 (force brute, plafond de 100 lignes), §9 (429), §10.1 (99 tests, 2 fichiers), §11, §12.2, §13, §14 |
+| `backend-imtech/api.md` | Code 429, format des listes paginées, limites des routes d'authentification, filtres des listes |
+| `SCENARIOS-TESTS.md` | Scénarios fiche dans l'URL et pagination ; réponses du jury mises à jour |
+| `A-FAIRE.md` | Points 1.1 à 1.3 faits |
 

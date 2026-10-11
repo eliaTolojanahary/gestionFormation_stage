@@ -7,14 +7,20 @@ Rôles : **SA** = Super Admin, **AC** = Accueil, **FO** = Formateur, **ET** = É
 
 Format des réponses : `{ "status": "success", ... }` ou `{ "status": "error", "message": "..." }`.
 Codes d'erreur : 400 (champ manquant / invalide), 401 (non connecté / session révoquée),
-403 (rôle ou propriétaire incorrect), 404 (introuvable), 409 (conflit : doublon, déjà traité), 500.
+403 (rôle ou propriétaire incorrect), 404 (introuvable), 409 (conflit : doublon, déjà traité),
+429 (trop d'essais), 500.
+
+**Listes paginées** (`GET /etudiants`, `/paiements`, `/inscriptions`, `/echeances`) : avec
+`?page=1&limite=20` (limite 100 max), la réponse est `{ status, data, pagination: { page, limite,
+total, pages } }` ; sans `?page=`, toute la liste comme avant. Les filtres s'appliquent avant la
+pagination ; une valeur de filtre inconnue est ignorée.
 
 ## Authentification
 | Méthode | Route | Accès |
 |---|---|---|
-| POST | /auth/login | public |
-| POST | /auth/forgot-password | public |
-| POST | /auth/reset-password | public (déconnecte tous les appareils) |
+| POST | /auth/login | public — **5 échecs / 15 min par IP + e-mail, 20 par IP** (seuls les échecs comptent, une réussite remet à zéro ; 429 au-delà) |
+| POST | /auth/forgot-password | public — **5 demandes / heure par IP** (429 au-delà) |
+| POST | /auth/reset-password | public (déconnecte tous les appareils) — **10 échecs / 15 min par IP** (429 au-delà) |
 | POST | /auth/logout | connecté (désactive la session courante) |
 | GET | /auth/profil | connecté |
 | PUT | /auth/change-password | connecté (déconnecte les autres appareils) |
@@ -34,7 +40,7 @@ Codes d'erreur : 400 (champ manquant / invalide), 401 (non connecté / session r
 ## Étudiants
 | Méthode | Route | Accès |
 |---|---|---|
-| GET | /etudiants | SA, AC, FO |
+| GET | /etudiants | SA, AC, FO — `?recherche=` (nom, prénom, e-mail, téléphone), paginable |
 | GET | /etudiants/:id | SA, AC |
 | GET | /etudiants/:id/formations | tous (un ET : uniquement les siennes) |
 | GET | /etudiants/:id/dashboard-paiement | SA, AC, ET (un ET : uniquement le sien) |
@@ -56,13 +62,13 @@ Codes d'erreur : 400 (champ manquant / invalide), 401 (non connecté / session r
 ## Inscriptions & échéances
 | Méthode | Route | Accès |
 |---|---|---|
-| GET | /inscriptions, /inscriptions/:id | SA, AC |
+| GET | /inscriptions, /inscriptions/:id | SA, AC — liste : `?recherche=` (étudiant ou formation), `?valide=oui\|non`, `?origine=accueil\|en_ligne`, paginable |
 | POST | /inscriptions | SA, AC — crée l'inscription **et** l'échéancier dans une transaction |
 | POST | /inscriptions/:id/valid | SA, AC — valide (une seule fois) et enregistre le 1er paiement |
 | DELETE | /inscriptions/:id | SA, AC |
 | GET | /inscriptions/:id/echeances | SA, AC |
 | PUT | /inscriptions/:id/note | SA, FO (ses formations) — `{ note_presentation }` entre 0 et 10 (au-delà : 400), vide = effacer. Note d'attestation = note système + présentation /20 |
-| GET | /echeances | SA, AC — `statut_paiement` : VERT (payée ou loin), JAUNE (J-2 à J), ROUGE (en retard) |
+| GET | /echeances | SA, AC — `statut_paiement` : VERT (payée ou loin), JAUNE (J-2 à J), ROUGE (en retard) ; `?recherche=`, `?statut=VERT\|JAUNE\|ROUGE`, paginable |
 | PUT | /echeances/:id | SA, AC |
 | POST | /echeances/:id/rappeler | SA, AC — bouton « Rappeler » : notification in-app + e-mail à l'étudiant |
 
@@ -72,7 +78,7 @@ Seuls les paiements `valide` comptent dans les totaux, le dashboard et les factu
 
 | Méthode | Route | Accès |
 |---|---|---|
-| GET | /paiements?statut=en_attente | SA, AC (tout) — ET (uniquement les siens) |
+| GET | /paiements?statut=en_attente | SA, AC (tout) — ET (uniquement les siens) ; `?mode=` (nom du mode), `?recherche=` (étudiant ou formation), paginable (+ `compteurs.en_attente` : paiements en attente sur toute la base) |
 | GET | /paiements/:id | SA, AC — ET (uniquement les siens) |
 | POST | /paiements | SA, AC : paiement `valide`, partiel autorisé, plafonné au reste à payer.<br>ET : uniquement sur sa propre échéance, montant imposé, statut `en_attente`. |
 | PUT | /paiements/:id | SA, AC |

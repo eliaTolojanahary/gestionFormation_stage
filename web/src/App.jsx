@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import Login from './pages/auth/Login'
 import ForgotPassword from './pages/auth/ForgotPassword'
@@ -7,15 +7,19 @@ import './App.css'
 
 // Routes principales : /login et /forgot-password sont publiques, /dashboard/* exige d'être connecté.
 // Un utilisateur connecté qui ouvre /login est renvoyé vers le tableau de bord, et inversement.
+// Lien vers une fiche ouvert sans être connecté (ex. /dashboard/etudiants/12) : après la
+// connexion, on revient sur cette fiche (adresse gardée dans state.depuis).
 function App() {
   const { user, isLoading, error, login, logout, updateCurrentUser } = useAuth()
+  const location = useLocation()
+  const depuis = location.state?.depuis
   return (
     <Routes>
       <Route
         path="/login"
         element={
           user ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate to={depuis || '/dashboard'} replace />
           ) : (
             <Login onLogin={login} isLoading={isLoading} error={error} />
           )
@@ -31,7 +35,11 @@ function App() {
           user ? (
             <DashboardLayout user={user} onLogout={logout} updateCurrentUser={updateCurrentUser} />
           ) : (
-            <Navigate to="/login" replace />
+            <Navigate
+              to="/login"
+              replace
+              state={location.pathname !== '/dashboard' ? { depuis: location.pathname + location.search } : undefined}
+            />
           )
         }
       />

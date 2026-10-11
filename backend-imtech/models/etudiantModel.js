@@ -1,19 +1,45 @@
 // Model des étudiants : table `etudiant` (pièces justificatives) jointe à `utilisateur` (identité).
 const db = require('../config/db');
 const { ROLES } = require('../config/roles');
+const { motifLike, clauseLimite } = require('../utils/pagination');
 
-// Étudiants actifs avec leurs infos de compte
-async function getAllEtudiants() {
+// Filtres de la liste : recherche dans le nom, le prénom, le nom complet, l'e-mail, le téléphone
+function filtresEtudiants({ recherche } = {}) {
+  const conditions = ['e.etat = true'];
+  const params = [];
+  if (recherche) {
+    const motif = motifLike(recherche);
+    conditions.push(`(u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ? OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR u.email LIKE ? OR u.telephone LIKE ?)`);
+    params.push(motif, motif, motif, motif, motif, motif);
+  }
+  return { where: conditions.join(' AND '), params };
+}
+
+// Étudiants actifs avec leurs infos de compte, triés par nom ; `pagination` = page demandée (ou null : tous)
+async function getAllEtudiants(filtres = {}, pagination = null) {
+  const { where, params } = filtresEtudiants(filtres);
+  const limite = clauseLimite(pagination);
   const sql = `
-    SELECT e.id_etudiant, e.photo_1, e.photo_2, e.certificat_residence, 
+    SELECT e.id_etudiant, e.photo_1, e.photo_2, e.certificat_residence,
            e.photocopie_cin, e.etat,
            u.nom, u.prenom, u.email, u.telephone, u.photo as photo
     FROM etudiant e
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
-    WHERE e.etat = true
+    WHERE ${where}
+    ORDER BY u.nom, u.prenom, e.id_etudiant${limite.sql}
   `;
-  const [rows] = await db.query(sql);
+  const [rows] = await db.query(sql, [...params, ...limite.params]);
   return rows;
+}
+
+// Nombre d'étudiants correspondant aux mêmes filtres (total de la pagination)
+async function compterEtudiants(filtres = {}) {
+  const { where, params } = filtresEtudiants(filtres);
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) AS total FROM etudiant e JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur WHERE ${where}`,
+    params
+  );
+  return Number(total);
 }
 
 async function getEtudiantById(id_etudiant) {
@@ -110,7 +136,7 @@ async function deleteEtudiant(id_etudiant) {
 }
 
 module.exports = {
-  getAllEtudiants, getEtudiantById, getFormationsByEtudiant,
+  getAllEtudiants, compterEtudiants, getEtudiantById, getFormationsByEtudiant,
   insertUtilisateurEtEtudiant, updateEtudiant, deleteEtudiant,
   getIdEtudiantByUtilisateur,
 };

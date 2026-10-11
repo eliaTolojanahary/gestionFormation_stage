@@ -2,16 +2,21 @@ import { useMemo, useState, useEffect } from 'react'
 import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import SearchFilterBar from '../../components/form/Filter'
+import Pagination from '../../components/pagination/Pagination'
 import Avatar from '../../components/avatar/Avatar'
 import { useEtudiant } from '../../hooks/useEtudiant'
 import { useFormation } from '../../hooks/useFormation'
+import { useListePaginee } from '../../hooks/useListePaginee'
 import './Etudiants.css'
 
-// Liste des étudiants avec recherche et filtre par statut.
-// Super Admin / Accueil : tous les étudiants ; Formateur : seulement ceux de ses formations.
+const PAR_PAGE = 20
+
+// Liste des étudiants avec recherche (nom, e-mail, téléphone).
+// Super Admin / Accueil : tous les étudiants, paginés côté serveur (GET /etudiants?page=) ;
+// Formateur : seulement ceux de ses formations (liste courte, paginée dans le navigateur).
 // Seul le Super Admin voit les boutons Créer / Modifier / Supprimer.
 function Etudiants({ user, onCreate, onDetail, onEdit }) {
-  const { etudiants, isLoading: studentsLoading, error: studentsError, deleteEtudiant } = useEtudiant()
+  const { deleteEtudiant } = useEtudiant()
   const { formations, isLoading: formationsLoading, getEtudiants } = useFormation()
 
   const [formateurStudents, setFormateurStudents] = useState([])
@@ -19,12 +24,16 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
   const [formateurError, setFormateurError] = useState('')
 
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('Tous')
+  const [pageFormateur, setPageFormateur] = useState(1)
   const [actionError, setActionError] = useState('')
 
   const userId = user?.id_utilisateur || user?.id
   const isFormateur = user?.role === 'Formateur'
   const canManage = user?.role === 'Super Admin'
+
+  // Personnel : page demandée au serveur. Le formateur ne voit que les étudiants de ses formations,
+  // chargés formation par formation ci-dessus : pas de requête paginée (chemin null)
+  const liste = useListePaginee(isFormateur ? null : '/etudiants', { recherche: search.trim() })
 
   // ---- Charger les étudiants du formateur (une formation à la fois) ----
   useEffect(() => {
@@ -75,45 +84,40 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFormateur, formations.length, userId])
 
-  // ---- Choix de la source de données selon le rôle ----
-  let sourceStudents, isLoading, error
-
-  if (isFormateur) {
-    sourceStudents = formateurStudents
-    isLoading = formationsLoading || formateurLoading
-    error = formateurError
-  } else {
-    sourceStudents = etudiants
-    isLoading = studentsLoading
-    error = studentsError
-  }
-
-  // ---- Filtrage ----
-  // useMemo : le filtre n'est recalculé que si la liste, la recherche ou le statut changent
-  const filteredStudents = useMemo(() => {
+  // ---- Formateur : recherche et pagination dans le navigateur ----
+  const etudiantsFormateur = useMemo(() => {
     const texteRecherche = search.trim().toLowerCase()
-
-    function correspond(student) {
-      const texteComplet = [student.nom, student.prenom, student.email, student.telephone]
+    return formateurStudents.filter((student) =>
+      [student.nom, student.prenom, student.email, student.telephone]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
+        .includes(texteRecherche)
+    )
+  }, [formateurStudents, search])
 
-      const okRecherche = texteComplet.includes(texteRecherche)
+  // ---- Données affichées selon le rôle ----
+  const pagesFormateur = Math.max(1, Math.ceil(etudiantsFormateur.length / PAR_PAGE))
+  const pageCourante = isFormateur ? Math.min(pageFormateur, pagesFormateur) : liste.page
+  const vue = isFormateur
+    ? {
+        lignes: etudiantsFormateur.slice((pageCourante - 1) * PAR_PAGE, pageCourante * PAR_PAGE),
+        total: etudiantsFormateur.length,
+        pages: pagesFormateur,
+        limite: PAR_PAGE,
+        setPage: setPageFormateur,
+        isLoading: formationsLoading || formateurLoading,
+        error: formateurError,
+      }
+    : liste
 
-      let okStatut = true
-      if (status === 'Actif') okStatut = student.etat === true
-      if (status === 'Inactif') okStatut = student.etat === false
-
-      return okRecherche && okStatut
-    }
-
-    return sourceStudents.filter(correspond)
-  }, [sourceStudents, search, status])
+  function changerRecherche(valeur) {
+    setSearch(valeur)
+    setPageFormateur(1)
+  }
 
   function handleReset() {
-    setSearch('')
-    setStatus('Tous')
+    changerRecherche('')
   }
 
   async function handleDelete(student) {
@@ -123,6 +127,7 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
     try {
       setActionError('')
       await deleteEtudiant(student.id_etudiant)
+      liste.recharger()
     } catch (err) {
       setActionError(err.message)
     }
@@ -188,8 +193,8 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
 
   const titre = isFormateur ? 'Mes étudiants' : 'Etudiants'
   const sousTitre = isFormateur
-    ? `${sourceStudents.length} étudiant(s) dans vos formations`
-    : `${etudiants.length} étudiants enregistrés`
+    ? `${formateurStudents.length} étudiant(s) dans vos formations`
+    : `${vue.total} étudiant(s) correspondant(s)`
 
   const messageVide = isFormateur
     ? 'Aucun étudiant dans vos formations.'
@@ -220,28 +225,19 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
       <article className="students-panel">
         <SearchFilterBar
           searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Rechercher un étudiant..."
-          filters={[
-            {
-              name: 'status',
-              label: 'Statut',
-              value: status,
-              onChange: setStatus,
-              options: ['Tous', 'Actif', 'Inactif'],
-            },
-          ]}
+          onSearchChange={changerRecherche}
+          searchPlaceholder="Rechercher un nom, un e-mail, un téléphone..."
           onReset={handleReset}
         />
 
-        {(error || actionError) && <p className="form-error">{error || actionError}</p>}
+        {(vue.error || actionError) && <p className="form-error">{vue.error || actionError}</p>}
 
-        {isLoading ? (
+        {vue.isLoading ? (
           <p className="students-loading">Chargement des étudiants...</p>
         ) : (
           <Tableau
             columns={columns}
-            rows={filteredStudents}
+            rows={vue.lignes}
             rowKey="id_etudiant"
             emptyMessage={messageVide}
             wrapperClassName="students-table-wrap"
@@ -249,12 +245,14 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
           />
         )}
 
-        <footer className="students-footer">
-          <span>
-            Affichage <strong>{filteredStudents.length}</strong> sur{' '}
-            <strong>{sourceStudents.length}</strong>
-          </span>
-        </footer>
+        <Pagination
+          page={pageCourante}
+          pages={vue.pages}
+          total={vue.total}
+          limite={vue.limite}
+          onChange={vue.setPage}
+          libelle="étudiant(s)"
+        />
       </article>
     </section>
   )

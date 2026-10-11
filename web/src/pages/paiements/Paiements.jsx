@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import SearchFilterBar from '../../components/form/Filter'
+import Pagination from '../../components/pagination/Pagination'
 import Modal from '../../components/modal/Modal'
 import { usePaiement, STATUTS_PAIEMENT } from '../../hooks/usePaiement'
 import { useDocument } from '../../hooks/useDocument'
 import { useNotifEvent } from '../../hooks/useNotifEvent'
+import { useListePaginee } from '../../hooks/useListePaginee'
 import { fileUrl } from '../../utils/api'
 import { formatDate } from '../../utils/time'
 import './Paiements.css'
@@ -27,10 +29,14 @@ function StatutPaiement({ statut }) {
   )
 }
 
+// Libellé du filtre -> code envoyé à l'API (?statut=)
+const CODE_STATUT = Object.fromEntries(Object.entries(STATUTS_PAIEMENT).map(([code, libelle]) => [libelle, code]))
+
 // Page Paiements : l'Accueil y valide ou refuse les paiements envoyés par les étudiants
 // depuis le mobile, et génère les factures des paiements validés.
+// Liste paginée côté serveur : recherche et filtres sont envoyés à GET /paiements.
 function Paiements({ user }) {
-  const { paiements, isLoading, error, validerPaiement, refuserPaiement } = usePaiement()
+  const { validerPaiement, refuserPaiement } = usePaiement()
   const { getFacture, isLoading: isGenerating, error: documentError } = useDocument()
   const { facturePaiement } = useNotifEvent()
   const [selectedPayment, setSelectedPayment] = useState(null)
@@ -40,7 +46,14 @@ function Paiements({ user }) {
   const [modeFilter, setModeFilter] = useState(TOUS)
   const [statutFilter, setStatutFilter] = useState(TOUS)
 
-  const nbEnAttente = paiements.filter((p) => p.statut === 'en_attente').length
+  const liste = useListePaginee('/paiements', {
+    recherche: search.trim(),
+    statut: CODE_STATUT[statutFilter] || '',
+    mode: modeFilter === TOUS ? '' : modeFilter,
+  })
+  const { lignes: paiements, isLoading, error } = liste
+  // Paiements en attente sur toute la base (pas seulement la page affichée)
+  const nbEnAttente = liste.extra.compteurs?.en_attente ?? 0
 
   // Valide ou refuse un paiement en attente, après confirmation
   async function handleStatut(payment, action) {
@@ -54,6 +67,7 @@ function Paiements({ user }) {
     try {
       if (action === 'valider') await validerPaiement(payment.id_paiement)
       else await refuserPaiement(payment.id_paiement)
+      liste.recharger() // statut, compteur « en attente » et filtres à jour
     } catch (requestError) {
       setActionError(requestError.message)
     } finally {
@@ -92,22 +106,6 @@ function Paiements({ user }) {
       setActionError(err.message || 'Erreur lors de la génération de la facture.')
     }
   }
-
-  // Filtres : recherche (étudiant ou formation), mode de paiement et statut
-  const filteredPaiements = useMemo(() => {
-    const searchLower = search.toLowerCase().trim()
-
-    return paiements.filter((paiement) => {
-      const studentName = `${paiement.etudiant_prenom} ${paiement.etudiant_nom}`.toLowerCase()
-      const formation = paiement.formation_nom?.toLowerCase() || ''
-
-      const matchesSearch = !searchLower || studentName.includes(searchLower) || formation.includes(searchLower)
-      const matchesMode = modeFilter === TOUS || paiement.mode_paiement === modeFilter
-      const matchesStatut = statutFilter === TOUS || STATUTS_PAIEMENT[paiement.statut] === statutFilter
-
-      return matchesSearch && matchesMode && matchesStatut
-    })
-  }, [paiements, search, modeFilter, statutFilter])
 
   function resetFilters() {
     setSearch('')
@@ -191,10 +189,7 @@ function Paiements({ user }) {
       <div className="gestion-heading">
         <div>
           <h1>Paiements</h1>
-          <p>
-            {filteredPaiements.length} paiement{filteredPaiements.length !== 1 ? 's' : ''} affiché
-            {filteredPaiements.length !== 1 ? 's' : ''}
-          </p>
+          <p>{liste.total} paiement{liste.total !== 1 ? 's' : ''} correspondant{liste.total !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
@@ -243,13 +238,22 @@ function Paiements({ user }) {
         ) : (
           <Tableau
             columns={columns}
-            rows={filteredPaiements}
+            rows={paiements}
             rowKey="id_paiement"
             emptyMessage="Aucun paiement trouvé."
             wrapperClassName="gestion-table-wrap"
             className="gestion-table"
           />
         )}
+
+        <Pagination
+          page={liste.page}
+          pages={liste.pages}
+          total={liste.total}
+          limite={liste.limite}
+          onChange={liste.setPage}
+          libelle="paiement(s)"
+        />
       </article>
 
       {selectedPayment && (

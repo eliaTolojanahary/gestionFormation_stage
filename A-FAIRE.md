@@ -8,31 +8,15 @@ Les points ci-dessous sont ce qui reste pour aller plus haut, par ordre d'import
 
 ## 1. Améliorations restantes (audit)
 
-### 1.1 Pagination côté serveur — priorité haute (scalabilité)
-`GET /etudiants`, `/paiements`, `/inscriptions`, `/notifications` (et `/echeances`, `/documents`,
-`/assistances`, `/utilisateurs`) renvoient **toutes** les lignes. Avec quelques milliers de
-paiements, la page devient lente.
-- [ ] Accepter `?page=1&limite=20` (+ filtres / recherche) dans les models (`LIMIT ? OFFSET ?`)
-      et renvoyer `{ data, total, page, limite }`.
-- [ ] Web : brancher les hooks (`useEtudiant`, `usePaiement`, `useInscription`…) et la pagination
-      existante sur ces paramètres au lieu de tout charger.
-- [ ] Commencer par **Paiements** et **Étudiants** (les plus gros).
-
-### 1.2 Limiter les essais de connexion — priorité haute (sécurité, petit correctif)
-`POST /auth/login`, `/auth/forgot-password`, `/auth/reset-password` n'ont aucune limite : on peut
-essayer des mots de passe à l'infini.
-- [ ] Réutiliser `middlewares/limiteRequetes.js` (déjà utilisé pour l'inscription en ligne),
-      ex. 10 essais / 15 min par IP sur la connexion, 5 / heure sur le mot de passe oublié.
-- [ ] Test dans `tests/autorisations.test.js` (429 au-delà de la limite).
-
-### 1.3 Mettre les fiches dans l'URL (web)
-Les vues ouvertes (fiche étudiant, formation, inscription, formulaire) sont gardées en mémoire
-dans `DashboardLayout` : un rechargement (F5) revient à la liste, et on ne peut pas partager un
-lien vers une fiche.
-- [ ] Routes du type `/dashboard/etudiants/:id`, `/dashboard/inscriptions/:id`,
-      `/dashboard/formations/:id/modifier` (react-router `useParams`).
-- [ ] Remplacer `studentView`, `formationView`, `inscriptionView`, `userView` par ces routes ;
-      `ouvrirResultat()` de la recherche globale devient un simple `navigate()`.
+### ✅ 1.1 à 1.3 — faits le 11/10/2026
+- [x] **Pagination côté serveur** : `GET /etudiants`, `/paiements`, `/inscriptions`, `/echeances`
+      acceptent `?page=&limite=` + filtres (SQL) ; pages web branchées (`useListePaginee`).
+      Restent chargées en entier : formations, documents, assistances, utilisateurs, notifications
+      (petites listes, à paginer seulement si elles grossissent).
+- [x] **Limite des essais de connexion** : 5 échecs / 15 min par compte, 20 par IP ; mot de passe
+      oublié 5 / heure ; réinitialisation 10 échecs / 15 min (`tests/limiteConnexion.test.js`).
+- [x] **Fiches dans l'URL** : `/dashboard/etudiants/:id`, `/formations/:id/modifier`… (`SectionsRoutes.jsx`).
+- Documenté : `FLUX-APPLICATION.md` §7.1, §7.19, §7.20 (+ §6, 8 à 14), `MODIFICATIONS.md` §35 à 38, `api.md`.
 
 ### 1.4 Préparer plusieurs serveurs (seulement si l'application grandit)
 Aujourd'hui tout vit dans un seul processus Node, ce qui suffit pour IMTECH INFO.
@@ -42,11 +26,11 @@ Aujourd'hui tout vit dans un seul processus Node, ce qui suffit pour IMTECH INFO
 - [ ] Fichiers uploadés : stockage objet (S3, Cloudinary…) au lieu du disque local `uploads/`.
 - [ ] Pool MySQL : `connectionLimit` dans le `.env` (10 aujourd'hui).
 
-### 1.5 Qualité du code
+### 1.5 Qualité du code — en cours
 - [ ] Découper les gros fichiers : `web/src/pages/parametres/Parametres.jsx` (531 lignes : un
-      composant par onglet), `web/src/pages/dashboard/DashboardLayout.jsx` (415),
-      `mobile/src/app/(tabs)/index.tsx` (569), `mobile/src/app/parametres.tsx` (409).
-- [ ] Corriger les avertissements ESLint : **17 web**, **14 mobile** (surtout `exhaustive-deps`).
+      composant par onglet), `mobile/src/app/(tabs)/index.tsx` (569), `mobile/src/app/parametres.tsx` (409).
+      (`DashboardLayout.jsx` : fait, 415 → 144 lignes avec les fiches dans l'URL.)
+- [ ] Corriger les avertissements ESLint : **15 web** (17 avant), **14 mobile** (surtout `exhaustive-deps`).
 - [ ] Ajouter quelques tests front (Vitest + Testing Library sur le web) : recherche globale,
       redirection par rôle (`utils/navigation.js`), formulaire de paiement.
 - [ ] En-têtes de sécurité HTTP (`helmet`) sur le backend.
@@ -74,6 +58,17 @@ Base déjà à jour (bloc **010** de `alter2.sql` exécuté).
       « Par défaut ».
 - [ ] **Se déconnecter partout** (Paramètres > Sécurité) avec **deux navigateurs différents**
       (ou web + téléphone) : l'autre est renvoyé à la connexion en moins d'une minute.
+
+- [ ] **Fiches dans l'URL** : ouvrir une fiche étudiant → adresse `/dashboard/etudiants/12` ; F5 garde
+      la fiche ; « Précédent » revient à la liste ; même chose pour formation, inscription,
+      modification d'un compte ; `/dashboard/etudiants/abc` → liste.
+- [ ] Copier le lien d'une fiche dans un **autre navigateur non connecté** → connexion → arrivée sur la fiche.
+- [ ] **Pagination** : Paiements, Étudiants, Inscriptions, Échéances → pied « 1–20 sur N », changer
+      de page, rechercher / filtrer (retour page 1, total à jour) ; valider un paiement → bandeau
+      « à valider » mis à jour ; supprimer la dernière ligne d'une page → page précédente.
+- [ ] **Limite de connexion** : 6 mauvais mots de passe sur un compte → message « Réessayez dans
+      15 minutes » (web et mobile) ; un autre compte reste accessible. (Redémarrer le backend
+      remet les compteurs à zéro.)
 
 ### Mobile
 - [ ] Page **Découvrir** : le fond remplit tout le haut (sous la barre d'état) et affiche le fond
@@ -144,10 +139,17 @@ Fichiers encore **non suivis** à ajouter :
 - Backend : `controllers/rechercheController.js`, `models/rechercheModel.js`,
   `services/rechercheService.js`, `tests/recherche.test.js`
 - Web : `src/components/recherche/` (RechercheGlobale.jsx / .css), `src/utils/theme.js`
+- Backend : `utils/pagination.js`, `tests/pagination.test.js`, `tests/limiteConnexion.test.js`
+- Web : `src/components/pagination/`, `src/hooks/useListePaginee.js`, `src/hooks/usePreferences.js`,
+  `src/pages/dashboard/SectionsRoutes.jsx`, `src/utils/pagination.js`
+- Doc : `SCENARIOS-TESTS.md`
 
 Plus les fichiers modifiés (`git status`). Messages proposés, si commit séparé :
 - `feat(web): recherche globale (Ctrl+K) selon le rôle`
 - `fix(web): couleurs lisibles en mode sombre`
 - `feat(web): pages par rôle, notifications du formateur`
 - `fix(mobile): retour du lecteur sans écran précédent`
-- Doc : `MODIFICATIONS.md` (sections 24 à 33), `FLUX-APPLICATION.md`, `api.md`, `A-FAIRE.md`
+- `feat(api): limite des essais de connexion et de mot de passe oublié`
+- `feat: pagination côté serveur (étudiants, paiements, inscriptions, échéances)`
+- `feat(web): une adresse par fiche (étudiant, formation, inscription, compte)`
+- Doc : `MODIFICATIONS.md` (sections 24 à 38), `FLUX-APPLICATION.md`, `api.md`, `A-FAIRE.md`

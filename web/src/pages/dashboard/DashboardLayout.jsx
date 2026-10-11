@@ -5,17 +5,8 @@ import Sidebar from '../../components/sidebar/Sidebar'
 import ProfileModal from '../../components/profile/ProfileModal'
 import { ProfileProvider } from '../../components/profile/ProfileContext'
 import DashboardContent from '../../components/dashboard/DashboardContent'
-import Etudiants from '../etudiants/Etudiants'
-import EtudiantDetail from '../etudiants/EtudiantDetail'
-import EtudiantForm from '../etudiants/EtudiantForm'
-import Users from '../users/Users'
-import UserForm from '../users/UserForm'
-import Formations from '../formations/Formations'
-import FormationDetail from '../formations/FormationDetail'
-import FormationForm from '../formations/FormationForm'
-import Inscriptions from '../inscriptions/Inscriptions'
-import InscriptionDetail from '../inscriptions/InscriptionDetail'
-import InscriptionForm from '../inscriptions/InscriptionForm'
+import RechercheGlobale from '../../components/recherche/RechercheGlobale'
+import { EtudiantsRoutes, UtilisateursRoutes, FormationsRoutes, InscriptionsRoutes } from './SectionsRoutes'
 import Paiements from '../paiements/Paiements'
 import Echeances from '../echeances/Echeances'
 import Documents from '../documents/Documents'
@@ -26,22 +17,25 @@ import AccueilFormateur from '../formateur/AccueilFormateur'
 import SupportsFormateur from '../formateur/SupportsFormateur'
 import ProgrammesFormateur from '../formateur/ProgrammesFormateur'
 import { useNotification } from '../../hooks/useNotification'
+import { usePreferences } from '../../hooks/usePreferences'
 import { apiRequest } from '../../utils/api'
-import { peutOuvrir } from '../../utils/navigation'
-import { appliquerCouleurPrincipale } from '../../utils/theme'
-import RechercheGlobale from '../../components/recherche/RechercheGlobale'
+import { cheminResultat, peutOuvrir } from '../../utils/navigation'
 import '../WorkspacePages.css'
 
-// Vue affichée dans une section : 'list', 'detail', 'create' ou 'edit' (+ id de l'élément)
-const INITIAL_VIEW = { type: 'list', id: null }
-
 // Cadre commun de l'espace connecté : barre latérale + page courante (sous-routes /dashboard/...).
-// Gère aussi la fenêtre de profil, les préférences d'affichage et le compteur de notifications.
-function DashboardLayout(props) {
-  const user = props.user
-  const onLogout = props.onLogout
-  const updateCurrentUser = props.updateCurrentUser
+// Gère aussi la fenêtre de profil, la recherche globale, les préférences d'affichage
+// (usePreferences) et le compteur de notifications. Les fiches ont leur propre URL (SectionsRoutes).
+function DashboardLayout({ user, onLogout, updateCurrentUser }) {
+  const navigate = useNavigate()
+  const [currentUser, setCurrentUser] = useState(user)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  // Recherche globale : bouton du header ou Ctrl+K (⌘K sur Mac)
+  const [isRechercheOpen, setIsRechercheOpen] = useState(false)
+  const [settings, setSettings] = usePreferences()
 
+  // Notifications non lues -> badge dans la barre latérale
+  const { notifications } = useNotification()
+  const nbNonLues = notifications.filter((notification) => notification.lu === false).length
 
   // Session révoquée depuis un autre appareil (« Se déconnecter partout ») : sans requête,
   // ce navigateur ne le saurait qu'au prochain clic. On vérifie donc la session quand l'onglet
@@ -58,23 +52,6 @@ function DashboardLayout(props) {
     }
   }, [])
 
-  const notificationData = useNotification()
-  const notifications = notificationData.notifications
-
-  // Notifications non lues -> badge dans la barre latérale
-  const unreadNotifications = []
-  for (let i = 0; i < notifications.length; i++) {
-    if (notifications[i].lu === false) {
-      unreadNotifications.push(notifications[i])
-    }
-  }
-
-  const [currentUser, setCurrentUser] = useState(user)
-  const [isProfileOpen, setIsProfileOpen] = useState(false)
-  // Recherche globale : bouton du header ou Ctrl+K (⌘K sur Mac)
-  const [isRechercheOpen, setIsRechercheOpen] = useState(false)
-  const navigate = useNavigate()
-
   useEffect(() => {
     function raccourci(event) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -85,264 +62,12 @@ function DashboardLayout(props) {
     window.addEventListener('keydown', raccourci)
     return () => window.removeEventListener('keydown', raccourci)
   }, [])
-  // Vue courante de chaque section (liste / détail / formulaire), sans changer d'URL
-  const [studentView, setStudentView] = useState(INITIAL_VIEW)
-  const [userView, setUserView] = useState(INITIAL_VIEW)
-  const [formationView, setFormationView] = useState(INITIAL_VIEW)
-  const [inscriptionView, setInscriptionView] = useState(INITIAL_VIEW)
 
-// Préférences d'affichage (page Paramètres), relues depuis le localStorage au démarrage
-const [settings, setSettings] = useState(function () {
-  try {
-    const savedTheme = localStorage.getItem('app_theme')
-    const savedColor = localStorage.getItem('app_color')
-    const savedLogo = localStorage.getItem('app_logo')
-    const savedFontSize = localStorage.getItem('app_font_size')
-    const savedDensity = localStorage.getItem('app_density')
-    const savedSidebar = localStorage.getItem('app_sidebar_collapsed')
-
-    return {
-      theme: savedTheme || 'light',
-      color: savedColor || '#063a5c',
-      logo: savedLogo || null,
-      fontSize: savedFontSize || 'normale',
-      density: savedDensity || 'confortable',
-      collapsedSidebar: savedSidebar === 'true',
-    }
-  } catch {
-    return {
-      theme: 'light',
-      color: '#063a5c',
-      logo: null,
-      fontSize: 'normale',
-      density: 'confortable',
-      collapsedSidebar: false,
-    }
-  }
-})
- // À chaque changement des préférences : application sur <html> (attributs data-* et
- // variable CSS --accent utilisés par les feuilles de style) puis sauvegarde
- useEffect(function () {
-  const root = document.documentElement
-
-  // 1. Thème
-  root.dataset.theme = settings.theme
-
-  // 2. Couleur principale (version claire et version sombre, voir utils/theme.js)
-  appliquerCouleurPrincipale(root, settings.color)
-
-  // 3. Taille de police
-  root.dataset.fontSize = settings.fontSize || 'normale'
-
-  // 4. Densité
-  root.dataset.density = settings.density || 'confortable'
-
-  // 5. Sidebar réduite
-  root.dataset.sidebar = settings.collapsedSidebar ? 'collapsed' : 'expanded'
-
-  // Persistance
-  try {
-    localStorage.setItem('app_theme', settings.theme)
-    localStorage.setItem('app_color', settings.color)
-    localStorage.setItem('app_font_size', settings.fontSize || 'normale')
-    localStorage.setItem('app_density', settings.density || 'confortable')
-    localStorage.setItem('app_sidebar_collapsed', String(!!settings.collapsedSidebar))
-
-    if (settings.logo) {
-      localStorage.setItem('app_logo', settings.logo)
-    }
-  } catch {
-    // Les préférences restent actives pendant la session si le stockage est indisponible.
-  }
-}, [settings])
-
-  // Changent la vue d'une section, ex. openStudentView('detail', 12)
-  function openStudentView(type, id) {
-    if (id === undefined) {
-      id = null
-    }
-    setStudentView({ type: type, id: id })
-  }
-
-  function openUserView(type, id) {
-    if (id === undefined) {
-      id = null
-    }
-    setUserView({ type: type, id: id })
-  }
-
-  function openFormationView(type, id) {
-    if (id === undefined) {
-      id = null
-    }
-    setFormationView({ type: type, id: id })
-  }
-
-  function openInscriptionView(type, id) {
-    if (id === undefined) {
-      id = null
-    }
-    setInscriptionView({ type: type, id: id })
-  }
-
-  // Choisissent le composant à afficher selon la vue courante de la section
-  function renderStudentPage() {
-    const type = studentView.type
-    const id = studentView.id
-
-    if (type === 'detail') {
-      return (
-        <EtudiantDetail
-          user={currentUser}
-          studentId={id}
-          onBack={function () { openStudentView('list') }}
-          onEdit={function (studentId) { openStudentView('edit', studentId) }}
-        />
-      )
-    }
-
-    if (type === 'create' || type === 'edit') {
-      return (
-        <EtudiantForm
-          user={currentUser}
-          studentId={id}
-          onBack={function () { openStudentView('list') }}
-          onSaved={function () { openStudentView('list') }}
-        />
-      )
-    }
-
-    return (
-      <Etudiants
-        user={currentUser}
-        onCreate={function () { openStudentView('create') }}
-        onDetail={function (studentId) { openStudentView('detail', studentId) }}
-        onEdit={function (studentId) { openStudentView('edit', studentId) }}
-      />
-    )
-  }
-
-  function renderUserPage() {
-    const type = userView.type
-    const id = userView.id
-
-    if (type === 'create' || type === 'edit') {
-      return (
-        <UserForm
-          user={currentUser}
-          userId={id}
-          onBack={function () { openUserView('list') }}
-          onSaved={function () { openUserView('list') }}
-        />
-      )
-    }
-
-    return (
-      <Users
-        user={currentUser}
-        onCreate={function () { openUserView('create') }}
-        onEdit={function (userId) { openUserView('edit', userId) }}
-      />
-    )
-  }
-
-  function renderFormationPage() {
-    const type = formationView.type
-    const id = formationView.id
-
-    if (type === 'detail') {
-      return (
-        <FormationDetail
-          user={currentUser}
-          formationId={id}
-          onBack={function () { openFormationView('list') }}
-          onEdit={function (formationId) { openFormationView('edit', formationId) }}
-        />
-      )
-    }
-
-    if (type === 'create' || type === 'edit') {
-      return (
-        <FormationForm
-          user={currentUser}
-          formationId={id}
-          onBack={function () { openFormationView('list') }}
-          onSaved={function () { openFormationView('list') }}
-        />
-      )
-    }
-
-    return (
-      <Formations
-        user={currentUser}
-        onCreate={function () { openFormationView('create') }}
-        onDetail={function (formationId) { openFormationView('detail', formationId) }}
-        onEdit={function (formationId) { openFormationView('edit', formationId) }}
-      />
-    )
-  }
-
-  function renderInscriptionPage() {
-    const type = inscriptionView.type
-    const id = inscriptionView.id
-
-    if (type === 'detail') {
-      return (
-        <InscriptionDetail
-          user={currentUser}
-          inscriptionId={id}
-          onBack={function () { openInscriptionView('list') }}
-        />
-      )
-    }
-
-    if (type === 'create') {
-      return (
-        <InscriptionForm
-          user={currentUser}
-          onBack={function () { openInscriptionView('list') }}
-          onSaved={function () { openInscriptionView('list') }}
-        />
-      )
-    }
-
-    return (
-      <Inscriptions
-        user={currentUser}
-        onCreate={function () { openInscriptionView('create') }}
-        onDetail={function (inscriptionId) { openInscriptionView('detail', inscriptionId) }}
-      />
-    )
-  }
-
-  // Ouvre un résultat de la recherche globale : page, ou fiche dans la bonne section.
-  // Le formateur n'a pas accès aux fiches étudiant / formation du personnel : on ouvre son
-  // espace avec la fenêtre des étudiants de la formation concernée.
+  // Ouvre un résultat de la recherche globale (adresse calculée par utils/navigation.js)
   function ouvrirResultat(resultat) {
     setIsRechercheOpen(false)
-    const estFormateur = currentUser.role === 'Formateur'
-
-    if (resultat.type === 'page') {
-      navigate(resultat.chemin)
-    } else if (estFormateur && (resultat.type === 'etudiant' || resultat.type === 'formation')) {
-      const idFormation = resultat.type === 'formation' ? resultat.id : resultat.idFormation
-      navigate('/dashboard/formateur', { state: { formationOuverte: idFormation } })
-    } else if (resultat.type === 'etudiant') {
-      openStudentView('detail', resultat.id)
-      navigate('/dashboard/etudiants')
-    } else if (resultat.type === 'formation') {
-      openFormationView('detail', resultat.id)
-      navigate('/dashboard/formations')
-    } else if (resultat.type === 'inscription') {
-      openInscriptionView('detail', resultat.id)
-      navigate('/dashboard/inscriptions')
-    } else if (resultat.type === 'utilisateur') {
-      openUserView('edit', resultat.id)
-      navigate('/dashboard/utilisateurs')
-    } else if (resultat.type === 'support') {
-      if (resultat.statut === 'programme') navigate('/dashboard/programmes')
-      else navigate('/dashboard/supports', { state: { recherche: resultat.titre } })
-    }
+    const destination = cheminResultat(resultat, currentUser.role)
+    if (destination) navigate(destination.chemin, { state: destination.state })
   }
 
   // Page /dashboard/<segment> : affichée seulement si le rôle y a droit (même règle que le menu,
@@ -354,61 +79,64 @@ const [settings, setSettings] = useState(function () {
   return (
     <ProfileProvider
       value={{
-        onProfile: function () { setIsProfileOpen(true) },
-        onRecherche: function () { setIsRechercheOpen(true) },
+        onProfile: () => setIsProfileOpen(true),
+        onRecherche: () => setIsRechercheOpen(true),
         updateCurrentUser,
       }}
     >
-    <main className="dashboard-page">
-      <Sidebar
-        user={currentUser}
-        onLogout={onLogout}
-        logo={settings.logo || logoImtech}
-        nbNotifs={unreadNotifications.length}
-      />
-
-      <Routes>
-        {/* Accueil : espace formateur pour un formateur, tableau de bord pour les autres */}
-        <Route
-          path="/"
-          element={currentUser.role === 'Formateur'
-            ? <AccueilFormateur user={currentUser} />
-            : <DashboardContent user={currentUser} />}
-        />
-        <Route path="etudiants" element={pageAutorisee('etudiants', renderStudentPage())} />
-        <Route path="utilisateurs" element={pageAutorisee('utilisateurs', renderUserPage())} />
-        <Route path="formations" element={pageAutorisee('formations', renderFormationPage())} />
-        <Route path="inscriptions" element={pageAutorisee('inscriptions', renderInscriptionPage())} />
-        <Route path="paiements" element={pageAutorisee('paiements', <Paiements user={currentUser} />)} />
-        <Route path="echeances" element={pageAutorisee('echeances', <Echeances user={currentUser} />)} />
-        <Route path="documents" element={pageAutorisee('documents', <Documents user={currentUser} />)} />
-        <Route path="assistance" element={pageAutorisee('assistance', <Assistance user={currentUser} />)} />
-        <Route path="formateur" element={pageAutorisee('formateur', <AccueilFormateur user={currentUser} />)} />
-        <Route path="supports" element={pageAutorisee('supports', <SupportsFormateur user={currentUser} />)} />
-        <Route path="programmes" element={pageAutorisee('programmes', <ProgrammesFormateur user={currentUser} />)} />
-        <Route path="notifications" element={pageAutorisee('notifications', <Notifications user={currentUser} />)} />
-        <Route
-          path="parametres"
-          element={pageAutorisee('parametres', <Parametres user={currentUser} settings={settings} onSettingsChange={setSettings} />)}
-        />
-      </Routes>
-
-      {isRechercheOpen && (
-        <RechercheGlobale
+      <main className="dashboard-page">
+        <Sidebar
           user={currentUser}
-          onClose={function () { setIsRechercheOpen(false) }}
-          onOuvrir={ouvrirResultat}
+          onLogout={onLogout}
+          logo={settings.logo || logoImtech}
+          nbNotifs={nbNonLues}
         />
-      )}
 
-      {isProfileOpen && (
-        <ProfileModal
-          user={currentUser}
-          onClose={function () { setIsProfileOpen(false) }}
-          onUpdated={function (updatedUser) { setCurrentUser(updatedUser); setIsProfileOpen(false) }}
-        />
-      )}
-    </main>
+        <Routes>
+          {/* Accueil : espace formateur pour un formateur, tableau de bord pour les autres */}
+          <Route
+            path="/"
+            element={currentUser.role === 'Formateur'
+              ? <AccueilFormateur user={currentUser} />
+              : <DashboardContent user={currentUser} />}
+          />
+          {/* Sections avec fiches : /etudiants/12, /formations/3/modifier... (SectionsRoutes.jsx) */}
+          <Route path="etudiants/*" element={pageAutorisee('etudiants', <EtudiantsRoutes user={currentUser} />)} />
+          <Route path="utilisateurs/*" element={pageAutorisee('utilisateurs', <UtilisateursRoutes user={currentUser} />)} />
+          <Route path="formations/*" element={pageAutorisee('formations', <FormationsRoutes user={currentUser} />)} />
+          <Route path="inscriptions/*" element={pageAutorisee('inscriptions', <InscriptionsRoutes user={currentUser} />)} />
+          <Route path="paiements" element={pageAutorisee('paiements', <Paiements user={currentUser} />)} />
+          <Route path="echeances" element={pageAutorisee('echeances', <Echeances user={currentUser} />)} />
+          <Route path="documents" element={pageAutorisee('documents', <Documents user={currentUser} />)} />
+          <Route path="assistance" element={pageAutorisee('assistance', <Assistance user={currentUser} />)} />
+          <Route path="formateur" element={pageAutorisee('formateur', <AccueilFormateur user={currentUser} />)} />
+          <Route path="supports" element={pageAutorisee('supports', <SupportsFormateur user={currentUser} />)} />
+          <Route path="programmes" element={pageAutorisee('programmes', <ProgrammesFormateur user={currentUser} />)} />
+          <Route path="notifications" element={pageAutorisee('notifications', <Notifications user={currentUser} />)} />
+          <Route
+            path="parametres"
+            element={pageAutorisee('parametres', <Parametres user={currentUser} settings={settings} onSettingsChange={setSettings} />)}
+          />
+          {/* Adresse inconnue : retour à l'accueil du tableau de bord */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+
+        {isRechercheOpen && (
+          <RechercheGlobale
+            user={currentUser}
+            onClose={() => setIsRechercheOpen(false)}
+            onOuvrir={ouvrirResultat}
+          />
+        )}
+
+        {isProfileOpen && (
+          <ProfileModal
+            user={currentUser}
+            onClose={() => setIsProfileOpen(false)}
+            onUpdated={(updatedUser) => { setCurrentUser(updatedUser); setIsProfileOpen(false) }}
+          />
+        )}
+      </main>
     </ProfileProvider>
   )
 }

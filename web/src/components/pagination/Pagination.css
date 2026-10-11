@@ -1,0 +1,54 @@
+/* ==========================================================================
+   Pagination des listes (pied de tableau)
+   ========================================================================== */
+
+.pagination-pied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.pagination-pied strong {
+  color: var(--heading);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pagination button {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text-main);
+  background: var(--surface);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pagination button:hover:not(:disabled),
+.pagination button.current-page {
+  color: var(--on-accent);
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.pagination button:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pagination span {
+  color: var(--text-muted);
+}

@@ -14,13 +14,23 @@ const estEtudiant = (auteur) => auteur?.role === ROLES.ETUDIANT;
 // ─────────────────────────────────────────────
 
 // Un étudiant ne voit que ses paiements ; le personnel voit tout (filtrable par statut).
-async function listerPaiements(auteur, { statut } = {}) {
+// filtres = { statut, mode, recherche } ; pagination = { page, limite, offset } ou null (toute la liste).
+// Un étudiant ne voit que ses paiements. Liste paginée : on renvoie aussi le nombre total de
+// paiements en attente (bandeau « à valider » de la page, quel que soit le filtre affiché).
+async function listerPaiements(auteur, filtres = {}, pagination = null) {
   if (estEtudiant(auteur)) {
     // Sans fiche étudiant, on ne renvoie rien (et surtout pas la liste complète)
-    if (!auteur.id_etudiant) return [];
-    return await paiementModel.getAllPaiements({ id_etudiant: auteur.id_etudiant, statut });
+    if (!auteur.id_etudiant) return pagination ? { lignes: [], total: 0 } : [];
+    filtres = { ...filtres, id_etudiant: auteur.id_etudiant };
   }
-  return await paiementModel.getAllPaiements({ statut });
+  if (!pagination) return await paiementModel.getAllPaiements(filtres);
+
+  const [lignes, total, enAttente] = await Promise.all([
+    paiementModel.getAllPaiements(filtres, pagination),
+    paiementModel.compterPaiements(filtres),
+    paiementModel.compterPaiements({ id_etudiant: filtres.id_etudiant, statut: STATUTS_PAIEMENT.EN_ATTENTE }),
+  ]);
+  return { lignes, total, compteurs: { en_attente: enAttente } };
 }
 
 // Pour un étudiant, le paiement d'un autre renvoie 404 (on ne révèle pas qu'il existe)

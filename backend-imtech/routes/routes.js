@@ -80,9 +80,34 @@ router.post('/public/inscriptions', limiteInscription, vitrine.inscriptionEnLign
 router.put('/vitrine/fond', roles(SUPER_ADMIN), vitrineUpload.single('image'), vitrine.modifierFondController);
 router.delete('/vitrine/fond', roles(SUPER_ADMIN), vitrine.supprimerFondController);
 
-router.post('/auth/login', auth.login);
-router.post('/auth/forgot-password', auth.forgotPasswordController);
-router.post('/auth/reset-password', auth.resetPasswordController);
+// Essais limités : seuls les échecs comptent, une connexion réussie remet le compteur à zéro.
+// Par adresse IP + e-mail (un compte visé) et par adresse IP seule (plusieurs comptes essayés).
+const QUINZE_MINUTES = 15 * 60 * 1000;
+const MESSAGE_ESSAIS = 'Trop de tentatives de connexion. Réessayez dans 15 minutes.';
+const limiteConnexionCompte = limiteRequetes({
+  max: 5,
+  fenetreMs: QUINZE_MINUTES,
+  echecsSeulement: true,
+  cle: (req) => `${req.ip}|${String(req.body?.email || '').trim().toLowerCase()}`,
+  message: MESSAGE_ESSAIS,
+});
+const limiteConnexionIp = limiteRequetes({ max: 20, fenetreMs: QUINZE_MINUTES, echecsSeulement: true, message: MESSAGE_ESSAIS });
+// Mot de passe oublié : chaque demande envoie un e-mail -> toutes les demandes comptent
+const limiteMotDePasseOublie = limiteRequetes({
+  max: 5,
+  fenetreMs: 60 * 60 * 1000,
+  message: 'Trop de demandes de réinitialisation. Réessayez dans une heure.',
+});
+const limiteReinitialisation = limiteRequetes({
+  max: 10,
+  fenetreMs: QUINZE_MINUTES,
+  echecsSeulement: true,
+  message: 'Trop de tentatives avec un lien invalide. Réessayez dans 15 minutes.',
+});
+
+router.post('/auth/login', limiteConnexionIp, limiteConnexionCompte, auth.login);
+router.post('/auth/forgot-password', limiteMotDePasseOublie, auth.forgotPasswordController);
+router.post('/auth/reset-password', limiteReinitialisation, auth.resetPasswordController);
 router.post('/auth/logout', verifyToken, auth.logout);
 router.get('/auth/profil', verifyToken, auth.getProfil);
 router.put('/auth/change-password', verifyToken, auth.changePasswordController);

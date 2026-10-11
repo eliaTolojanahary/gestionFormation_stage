@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
-// Hook des étudiants : liste (chargée au montage), détail, formations suivies, CRUD.
-export function useEtudiant() {
+// Hook des étudiants : détail, formations suivies, CRUD.
+// chargerListe : charge aussi la liste complète au montage (menu de choix du formulaire
+// d'inscription) ; la page Étudiants, elle, est paginée côté serveur (useListePaginee).
+export function useEtudiant({ chargerListe = false } = {}) {
   const [etudiants, setEtudiants] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
- 
+
   async function getEtudiants() {
     setIsLoading(true)
     setError('')
@@ -24,7 +26,7 @@ export function useEtudiant() {
     }
   }
 
-  
+
   async function getEtudiant(id) {
     const data = await apiRequest(`/etudiants/${id}`)
     return data.data
@@ -57,8 +59,9 @@ function updateEtudiant(id, formData) {
   }
 
   useEffect(() => {
-    getEtudiants()
-  }, [])
+    if (chargerListe) getEtudiants()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chargerListe])
 
   return {
     etudiants,

@@ -214,42 +214,6 @@
   color: var(--text-main);
 }
 
-.pagination {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.pagination button {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--text-main);
-  background: var(--surface);
-  font-size: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.pagination button:hover:not(:disabled),
-.pagination button.current-page {
-  color: var(--on-accent);
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.pagination button:disabled {
-  color: var(--text-muted);
-  opacity: 0.5;
-  cursor: default;
-}
-
-.pagination span {
-  color: var(--text-muted);
-}
-
 .detail-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr);

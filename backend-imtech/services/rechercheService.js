@@ -5,14 +5,10 @@
 //   Formateur   : ses formations, les étudiants inscrits à ses formations, ses supports
 const rechercheModel = require('../models/rechercheModel');
 const { ROLES } = require('../config/roles');
+const { motifLike } = require('../utils/pagination');
 
 const LONGUEUR_MIN = 2;
 const PAR_GROUPE = 5;
-
-// "%texte%" pour LIKE ; % et _ tapés par l'utilisateur sont cherchés tels quels
-function motifLike(texte) {
-  return `%${texte.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-}
 
 async function rechercher(texte, user) {
   const q = String(texte || '').trim().slice(0, 100);

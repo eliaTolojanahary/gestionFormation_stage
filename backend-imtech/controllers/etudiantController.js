@@ -1,6 +1,7 @@
 // Controller des étudiants (compte utilisateur + dossier avec pièces justificatives).
 const etudiantService = require('../services/etudiantService');
 const { exigerChamps } = require('../utils/errors');
+const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
 
 // Transforme req.files (multer .fields) en { champ: 'dossier/nom-fichier' } à enregistrer en base.
 // "photo" (photo de profil) va dans utilisateurs/, les pièces justificatives dans etudiants/
@@ -14,9 +15,11 @@ function cheminsFichiers(files) {
 }
 
 // GET /etudiants
+// Query : ?recherche= (nom, e-mail, téléphone) ; ?page=&limite= pour une liste paginée
 async function listerEtudiants(req, res) {
-  const etudiants = await etudiantService.listerEtudiants();
-  res.json({ status: 'success', data: etudiants });
+  const pagination = lirePagination(req.query);
+  const resultat = await etudiantService.listerEtudiants({ recherche: texteRecherche(req.query.recherche) }, pagination);
+  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
 }
 
 // GET /etudiants/:id

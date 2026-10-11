@@ -54,8 +54,14 @@ async function listerEcheancesInscription(id_inscription) {
   return await echeanceModel.getEcheancesByInscription(id_inscription);
 }
 
-async function listerToutesEcheances() {
-  return await echeanceModel.getAllEcheances();
+// filtres = { recherche, statut (VERT / JAUNE / ROUGE) } ; pagination = { page, limite, offset } ou null
+async function listerToutesEcheances(filtres = {}, pagination = null) {
+  if (!pagination) return await echeanceModel.getAllEcheances(filtres);
+  const [lignes, total] = await Promise.all([
+    echeanceModel.getAllEcheances(filtres, pagination),
+    echeanceModel.compterEcheances(filtres),
+  ]);
+  return { lignes, total };
 }
 
 async function modifierEcheance(id_echeance, { montant_prevu, date_echeance, etat }) {

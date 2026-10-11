@@ -1,5 +1,6 @@
 // Controller des échéances (tranches de paiement d'une inscription).
 const echeanceService = require('../services/echeanceService');
+const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
 
 // GET /inscriptions/:id/echeances : échéancier d'une inscription
 async function getEcheancesByInscriptionController(req, res) {
@@ -8,9 +9,16 @@ async function getEcheancesByInscriptionController(req, res) {
 }
 
 // GET /echeances : toutes les échéances (suivi par l'Accueil)
+// Query : ?recherche= (étudiant ou formation), ?statut=VERT|JAUNE|ROUGE ; ?page=&limite= pour une
+// liste paginée (un autre statut est ignoré)
 async function listerEcheances(req, res) {
-  const echeances = await echeanceService.listerToutesEcheances();
-  res.json({ status: 'success', data: echeances });
+  const pagination = lirePagination(req.query);
+  const filtres = {
+    recherche: texteRecherche(req.query.recherche),
+    statut: ['VERT', 'JAUNE', 'ROUGE'].includes(req.query.statut) ? req.query.statut : undefined,
+  };
+  const resultat = await echeanceService.listerToutesEcheances(filtres, pagination);
+  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
 }
 
 // PUT /echeances/:id

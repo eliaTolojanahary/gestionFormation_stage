@@ -3,11 +3,20 @@
 const paiementService = require('../services/paiementService');
 const { ROLES } = require('../config/roles');
 const { exigerChamps } = require('../utils/errors');
+const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
 
 // GET /paiements?statut=... : un étudiant ne reçoit que ses propres paiements
+// Query : ?statut= (en_attente / valide / refuse), ?mode= (nom du mode), ?recherche= (étudiant ou
+// formation) ; ?page=&limite= pour une liste paginée
 async function listerPaiementsController(req, res) {
-  const paiements = await paiementService.listerPaiements(req.user, { statut: req.query.statut });
-  res.json({ status: 'success', data: paiements });
+  const pagination = lirePagination(req.query);
+  const filtres = {
+    statut: req.query.statut || undefined,
+    mode: texteRecherche(req.query.mode) || undefined,
+    recherche: texteRecherche(req.query.recherche),
+  };
+  const resultat = await paiementService.listerPaiements(req.user, filtres, pagination);
+  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
 }
 
 // POST /paiements : paiement d'une échéance

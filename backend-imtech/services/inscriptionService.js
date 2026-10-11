@@ -70,8 +70,14 @@ async function validerInscription(id_inscription, id_mode_paiement, reference_vi
   });
 }
 
-async function listerInscriptions() {
-  return await inscriptionModel.getAllInscriptions();
+// filtres = { recherche, valide, origine } ; pagination = { page, limite, offset } ou null (toute la liste)
+async function listerInscriptions(filtres = {}, pagination = null) {
+  if (!pagination) return await inscriptionModel.getAllInscriptions(filtres);
+  const [lignes, total] = await Promise.all([
+    inscriptionModel.getAllInscriptions(filtres, pagination),
+    inscriptionModel.compterInscriptions(filtres),
+  ]);
+  return { lignes, total };
 }
 
 async function recupererInscription(id) {

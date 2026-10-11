@@ -4,8 +4,14 @@ const etudiantModel = require('../models/etudiantModel');
 const { avecTransaction } = require('../utils/transaction');
 const { notFound } = require('../utils/errors');
 
-async function listerEtudiants() {
-  return await etudiantModel.getAllEtudiants();
+// filtres = { recherche } ; pagination = { page, limite, offset } ou null (toute la liste, sans total)
+async function listerEtudiants(filtres = {}, pagination = null) {
+  if (!pagination) return await etudiantModel.getAllEtudiants(filtres);
+  const [lignes, total] = await Promise.all([
+    etudiantModel.getAllEtudiants(filtres, pagination),
+    etudiantModel.compterEtudiants(filtres),
+  ]);
+  return { lignes, total };
 }
 
 async function recupererEtudiant(id) {

@@ -1,6 +1,7 @@
 // Model des inscriptions. `etat` = inscription non supprimée, `valide` = inscription validée
 // par le personnel (premier paiement reçu).
 const db = require('../config/db');
+const { motifLike, clauseLimite } = require('../utils/pagination');
 
 // Les fonctions qui acceptent `connection` peuvent participer à une transaction (voir utils/transaction.js).
 
@@ -63,7 +64,36 @@ async function findInscriptionAvecTarif(id_inscription, connection = db) {
 }
 
 // Inscriptions actives avec l'étudiant et la formation
-async function getAllInscriptions() {
+// Filtres de la liste : recherche (étudiant ou formation), validée ou non, origine (accueil / en_ligne)
+function filtresInscriptions({ recherche, valide, origine } = {}) {
+  const conditions = ['i.etat = true'];
+  const params = [];
+  if (recherche) {
+    const motif = motifLike(recherche);
+    conditions.push(`(u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ? OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR f.nom LIKE ?)`);
+    params.push(motif, motif, motif, motif, motif);
+  }
+  if (valide !== undefined) {
+    conditions.push('i.valide = ?');
+    params.push(valide);
+  }
+  if (origine) {
+    conditions.push('i.origine = ?');
+    params.push(origine);
+  }
+  return { where: conditions.join(' AND '), params };
+}
+
+const FROM_INSCRIPTIONS = `
+    FROM inscription i
+    JOIN etudiant e ON i.id_etudiant = e.id_etudiant
+    JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
+    JOIN formation f ON i.id_formation = f.id_formation`;
+
+// Inscriptions, les plus récentes d'abord ; `pagination` = page demandée (ou null : toutes)
+async function getAllInscriptions(filtres = {}, pagination = null) {
+  const { where, params } = filtresInscriptions(filtres);
+  const limite = clauseLimite(pagination);
   const sql = `
     SELECT i.id_inscription, i.date_inscription, i.etat, i.valide, i.origine,
            e.id_etudiant, u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
@@ -78,14 +108,19 @@ async function getAllInscriptions() {
               JOIN paiement p ON p.id_echeance = ec.id_echeance AND p.etat = true AND p.statut = 'en_attente'
              WHERE ec.id_inscription = i.id_inscription AND ec.etat = true
              ORDER BY ec.date_echeance, p.id_paiement LIMIT 1) AS montant_declare
-    FROM inscription i
-    JOIN etudiant e ON i.id_etudiant = e.id_etudiant
-    JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
-    JOIN formation f ON i.id_formation = f.id_formation
-    WHERE i.etat = true
+    ${FROM_INSCRIPTIONS}
+    WHERE ${where}
+    ORDER BY i.date_inscription DESC, i.id_inscription DESC${limite.sql}
   `;
-  const [rows] = await db.query(sql);
+  const [rows] = await db.query(sql, [...params, ...limite.params]);
   return rows;
+}
+
+// Nombre d'inscriptions correspondant aux mêmes filtres (total de la pagination)
+async function compterInscriptions(filtres = {}) {
+  const { where, params } = filtresInscriptions(filtres);
+  const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${FROM_INSCRIPTIONS} WHERE ${where}`, params);
+  return Number(total);
 }
 
 async function getInscriptionById(id_inscription) {
@@ -110,5 +145,5 @@ async function deleteInscription(id_inscription) {
 module.exports = {
   inscriptionActiveExiste, getIdUtilisateurByEtudiant, findFormationActive,
   insertInscription, setInscriptionValidee, findInscriptionAvecTarif,
-  getAllInscriptions, getInscriptionById, deleteInscription
+  getAllInscriptions, compterInscriptions, getInscriptionById, deleteInscription
 };

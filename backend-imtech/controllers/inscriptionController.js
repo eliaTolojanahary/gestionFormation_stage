@@ -1,6 +1,7 @@
 // Controller des inscriptions d'étudiants aux formations.
 const inscriptionService = require('../services/inscriptionService');
 const { exigerChamps } = require('../utils/errors');
+const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
 
 // POST /inscriptions : crée l'inscription et son échéancier (nombre_tranches échéances)
 async function creerInscriptionController(req, res) {
@@ -27,9 +28,17 @@ async function validerInscriptionController(req, res) {
 }
 
 // GET /inscriptions
+// Query : ?recherche= (étudiant ou formation), ?valide=oui|non, ?origine=accueil|en_ligne ;
+// ?page=&limite= pour une liste paginée (une autre valeur de filtre est ignorée)
 async function listerInscriptions(req, res) {
-  const inscriptions = await inscriptionService.listerInscriptions();
-  res.json({ status: 'success', data: inscriptions });
+  const pagination = lirePagination(req.query);
+  const filtres = {
+    recherche: texteRecherche(req.query.recherche),
+    valide: { oui: true, non: false }[req.query.valide],
+    origine: ['accueil', 'en_ligne'].includes(req.query.origine) ? req.query.origine : undefined,
+  };
+  const resultat = await inscriptionService.listerInscriptions(filtres, pagination);
+  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
 }
 
 // GET /inscriptions/:id

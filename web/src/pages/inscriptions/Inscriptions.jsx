@@ -1,18 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import PaymentModal from '../../components/paiements/PaymentFormModal'
 import SearchFilterBar from '../../components/form/Filter'
+import Pagination from '../../components/pagination/Pagination'
 import { useInscription } from '../../hooks/useInscription'
 import { useDocument } from '../../hooks/useDocument'
 import { useNotifEvent } from '../../hooks/useNotifEvent'
+import { useListePaginee } from '../../hooks/useListePaginee'
 import { fileUrl } from '../../utils/api'
 import './Inscriptions.css'
 
-// Liste des inscriptions avec recherche et filtre (Validée / En attente).
+// Libellés des filtres -> valeurs envoyées à l'API (?valide=, ?origine=)
+const CODE_STATUT = { Validée: 'oui', 'En attente': 'non' }
+const CODE_ORIGINE = { Accueil: 'accueil', 'En ligne': 'en_ligne' }
+
+// Liste des inscriptions (paginée côté serveur) avec recherche et filtres (statut, origine).
 // Actions : valider (avec premier paiement), générer la fiche, envoyer l'attestation, supprimer (Super Admin).
 function Inscriptions({ user, onCreate, onDetail }) {
-  const { inscriptions, isLoading, error, validateInscription, deleteInscription } = useInscription()
+  const { validateInscription, deleteInscription } = useInscription()
   const { getFiche, envoyerAttestation, isLoading: isGenerating, error: documentError } = useDocument()
   const { confirmationInscription } = useNotifEvent()
   const [search, setSearch] = useState('')
@@ -23,30 +29,12 @@ function Inscriptions({ user, onCreate, onDetail }) {
   const [actionMessage, setActionMessage] = useState('')
   const [inscriptionToValidate, setInscriptionToValidate] = useState(null)
   const canManage = user?.role === 'Super Admin'
-  const filtered = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
-
-    return inscriptions.filter((inscription) => {
-      const fullText = [
-        inscription.prenom_etudiant,
-        inscription.nom_etudiant,
-        inscription.nom_formation,
-      ].filter(Boolean).join(' ').toLowerCase()
-
-      const matchesSearch = fullText.includes(normalizedSearch)
-      const matchesStatus =
-        status === 'Tous' ||
-        (status === 'Validée' && inscription.valide) ||
-        (status === 'En attente' && !inscription.valide)
-
-      const matchesOrigine =
-        origine === 'Toutes' ||
-        (origine === 'En ligne' && inscription.origine === 'en_ligne') ||
-        (origine === 'Accueil' && inscription.origine !== 'en_ligne')
-
-      return matchesSearch && matchesStatus && matchesOrigine
-    })
-  }, [inscriptions, search, status, origine])
+  const liste = useListePaginee('/inscriptions', {
+    recherche: search.trim(),
+    valide: CODE_STATUT[status] || '',
+    origine: CODE_ORIGINE[origine] || '',
+  })
+  const { lignes: inscriptions, isLoading, error } = liste
 
   function handleReset() {
     setSearch('')
@@ -63,6 +51,7 @@ function Inscriptions({ user, onCreate, onDetail }) {
       if (action === 'delete') {
         if (!window.confirm('Supprimer cette inscription ?')) return
         await deleteInscription(inscription.id_inscription)
+        liste.recharger()
       } else if (action === 'generer') {
         const result = await getFiche(inscription.id_inscription)
         if (result?.fichier) {
@@ -96,6 +85,7 @@ function Inscriptions({ user, onCreate, onDetail }) {
       })
     }
     setInscriptionToValidate(null)
+    liste.recharger()
   }
 
  const columns = [
@@ -171,7 +161,7 @@ function Inscriptions({ user, onCreate, onDetail }) {
             </>
           )}
 
-          
+
 
         </div>
       ),
@@ -185,7 +175,7 @@ function Inscriptions({ user, onCreate, onDetail }) {
       <div className="gestion-heading">
         <div>
           <h1>Inscriptions</h1>
-          <p>{inscriptions.length} inscriptions enregistrées</p>
+          <p>{liste.total} inscription{liste.total !== 1 ? 's' : ''} correspondante{liste.total !== 1 ? 's' : ''}</p>
         </div>
         <button type="button" className="primary-button" onClick={onCreate}>
           + Nouvelle inscription
@@ -224,13 +214,22 @@ function Inscriptions({ user, onCreate, onDetail }) {
         ) : (
           <Tableau
             columns={columns}
-            rows={filtered}
+            rows={inscriptions}
             rowKey="id_inscription"
             emptyMessage="Aucune inscription trouvée."
             wrapperClassName="gestion-table-wrap"
             className="gestion-table"
           />
         )}
+
+        <Pagination
+          page={liste.page}
+          pages={liste.pages}
+          total={liste.total}
+          limite={liste.limite}
+          onChange={liste.setPage}
+          libelle="inscription(s)"
+        />
       </article>
 
       {inscriptionToValidate && (
