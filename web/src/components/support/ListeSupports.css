@@ -1,0 +1,78 @@
+/* ==========================================================================
+   Liste des supports publiés : recherche, filtres, tri, « Voir plus »
+   ========================================================================== */
+
+.supports-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.supports-entete h2 {
+  margin-bottom: 8px;
+  color: var(--heading);
+  font-size: 15px;
+}
+
+.supports-entete small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* Barre d'outils : recherche | formation | type | tri */
+.supports-outils {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.supports-outils input,
+.supports-outils select {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-main);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+}
+
+.supports-outils input:focus,
+.supports-outils select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: 0;
+}
+
+.supports-lien {
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.supports-voir-plus {
+  display: block;
+  margin: 4px auto 0;
+}
+
+@media (max-width: 760px) {
+  .supports-outils {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .supports-recherche {
+    grid-column: 1 / -1;
+  }
+}

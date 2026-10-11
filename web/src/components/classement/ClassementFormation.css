@@ -2,6 +2,10 @@
    Classement et notes d'attestation sur 20 (espace formateur)
    ========================================================================== */
 
+.classement-panel {
+  margin-top: 14px;
+}
+
 .classement-panel .panel-heading {
   gap: 12px;
 }
@@ -20,72 +24,327 @@
   font-size: 10px;
 }
 
-.classement-table td {
-  vertical-align: middle;
-}
-
-.classement-table strong,
-.classement-table small {
-  display: block;
-}
-
-.classement-table small {
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 8px;
-}
-
-.classement-rang {
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.classement-criteres {
+/* Résumé au-dessus du tableau */
+.classement-resume {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.classement-critere {
-  padding: 3px 7px;
-  border-radius: 10px;
-  color: #c62828;
-  background: rgba(198, 40, 40, 0.1);
-  font-size: 8px;
+.classement-resume span {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.classement-resume strong {
+  color: var(--heading);
+}
+
+.classement-resume .a-noter,
+.classement-resume .a-noter strong {
+  border-color: transparent;
+  color: #b26a00;
+  background: rgba(226, 160, 25, 0.14);
+}
+
+/* ─── Tableau ─── */
+.classement-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.classement-table th {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+  background: var(--page-bg);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-align: left;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.classement-critere.atteint {
+.classement-table th:first-child {
+  border-radius: 6px 0 0 6px;
+  text-align: center;
+}
+
+.classement-table th:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.classement-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.classement-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.classement-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.classement-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.classement-table td:first-child {
+  text-align: center;
+}
+
+/* Rang : pastille ronde, podium en or / argent / bronze */
+.classement-rang {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.classement-rang.podium-1 { color: #7a5800; background: #f6d365; }
+.classement-rang.podium-2 { color: #4a5560; background: #d5dbe0; }
+.classement-rang.podium-3 { color: #6b3d1e; background: #e8b48a; }
+
+.classement-etudiant {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.classement-etudiant .avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.classement-etudiant strong,
+.classement-etudiant small {
+  display: block;
+}
+
+.classement-etudiant strong {
+  color: var(--heading);
+  font-size: 11px;
+}
+
+.classement-etudiant small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+/* Paiement : pastille verte / rouge */
+.classement-pastille {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.classement-pastille.atteint {
   color: #2e7d32;
   background: rgba(46, 125, 50, 0.12);
 }
 
-.classement-note-suggeree {
-  color: var(--heading);
-  font-size: 12px;
-  font-weight: 700;
-  text-align: center;
+.classement-pastille.manque {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.1);
 }
 
+/* Présence : barre de progression + points */
+.classement-presence {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.classement-barre {
+  position: relative;
+  width: 70px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.classement-barre span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: #e2a019;
+}
+
+.classement-barre span.atteint {
+  background: #2e7d32;
+}
+
+.classement-presence small {
+  color: var(--text-main);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* Chiffres : note système */
+.classement-chiffre {
+  color: var(--heading);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.classement-chiffre small,
+.classement-finale small {
+  margin-left: 1px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* Saisie de la présentation */
 .classement-saisie {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .classement-saisie input {
-  width: 64px;
-  padding: 6px;
+  width: 56px;
+  padding: 6px 7px;
   border: 1px solid var(--line);
   border-radius: 5px;
   color: var(--text-main);
   background: var(--surface);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.classement-saisie input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: 0;
+}
+
+.classement-sur {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.classement-enregistrer:not(:disabled) {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.classement-saisie .row-action:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .classement-erreur {
+  display: block;
+  margin-top: 4px;
   color: #c62828;
+  font-size: 9px;
+}
+
+/* Note finale /20 : couleur selon le niveau */
+.classement-finale {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.classement-finale.bon { color: #2e7d32; background: rgba(46, 125, 50, 0.12); }
+.classement-finale.moyen { color: #b26a00; background: rgba(226, 160, 25, 0.16); }
+.classement-finale.faible { color: #c62828; background: rgba(198, 40, 40, 0.1); }
+
+.classement-finale.a-noter {
+  border: 1px dashed var(--line);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ─── Petit écran : chaque ligne devient une carte (libellé à gauche, valeur à droite) ─── */
+@media (max-width: 760px) {
+  .classement-table {
+    min-width: 0;
+  }
+
+  .classement-table thead {
+    display: none;
+  }
+
+  .classement-table,
+  .classement-table tbody,
+  .classement-table tr,
+  .classement-table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .classement-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .classement-table tbody tr {
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .classement-table td,
+  .classement-table td:first-child,
+  .classement-table tbody tr:last-child td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line);
+    text-align: right;
+  }
+
+  .classement-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .classement-table td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .classement-etudiant {
+    text-align: left;
+  }
+
+  .classement-table td[data-label="Présentation"] {
+    flex-wrap: wrap;
+  }
 }

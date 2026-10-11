@@ -1084,3 +1084,73 @@ Comme le logo, mais **stocké sur le serveur** : le logo du web est gardé dans 
 - Mobile : `tsc --noEmit` OK, 0 erreur ESLint.
 - Web : 0 erreur ESLint.
 
+## 26. Espace formateur (web) : formations en cartes, étudiants en fenêtre, supports programmés, avatar des commentaires
+
+| Fichier | Changements |
+|---|---|
+| `web/src/pages/formateur/AccueilFormateur.jsx` | « Mes formations » : cartes cliquables (nom, description sur 2 lignes, nombre d'étudiants) au lieu d'une liste avec tous les noms. Un clic ouvre une **fenêtre** (`Modal`) avec les étudiants : avatar, nom, e-mail, date d'inscription ; recherche au-delà de 5 étudiants. `currentUser={user}` passé à `SupportItem` |
+| `web/src/pages/formateur/AccueilFormateur.css` | Styles des cartes et de la fenêtre (remplacent `.formation-list` / `.formation-row`) |
+| `web/src/components/support/SupportsProgrammes.jsx` / `.css` | Chaque support programmé en carte : date façon agenda (jour, mois, heure), étiquettes (formation, contenu, « Étudiants prévenus » / « Annonce 1 h avant »), envoi relatif (« dans 2 jours »), « Supprimer » en rouge ; nombre de supports dans le titre. Formulaire de modification avec libellés (titre, date, pièce jointe) et boutons Annuler / Enregistrer |
+| `web/src/components/sidebar/Sidebar.css` | `.avatar.avatar-image { object-fit: cover }` : une photo n'est plus déformée dans un avatar |
+| `backend-imtech/models/formationModel.js` | `getEtudiantsByFormation` renvoie aussi `photo` et trie par nom |
+
+**Le « ? » à côté du champ de commentaire :** c'est l'avatar de la personne qui écrit (comme sur Facebook). L'espace formateur ne transmettait pas l'utilisateur connecté à `SupportItem` (`currentUser` vide) : sans photo ni nom, l'avatar affichait son caractère par défaut « ? ». Il affiche maintenant la photo du formateur, ou ses initiales.
+
+### Vérifications
+
+- Web : 0 erreur ESLint (2 avertissements `exhaustive-deps` déjà présents), `vite build` OK.
+- Backend : 81 tests verts.
+
+## 27. Espace formateur (web) : tableau « Classement et notes d'attestation » remis en forme
+
+Le tableau n'avait presque aucun style (aucune règle commune pour `.gestion-table th / td`). Il reste un **tableau** (plus pratique pour comparer les étudiants), remis en forme :
+
+| Fichier | Changements |
+|---|---|
+| `web/src/components/classement/ClassementFormation.jsx` | Résumé au-dessus (étudiants, notés, à noter). Colonnes : Rang (pastille, podium or / argent / bronze), Étudiant (avatar + jours de présence), Paiement (pastille ✓ / ✗ et points), Présence (barre de progression + points), Système /10, Présentation (saisie centrée « /10 », Entrée pour enregistrer, Effacer en rouge), Note finale /20 colorée (vert ≥ 14, orange ≥ 10, rouge en dessous ; « À noter » sinon) |
+| `web/src/components/classement/ClassementFormation.css` | Styles du tableau (en-tête, survol, pastilles, barre, notes). Sous 760 px, chaque ligne devient une carte (libellé à gauche via `data-label`, valeur à droite) |
+
+Aucun changement de calcul : mêmes données que `GET /formations/:id/classement`.
+
+### Vérifications
+
+- Web : 0 erreur ESLint, `vite build` OK.
+
+## 28. Espace formateur (web) : recherche, filtres, tri et pagination des supports
+
+**Problème :** « Supports et commentaires » affichait tous les supports à la suite, sans recherche ni tri. Les supports de chaque formation étaient en plus mis bout à bout : l'ordre n'était pas chronologique entre formations.
+
+| Fichier | Changements |
+|---|---|
+| `web/src/components/support/ListeSupports.jsx` (nouveau) | Recherche (titre, formation, texte du support sans les balises ; tous les mots doivent être présents), filtre par formation (si le formateur en a plusieurs), par type (texte seul, PDF, image, audio, vidéo), tri (plus récents, plus anciens, titre A → Z). Affichage par 5 avec « Voir plus (N restants) » ; compteur « X sur Y support(s) » ; « Effacer les filtres » quand rien ne correspond |
+| `web/src/components/support/ListeSupports.css` (nouveau) | Barre d'outils (une ligne ; deux colonnes sous 760 px) |
+| `web/src/pages/formateur/AccueilFormateur.jsx` / `.css` | Utilise `ListeSupports` à la place de la boucle sur `SupportItem` |
+| `backend-imtech/models/supportModel.js` | `getSupportsByFormation` renvoie aussi `id_formation` (filtre par formation) |
+
+Filtrage et tri faits dans le navigateur : les supports sont déjà tous chargés par la page.
+
+### Vérifications
+
+- Web : 0 erreur ESLint, `vite build` OK.
+- Backend : 81 tests verts.
+
+## 29. Formateur (web) : supports et supports programmés dans leurs propres pages
+
+**Problème :** l'Espace formateur regroupait tout sur une seule page (formations, classement, publication, supports programmés, supports publiés).
+
+Nouveau menu du formateur : **Espace formateur**, **Supports**, **Supports programmés**, Formations, Étudiants, Paramètres.
+
+| Fichier | Changements |
+|---|---|
+| `web/src/pages/formateur/AccueilFormateur.jsx` / `.css` | Ne garde que les formations (cartes + fenêtre des étudiants) et le classement / notes d'attestation ; titre « Mes formations et notes » |
+| `web/src/pages/formateur/SupportsFormateur.jsx` / `.css` (nouveaux) | Page « Supports » (`/dashboard/supports`) : formulaire de publication (styles déplacés depuis `AccueilFormateur.css`) + `ListeSupports`. Confirmation après envoi ; après une programmation, lien « Voir les supports programmés » |
+| `web/src/pages/formateur/ProgrammesFormateur.jsx` (nouveau) | Page « Supports programmés » (`/dashboard/programmes`) : `SupportsProgrammes` + bouton « Programmer un support » vers la page Supports |
+| `web/src/components/sidebar/Sidebar.jsx` | Entrées « Supports » (icône upload) et « Supports programmés » (icône calendrier), visibles par le formateur (et le Super Admin, qui voit tout le menu) |
+| `web/src/pages/dashboard/DashboardLayout.jsx` | Routes `supports` et `programmes` |
+
+Chemin `/dashboard/programmes` (et non `/dashboard/supports-programmes`) : la barre latérale marque un lien actif quand l'URL *commence* par son chemin ; « Supports » aurait été surligné aussi.
+
+### Vérifications
+
+- Web : 0 erreur, 0 avertissement ESLint sur les pages formateur, `vite build` OK.
+

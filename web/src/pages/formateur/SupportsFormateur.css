@@ -1,0 +1,84 @@
+/* ==========================================================================
+   Page Supports du formateur : formulaire de publication
+   ========================================================================== */
+
+.support-upload-panel {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.support-upload-panel select,
+.support-upload-panel input {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-main);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+}
+
+.support-upload-panel input[type="file"] {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 7px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--line));
+  color: var(--text-muted);
+  background: var(--accent-soft);
+  cursor: pointer;
+}
+
+.support-upload-panel input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 7px 11px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  color: #fff;
+  background: var(--accent);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.support-upload-panel input[type="file"]::file-selector-button:hover {
+  filter: brightness(1.1);
+}
+
+.support-upload-panel input[type="file"]:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.support-upload-panel input[type="file"]:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.support-upload-panel .support-programmer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-main);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.support-upload-panel .support-programmer input {
+  padding: 0;
+}
+
+.support-list {
+  margin-top: 22px;
+  margin-bottom: 22px;
+}
+
+/* Pièce jointe facultative sous l'éditeur de texte */
+.support-fichier {
+  display: grid;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}

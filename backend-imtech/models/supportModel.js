@@ -9,7 +9,7 @@ const STATUTS_SUPPORT = Object.freeze({ PROGRAMME: 'programme', PUBLIE: 'publie'
 // Supports publiés d'une formation, du plus récent au plus ancien, avec le formateur
 async function getSupportsByFormation(id_formation) {
   const sql = `
-    SELECT s.id_support, s.titre, s.contenu, s.fichier, s.date_publication, f.nom AS nom_formation, u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo as prof_photo, s.id_utilisateur
+    SELECT s.id_support, s.id_formation, s.titre, s.contenu, s.fichier, s.date_publication, f.nom AS nom_formation, u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo as prof_photo, s.id_utilisateur
     FROM support s
     JOIN utilisateur u ON s.id_utilisateur = u.id_utilisateur
     JOIN formation f ON f.id_formation=s.id_formation

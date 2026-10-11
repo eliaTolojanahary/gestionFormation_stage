@@ -1,55 +1,82 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from '../../components/header/Header'
-import Icon from '../../components/icon/Icon'
-import SupportItem from '../../components/support/SupportItem'
-import SupportsProgrammes from '../../components/support/SupportsProgrammes'
+import Modal from '../../components/modal/Modal'
+import Avatar from '../../components/avatar/Avatar'
 import ClassementFormation from '../../components/classement/ClassementFormation'
-import EditeurTexte from '../../components/editeur/EditeurTexte'
 import { useFormation } from '../../hooks/useFormation'
-import { useSupport } from '../../hooks/useSupport'
-import { toDatetimeLocal } from '../../utils/time'
-import { ACCEPT_SUPPORT, contenuVide } from '../../utils/texteRiche'
+import { formatDate } from '../../utils/time'
 import './AccueilFormateur.css'
 
-// Espace formateur : ses formations et leurs étudiants, classement / notes d'attestation,
-// rédaction / dépôt de supports (texte mis en forme, PDF, image, audio, vidéo ; envoi immédiat ou programmé), brouillons programmés et fil des supports
-// avec réactions et commentaires.
+// Étudiants d'une formation, en fenêtre ; recherche par nom ou e-mail au-delà de 5 étudiants
+function EtudiantsFormationModal({ formation, etudiants, onClose }) {
+  const [recherche, setRecherche] = useState('')
+  const filtre = recherche.trim().toLowerCase()
+  const visibles = etudiants.filter((etudiant) =>
+    `${etudiant.prenom} ${etudiant.nom} ${etudiant.email}`.toLowerCase().includes(filtre)
+  )
+
+  return (
+    <Modal
+      eyebrow={`${etudiants.length} étudiant(s) inscrit(s)`}
+      title={formation.nom}
+      titleId="etudiants-formation-titre"
+      onClose={onClose}
+    >
+      {etudiants.length === 0 ? (
+        <p className="muted-text">Aucun étudiant inscrit pour le moment.</p>
+      ) : (
+        <>
+          {etudiants.length > 5 && (
+            <input
+              className="etudiants-recherche"
+              value={recherche}
+              onChange={(event) => setRecherche(event.target.value)}
+              placeholder="Rechercher un étudiant…"
+              aria-label="Rechercher un étudiant"
+            />
+          )}
+          <ul className="etudiants-modal-liste">
+            {visibles.map((etudiant) => (
+              <li key={etudiant.id_etudiant}>
+                <Avatar photo={etudiant.photo} prenom={etudiant.prenom} nom={etudiant.nom} shape="circle" />
+                <div>
+                  <strong>{etudiant.prenom} {etudiant.nom}</strong>
+                  <small>{etudiant.email}</small>
+                </div>
+                <small className="etudiant-inscrit-le">
+                  Inscrit le {formatDate(etudiant.date_inscription).split(',')[0]}
+                </small>
+              </li>
+            ))}
+            {visibles.length === 0 && <li className="muted-text">Aucun étudiant ne correspond.</li>}
+          </ul>
+        </>
+      )}
+    </Modal>
+  )
+}
+
+// Espace formateur : ses formations (un clic ouvre la liste des étudiants) et le classement /
+// notes d'attestation. Les supports ont leurs pages : « Supports » et « Supports programmés ».
 function AccueilFormateur({ user }) {
   const { formations, isLoading, error, getEtudiants } = useFormation()
-  const { getSupports, getSupportsProgrammes, uploadSupport, isLoading: supportLoading, error: supportError } = useSupport()
 
-  const [supports, setSupports] = useState([])
-  const [programmes, setProgrammes] = useState([])
   const [studentsByFormation, setStudentsByFormation] = useState({})
-  const [selectedFormation, setSelectedFormation] = useState('')
-  const [title, setTitle] = useState('')
-  // Texte mis en forme (HTML de l'éditeur) ; le fichier est facultatif s'il y a un texte
-  const [contenu, setContenu] = useState('')
-  const [file, setFile] = useState(null)
-  // Envoi programmé : vide = envoi immédiat
-  const [programmer, setProgrammer] = useState(false)
-  const [dateEnvoi, setDateEnvoi] = useState('')
-  const fileRef = useRef(null)
+  // Formation dont on affiche les étudiants en fenêtre
+  const [formationOuverte, setFormationOuverte] = useState(null)
 
   const userId = user?.id_utilisateur || user?.id
   const ownFormations = formations.filter(
     (formation) => Number(formation.id_utilisateur) === Number(userId)
   )
 
-  // Charge les supports puis les étudiants de chaque formation du formateur
+  // Charge les étudiants de chaque formation du formateur
   useEffect(() => {
     if (!ownFormations.length) return
 
     let cancelled = false
 
-    async function loadSupports() {
-      const supportGroups = await Promise.all(
-        ownFormations.map((formation) => getSupports(formation.id_formation))
-      )
-      if (!cancelled) setSupports(supportGroups.flat())
-      const brouillons = await getSupportsProgrammes()
-      if (!cancelled) setProgrammes(brouillons)
-
+    async function loadEtudiants() {
       const studentGroups = await Promise.all(
         ownFormations.map(async (formation) => [
           formation.id_formation,
@@ -59,51 +86,11 @@ function AccueilFormateur({ user }) {
       if (!cancelled) setStudentsByFormation(Object.fromEntries(studentGroups))
     }
 
-     loadSupports()
-    
+    loadEtudiants()
+
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formations.length, userId])
-
-  // Recharge les supports publiés et les brouillons programmés
-  async function rechargerSupports() {
-    const supportGroups = await Promise.all(
-      ownFormations.map((formation) => getSupports(formation.id_formation))
-    )
-    setSupports(supportGroups.flat())
-    setProgrammes(await getSupportsProgrammes())
-  }
-
-  // Un support = un texte, un fichier, ou les deux ; sans fichier, le titre est obligatoire
-  const aUnTexte = !contenuVide(contenu)
-  const supportComplet = Boolean(selectedFormation) && (Boolean(file) || (aUnTexte && Boolean(title.trim())))
-
-  // Envoi d'un support : envoyé tout de suite, ou programmé à l'heure choisie (brouillon modifiable jusque-là)
-  async function handleUpload(event) {
-    event.preventDefault()
-    if (!supportComplet) return
-    if (programmer && !dateEnvoi) return
-
-    const formData = new FormData()
-    formData.append('id_formation', selectedFormation)
-    formData.append('titre', title.trim() || file.name)
-    if (aUnTexte) formData.append('contenu', contenu)
-    if (file) formData.append('fichier', file)
-    // Heure locale du navigateur convertie en ISO : le serveur reçoit l'instant exact
-    if (programmer) formData.append('date_envoi_prevue', new Date(dateEnvoi).toISOString())
-
-    try {
-      await uploadSupport(formData)
-      setTitle('')
-      setContenu('')
-      setFile(null)
-      setProgrammer(false)
-      setDateEnvoi('')
-      if (fileRef.current) fileRef.current.value = ''
-      await rechargerSupports()
-    } catch {
-      // l'erreur est déjà exposée via supportError, affichée plus bas dans le rendu
-    }
-  }
 
   return (
     <section className="workspace-page">
@@ -112,13 +99,12 @@ function AccueilFormateur({ user }) {
       <div className="workspace-heading">
         <div>
           <span className="eyebrow">Espace formateur</span>
-          <h1>Mes formations et supports</h1>
-          <p>Retrouvez vos étudiants, vos supports et les échanges associés.</p>
+          <h1>Mes formations et notes</h1>
+          <p>Retrouvez vos étudiants et attribuez les notes d'attestation.</p>
         </div>
       </div>
 
-      {(error || supportError) && <p className="form-error">{error || supportError}</p>}
-
+      {error && <p className="form-error">{error}</p>}
       <div className="workspace-panel">
         <div className="panel-heading">
           <div>
@@ -132,128 +118,43 @@ function AccueilFormateur({ user }) {
         ) : ownFormations.length === 0 ? (
           <p className="muted-text">Aucune formation ne vous est attribuée.</p>
         ) : (
-          <div className="formation-list">
-            {ownFormations.map((formation) => (
-              <article className="formation-row" key={formation.id_formation}>
-                <strong>{formation.nom}</strong>
-                <span>{formation.description || 'Aucune description.'}</span>
-                <small>
-                  {(studentsByFormation[formation.id_formation] || []).length} étudiant(s)
-                </small>
-
-                {(studentsByFormation[formation.id_formation] || []).map((student) => (
-                  <span key={student.id_etudiant}>
-                    {student.prenom} {student.nom}
+          <div className="formation-cartes">
+            {ownFormations.map((formation) => {
+              const etudiants = studentsByFormation[formation.id_formation]
+              return (
+                <button
+                  type="button"
+                  className="formation-carte"
+                  key={formation.id_formation}
+                  onClick={() => setFormationOuverte(formation)}
+                >
+                  <strong>{formation.nom}</strong>
+                  <span className="formation-carte-description">
+                    {formation.description || 'Aucune description.'}
                   </span>
-                ))}
-              </article>
-            ))}
+                  <span className="formation-carte-pied">
+                    <span className="formation-carte-compte">
+                      {etudiants ? `${etudiants.length} étudiant(s)` : 'Chargement…'}
+                    </span>
+                    <span className="formation-carte-lien">Voir les étudiants →</span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
+
+      {formationOuverte && (
+        <EtudiantsFormationModal
+          formation={formationOuverte}
+          etudiants={studentsByFormation[formationOuverte.id_formation] || []}
+          onClose={() => setFormationOuverte(null)}
+        />
+      )}
 
       {ownFormations.length > 0 && <ClassementFormation formations={ownFormations} />}
 
-      <form className="workspace-panel support-upload-panel" onSubmit={handleUpload}>
-        <div className="panel-heading">
-          <div>
-            <h2>Publier un support</h2>
-            <p>
-              Rédigez un texte mis en forme (gras, titres, listes, liens) et / ou joignez un PDF, une image,
-              un audio ou une vidéo (50 Mo max). Envoyé tout de suite, ou programmé : les étudiants sont
-              prévenus une heure avant, puis le support est envoyé automatiquement à l'heure choisie.
-            </p>
-          </div>
-          <Icon name="upload" />
-        </div>
-
-        <select value={selectedFormation} onChange={(event) => setSelectedFormation(event.target.value)}>
-          <option value="">Choisir une formation</option>
-          {ownFormations.map((formation) => (
-            <option key={formation.id_formation} value={formation.id_formation}>
-              {formation.nom}
-            </option>
-          ))}
-        </select>
-
-        <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder={file ? 'Titre du support (nom du fichier par défaut)' : 'Titre du support'}
-        />
-
-        <EditeurTexte
-          value={contenu}
-          onChange={setContenu}
-          placeholder="Rédigez votre support : consignes, résumé du cours, liens utiles…"
-          disabled={!selectedFormation || supportLoading}
-        />
-
-        <label className="support-fichier">
-          <span>Pièce jointe (facultative) : PDF, image, audio ou vidéo</span>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={ACCEPT_SUPPORT}
-            onChange={(event) => setFile(event.target.files?.[0] || null)}
-            disabled={!selectedFormation || supportLoading}
-          />
-        </label>
-
-        <label className="support-programmer">
-          <input
-            type="checkbox"
-            checked={programmer}
-            onChange={(event) => setProgrammer(event.target.checked)}
-          />
-          Programmer l'envoi
-        </label>
-
-        {programmer && (
-          <input
-            type="datetime-local"
-            value={dateEnvoi}
-            min={toDatetimeLocal(new Date())}
-            onChange={(event) => setDateEnvoi(event.target.value)}
-            aria-label="Date et heure d'envoi"
-            required
-          />
-        )}
-
-        <button
-          type="submit"
-          className="primary-button"
-          disabled={!supportComplet || (programmer && !dateEnvoi) || supportLoading}
-        >
-          {programmer ? "Programmer l'envoi" : 'Envoyer maintenant'}
-        </button>
-      </form>
-
-      {ownFormations.length > 0 && <SupportsProgrammes supports={programmes} onChange={rechargerSupports} />}
-
-      <div className="support-list">
-        <h2>Supports et commentaires</h2>
-
-        {supports.length === 0 ? (
-          <p className="muted-text">Aucun support publié.</p>
-        ) : (
-          
-          supports.map((support) => (
-            <SupportItem
-              key={support.id_support}
-              support={support}
-              userId={userId}
-              userRole={user.role}
-              commentBusy={supportLoading}
-              canComment={true}
-              canDeleteSupport={Number(support.id_utilisateur) === Number(userId)}
-              onSupportDeleted={(deletedId) => {
-                setSupports((prev) => prev.filter((s) => s.id_support !== deletedId))
-              }}
-            />
-          ))
-        )}
-      </div>
     </section>
   )
 }

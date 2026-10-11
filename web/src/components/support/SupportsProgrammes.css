@@ -2,43 +2,128 @@
    Supports programmés (espace formateur)
    ========================================================================== */
 
-.programme-liste {
-  display: grid;
-  gap: 8px;
+.programme-compte {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+  font-size: 10px;
+  vertical-align: middle;
 }
 
-.programme-ligne {
-  display: flex;
-  flex-wrap: wrap;
+.programme-liste {
+  display: grid;
+  gap: 10px;
+}
+
+/* Une carte : date (agenda) | titre + étiquettes | actions */
+.programme-carte {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px;
+  gap: 14px;
+  padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--surface);
 }
 
-.programme-ligne strong,
-.programme-ligne small {
-  display: block;
+.programme-date {
+  display: grid;
+  justify-items: center;
+  width: 58px;
+  padding: 7px 0;
+  border-radius: 8px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  line-height: 1.1;
 }
 
-.programme-ligne small {
-  margin-top: 3px;
+.programme-date strong {
+  font-size: 20px;
+}
+
+.programme-date span {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.programme-date small {
+  margin-top: 4px;
+  color: var(--text-main);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.programme-infos {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.programme-infos > strong {
+  overflow: hidden;
+  color: var(--heading);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.programme-infos > small {
   color: var(--text-muted);
   font-size: 9px;
+}
+
+.programme-etiquettes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.programme-etiquette {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.programme-etiquette.prevenus {
+  border-color: transparent;
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
 }
 
 .programme-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
+/* Formulaire de modification */
 .programme-edition {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.programme-edition-champs {
   display: grid;
-  justify-content: stretch;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.programme-edition label {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 9px;
 }
 
 .programme-edition input {
@@ -49,4 +134,19 @@
   background: var(--surface);
   font: inherit;
   font-size: 10px;
+}
+
+@media (max-width: 640px) {
+  .programme-carte {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .programme-carte:not(.programme-edition) .programme-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .programme-edition-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -29,11 +29,12 @@ async function getFormationById(id_formation) {
 // Étudiants ayant une inscription active à la formation
 async function getEtudiantsByFormation(id_formation) {
   const sql = `
-    SELECT e.id_etudiant, u.nom, u.prenom, u.email, i.date_inscription
+    SELECT e.id_etudiant, u.nom, u.prenom, u.email, u.photo, i.date_inscription
     FROM inscription i
     JOIN etudiant e ON i.id_etudiant = e.id_etudiant
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
     WHERE i.id_formation = ? AND i.etat = true
+    ORDER BY u.nom, u.prenom
   `;
   const [rows] = await db.query(sql, [id_formation]);
   return rows;

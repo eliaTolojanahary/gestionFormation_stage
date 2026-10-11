@@ -47,7 +47,7 @@ Codes d'erreur : 400 (champ manquant / invalide), 401 (non connecté / session r
 |---|---|---|
 | GET | /formations | connecté (un FO ne voit que les siennes) |
 | GET | /formations/:id | connecté |
-| GET | /formations/:id/etudiants | SA, AC, FO (un FO : uniquement ses formations) |
+| GET | /formations/:id/etudiants | SA, AC, FO (un FO : uniquement ses formations) — `id_etudiant, nom, prenom, email, photo, date_inscription`, triés par nom |
 | GET | /formations/:id/classement | SA, AC, FO (un FO : uniquement ses formations) — classement + note système /10 (paiement 2 ou 5 + présence 2, 3 ou 5, enregistrée en base) |
 | POST / PUT / DELETE | /formations(/:id) | SA |
 | PUT | /formations/:id/image | SA — multipart, champ `image` (JPEG / PNG / WEBP, 5 Mo) : couverture de la vitrine ; renvoie `image` (`formations/xxx.jpg`) |

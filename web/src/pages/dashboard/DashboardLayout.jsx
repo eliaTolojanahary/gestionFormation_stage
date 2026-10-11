@@ -23,6 +23,8 @@ import Assistance from '../assistance/Assistance'
 import Notifications from '../notifications/Notifications'
 import Parametres from '../parametres/Parametres'
 import AccueilFormateur from '../formateur/AccueilFormateur'
+import SupportsFormateur from '../formateur/SupportsFormateur'
+import ProgrammesFormateur from '../formateur/ProgrammesFormateur'
 import { useNotification } from '../../hooks/useNotification'
 import { apiRequest } from '../../utils/api'
 import '../WorkspacePages.css'
@@ -323,6 +325,8 @@ const [settings, setSettings] = useState(function () {
         <Route path="documents" element={<Documents user={currentUser} />} />
         <Route path="assistance" element={<Assistance user={currentUser} />} />
         <Route path="formateur" element={<AccueilFormateur user={currentUser} />} />
+        <Route path="supports" element={<SupportsFormateur user={currentUser} />} />
+        <Route path="programmes" element={<ProgrammesFormateur user={currentUser} />} />
         <Route path="notifications" element={<Notifications user={currentUser} />} />
         <Route
           path="parametres"

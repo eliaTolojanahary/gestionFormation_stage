@@ -5,6 +5,8 @@ import './Sidebar.css'
 // Menu latéral : [icône, libellé, chemin]. Les entrées affichées dépendent du rôle (voir Sidebar).
 const navigationItems = [
   ['book', 'Espace formateur', '/dashboard/formateur'],
+  ['upload', 'Supports', '/dashboard/supports'],
+  ['calendar', 'Supports programmés', '/dashboard/programmes'],
   ['chart', 'Tableau de bord', '/dashboard'],
   ['users', 'Etudiants', '/dashboard/etudiants'],
   ['users', 'Utilisateurs', '/dashboard/utilisateurs'],
@@ -37,7 +39,7 @@ function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
     )
   } else if (user?.role === 'Formateur') {
     // L'assistance traite les demandes des étudiants : réservée à l'Accueil et au Super Admin
-    allowedItems = navigationItems.filter(([, label]) => ['Espace formateur', 'Formations', 'Etudiants', 'Parametres'].includes(label))
+    allowedItems = navigationItems.filter(([, label]) => ['Espace formateur', 'Supports', 'Supports programmés', 'Formations', 'Etudiants', 'Parametres'].includes(label))
   }
 
   return (

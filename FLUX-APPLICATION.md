@@ -1126,7 +1126,11 @@ Objectif : le formateur publie un support comme dans un petit CMS. Un support co
 ou les deux. L'envoi immédiat ou programmé ([§6.15](#615-envoi-programmé-des-supports)), les
 commentaires et les réactions ne changent pas.
 
-#### a) Rédaction (web, espace formateur)
+#### a) Rédaction (web, page « Supports » du formateur)
+
+Le menu du formateur sépare trois pages : **Espace formateur** (formations, étudiants en fenêtre,
+classement et notes d'attestation), **Supports** (publication + supports publiés avec recherche,
+filtres et tri) et **Supports programmés** (brouillons en attente d'envoi).
 
 1. Le formateur choisit la formation et saisit le titre.
 2. Il rédige dans l'éditeur (`components/editeur/EditeurTexte.jsx`) : **gras**, *italique*,
