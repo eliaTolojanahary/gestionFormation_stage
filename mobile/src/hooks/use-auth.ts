@@ -1,5 +1,7 @@
 // hooks/use-auth.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Alert, AppState } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ENDPOINTS } from '../constants/api';
 import {
   apiRequest, clearSession, readStoredToken, readStoredUser,
@@ -52,12 +54,40 @@ export function useAuth() {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState('');
 
-  
-  // Session expirée / révoquée côté serveur : on repasse sur l'écran de connexion
+  const router = useRouter();
+  // Évite plusieurs alertes quand plusieurs requêtes reçoivent 401 en même temps
+  const sessionFermee = useRef(false);
+
+  // Session expirée / révoquée côté serveur (ex. « Se déconnecter partout » depuis un autre
+  // appareil) : on oublie l'utilisateur ET on repasse sur l'écran de connexion
   useEffect(() => {
-    setOnSessionExpiree(() => setUser(null));
+    setOnSessionExpiree(() => {
+      setUser(null);
+      if (sessionFermee.current) return;
+      sessionFermee.current = true;
+      router.replace('/login');
+      Alert.alert('Session fermée', 'Vous avez été déconnecté. Veuillez vous reconnecter.');
+    });
     return () => setOnSessionExpiree(null);
-  }, []);
+  }, [router]);
+
+  // Sans requête, l'appareil ne saurait pas que sa session a été révoquée : on vérifie
+  // quand l'application revient au premier plan et toutes les minutes tant qu'on est connecté
+  useEffect(() => {
+    if (!user) return;
+    sessionFermee.current = false;
+    const verifierSession = () => {
+      if (AppState.currentState === 'active') apiRequest(ENDPOINTS.PROFIL).catch(() => {});
+    };
+    const abonnement = AppState.addEventListener('change', (etat) => {
+      if (etat === 'active') verifierSession();
+    });
+    const intervalle = setInterval(verifierSession, 60 * 1000);
+    return () => {
+      abonnement.remove();
+      clearInterval(intervalle);
+    };
+  }, [user]);
 
   // Au démarrage : reprend l'utilisateur stocké s'il a un rôle autorisé, sinon nettoie
   useEffect(() => {

@@ -1065,3 +1065,22 @@ Comme le logo, mais **stocké sur le serveur** : le logo du web est gardé dans 
 
 1. Exécuter le bloc **010** de `alter2.sql` (table `parametre_application`).
 2. Redémarrer le backend, puis choisir une image (portrait, ≥ 1200×1800 px conseillé) dans Paramètres > Apparence en Super Admin.
+
+## 25. « Se déconnecter partout » : les autres appareils sont vraiment renvoyés à la connexion
+
+**Problème :** le serveur révoquait bien les sessions (`PUT /auth/logout-all`), mais rien ne le montrait :
+- un appareil déconnecté ne s'en apercevait qu'à sa **prochaine requête** (aucune vérification en tâche de fond) ;
+- sur le **mobile**, le 401 effaçait l'utilisateur mais **aucun écran ne renvoyait vers la connexion** : le téléphone restait sur les onglets, avec des erreurs à chaque action.
+
+| Fichier | Changements |
+|---|---|
+| `mobile/src/hooks/use-auth.ts` | Session révoquée → `router.replace('/login')` + alerte « Session fermée » (une seule fois même si plusieurs requêtes reçoivent 401). Vérification de la session (`GET /auth/profil`) au retour au premier plan (`AppState`) et toutes les minutes tant qu'on est connecté |
+| `web/src/pages/dashboard/DashboardLayout.jsx` | Vérification de la session quand l'onglet redevient visible et toutes les minutes ; le 401 renvoie déjà à `/login` (`utils/api.js`) |
+
+**À savoir pour tester :** deux onglets du même navigateur partagent le même token, donc la même session : ce ne sont pas « d'autres appareils ». Tester avec deux navigateurs différents, ou le web + le téléphone. Un étudiant qui garde l'application ouverte au premier plan est compté présent ce jour-là (chaque requête marque la présence), ce qui correspond bien à « a utilisé l'application ».
+
+### Vérifications
+
+- Mobile : `tsc --noEmit` OK, 0 erreur ESLint.
+- Web : 0 erreur ESLint.
+

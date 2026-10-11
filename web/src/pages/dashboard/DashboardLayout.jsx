@@ -24,6 +24,7 @@ import Notifications from '../notifications/Notifications'
 import Parametres from '../parametres/Parametres'
 import AccueilFormateur from '../formateur/AccueilFormateur'
 import { useNotification } from '../../hooks/useNotification'
+import { apiRequest } from '../../utils/api'
 import '../WorkspacePages.css'
 
 // Vue affichée dans une section : 'list', 'detail', 'create' ou 'edit' (+ id de l'élément)
@@ -36,6 +37,21 @@ function DashboardLayout(props) {
   const onLogout = props.onLogout
   const updateCurrentUser = props.updateCurrentUser
 
+
+  // Session révoquée depuis un autre appareil (« Se déconnecter partout ») : sans requête,
+  // ce navigateur ne le saurait qu'au prochain clic. On vérifie donc la session quand l'onglet
+  // revient au premier plan et toutes les minutes ; un 401 renvoie à la connexion (utils/api.js).
+  useEffect(() => {
+    function verifierSession() {
+      if (document.visibilityState === 'visible') apiRequest('/auth/profil').catch(() => {})
+    }
+    document.addEventListener('visibilitychange', verifierSession)
+    const intervalle = window.setInterval(verifierSession, 60 * 1000)
+    return () => {
+      document.removeEventListener('visibilitychange', verifierSession)
+      window.clearInterval(intervalle)
+    }
+  }, [])
 
   const notificationData = useNotification()
   const notifications = notificationData.notifications

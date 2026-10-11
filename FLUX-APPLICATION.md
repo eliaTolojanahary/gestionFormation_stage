@@ -416,7 +416,11 @@ sequenceDiagram
 - *Paramètres → Sessions* : liste des appareils connectés (navigateur, IP, date) ; la session
   courante est signalée, **les tokens ne sont jamais renvoyés**.
 - *Déconnecter les autres appareils* (`PUT /auth/logout-all`) : désactive toutes les sessions
-  sauf la courante.
+  sauf la courante. Les appareils déconnectés le voient **dans la minute** : le web et l'application
+  mobile vérifient la session (`GET /auth/profil`) toutes les minutes et au retour au premier plan ;
+  le 401 renvoie à l'écran de connexion (sur mobile, avec l'alerte « Session fermée »).
+  Deux onglets du même navigateur partagent la même session : ils ne comptent pas comme
+  « autres appareils ».
 - *Changer le mot de passe* : vérifie l'ancien, enregistre le nouveau (8 caractères min.)
   et **déconnecte les autres appareils**.
 
