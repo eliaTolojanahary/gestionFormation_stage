@@ -1080,6 +1080,92 @@ sequenceDiagram
 - Une même formation choisie deux fois ne compte qu'une fois ; 1 à 4 tranches par formation ;
   mot de passe de 8 caractères minimum ; e-mail déjà utilisé → 409.
 
+#### c) Images de la vitrine
+
+*Ajouté le 11/10/2026.*
+
+- Le bandeau du haut affiche le titre **« Découvrir »** sur une image de réseau de neurones
+  (`mobile/assets/images/fond-decouvrir.jpg`, embarquée dans l'application), sous un voile bleu
+  nuit qui garde le texte lisible. Il remplit tout le haut de l'écran, barre d'état comprise.
+- **Fond modifiable par le Super Admin** : web, Paramètres > Apparence > « Fond de la vitrine
+  mobile » → `PUT /vitrine/fond` (image enregistrée dans `uploads/vitrine/`, chemin gardé dans la
+  table `parametre_application`, clé `fond_vitrine`). « Par défaut » → `DELETE /vitrine/fond`.
+  `GET /public/vitrine` renvoie ce chemin dans `presentation.fond` ; l'application mobile l'affiche,
+  ou l'image embarquée si `fond` est `null`. Contrairement au logo du web (gardé dans le navigateur),
+  le fond est stocké sur le serveur, car c'est l'application mobile qui l'affiche.
+- Chaque formation a une **photo de couverture** : colonne `formation.image`
+  (`formations/xxx.jpg` dans `uploads/`). Le Super Admin la choisit dans le formulaire de la
+  formation (web) → `PUT /formations/:id/image`. Sans image, la couverture reste une couleur avec
+  les initiales.
+- Les couvertures sont **publiques** : la vitrine est consultée sans connexion, le dossier
+  `uploads/formations` (et `uploads/vitrine` pour le fond) est donc servi sans token ni filigrane
+  (contrairement aux supports et documents).
+- Images de démonstration : photos libres de droits de Wikimedia Commons, téléchargées et
+  recadrées par `node scripts/fichiersDemo.js`.
+
+| Image | Fichier Wikimedia Commons | Auteur | Licence |
+|---|---|---|---|
+| Fond « Découvrir » (`mobile/assets/images/fond-decouvrir.jpg`) | Neural network - Midjourney and Grok.png | Midjourney (prompt suggéré par Grok) | Domaine public |
+| Développement web | Colorful code (Unsplash).jpg | Markus Spiske | CC0 |
+| Bureautique | Working in open office space (Unsplash).jpg | Crew | CC0 |
+| Réseaux informatiques | EthernetSwitch.jpg | Raysonho (Open Grid Scheduler) | CC0 |
+| Infographie | Math tools utensils (Unsplash).jpg | Jazmin Quaynor | CC0 |
+| Python pour débutants | Laptop coding programs (Unsplash).jpg | Tirza van Dijk | CC0 |
+| Excel avancé | Desktop with laptop and calculator (Unsplash).jpg | Auteur inconnu | CC0 |
+
+### 6.18 Supports mis en forme : texte riche, audio, vidéo et liens
+
+*Ajouté le 11/10/2026.*
+
+Objectif : le formateur publie un support comme dans un petit CMS. Un support contient un
+**titre**, et au choix un **texte mis en forme**, une **pièce jointe** (PDF, image, audio, vidéo),
+ou les deux. L'envoi immédiat ou programmé ([§6.15](#615-envoi-programmé-des-supports)), les
+commentaires et les réactions ne changent pas.
+
+#### a) Rédaction (web, espace formateur)
+
+1. Le formateur choisit la formation et saisit le titre.
+2. Il rédige dans l'éditeur (`components/editeur/EditeurTexte.jsx`) : **gras**, *italique*,
+   souligné, barré, titre / sous-titre, listes à puces ou numérotées, citation, **lien** (sur le
+   texte sélectionné ; `www.site.com` devient `https://www.site.com`).
+3. Il joint éventuellement un fichier (50 Mo max) : PDF, image, audio (MP3, M4A, OGG, WAV) ou
+   vidéo (MP4, WEBM, MOV).
+4. Le formulaire envoie `titre`, `contenu` (le HTML de l'éditeur) et `fichier` à `POST /supports`.
+   Un brouillon programmé se modifie de la même façon (`PUT /supports/:id`).
+
+#### b) Contrôles du serveur
+
+```
+contenu (HTML du navigateur)
+   │  utils/contenuRiche.js — sanitize-html, liste blanche
+   ▼
+<p> <br> <strong> <em> <u> <s> <h2> <h3> <ul> <ol> <li> <blockquote> <a href="http(s)|mailto">
+   │  tout le reste supprimé (script, style, attributs on*, images, iframes, javascript:...)
+   ▼
+support.contenu (MEDIUMTEXT)   ← HTML toujours propre en base
+```
+
+- Il faut un texte **ou** un fichier ; sans fichier, le titre est obligatoire. Un texte vide
+  laissé par l'éditeur (`<p><br></p>`) compte comme « pas de texte ».
+- Un brouillon sans fichier ne peut pas perdre son texte.
+- Pourquoi nettoyer côté serveur : le texte est affiché chez **tous** les étudiants de la
+  formation. Sans liste blanche, un `<script>` glissé dans le texte (formateur malveillant ou
+  compte volé) s'exécuterait chez eux (faille **XSS**) et pourrait voler leur session.
+
+#### c) Lecture
+
+| | Web (`SupportItem` → `ContenuSupport`) | Mobile (détail du support) |
+|---|---|---|
+| Texte | HTML injecté tel quel (déjà nettoyé) | `TexteRiche` : balises converties en composants natifs `<Text>` / `<View>` |
+| Liens | Nouvel onglet, `rel="noopener noreferrer"` | Ouverts dans le navigateur (`Linking`), http(s) / mailto seulement |
+| Audio / vidéo | Lecteur intégré, sans bouton « Télécharger » ni clic droit | Lecteur sécurisé (`app/lecteur.tsx`) : lecteur HTML5 dans la WebView, captures bloquées |
+| PDF / image | Inchangé (lien, fichier filigrané) | Inchangé (lecteur sécurisé, filigrane) |
+
+Les fichiers audio / vidéo passent par le même contrôle d'accès que les autres supports
+([§6.14](#614-consultation-sécurisée-des-documents)) mais **sans filigrane** (impossible à
+ajouter à la volée) ; le serveur les sert par morceaux (`Range`) pour permettre d'avancer dans
+la lecture. Dans la liste des documents (web), un support texte seul n'apparaît pas (pas de fichier).
+
 ---
 
 ## 7. Sécurité
@@ -1096,6 +1182,7 @@ sequenceDiagram
 | Fuite d'informations techniques | Les erreurs 500 renvoient un message générique |
 | Énumération des comptes | « Mot de passe oublié » renvoie la même réponse que l'e-mail existe ou non |
 | Fichiers malveillants | Liste blanche des types de fichiers et taille maximale à l'upload |
+| Script injecté dans le texte d'un support (XSS) | HTML nettoyé à l'enregistrement par une liste blanche de balises (`sanitize-html`), liens http(s) / mailto uniquement ([§6.18](#618-supports-mis-en-forme--texte-riche-audio-vidéo-et-liens)) |
 | Accès aux fichiers par URL | Fichiers servis uniquement à un utilisateur connecté ayant le droit de les voir ([§6.14](#614-consultation-sécurisée-des-documents)) |
 | Fuite des documents hors d'IMTECH | Filigrane au nom de la personne, lecteur mobile sans téléchargement, captures bloquées sur mobile |
 | Secret JWT faible ou absent | Le serveur refuse de démarrer sans `JWT_SECRET` |
@@ -1129,7 +1216,7 @@ une erreur, et un **gestionnaire unique** (dans `app.js`) construit la réponse.
 
 ### 9.1 Tests automatisés du backend
 
-Lancement : `cd backend-imtech && npm test` (69 tests, sans base de données : les models
+Lancement : `cd backend-imtech && npm test` (81 tests, sans base de données : les models
 sont remplacés par des simulations).
 
 | Fichier | Ce qui est vérifié |
@@ -1139,8 +1226,9 @@ sont remplacés par des simulations).
 | `tests/classement.test.js` | Jours de cours sans les week-ends, points de paiement (5 / 2) et de présence (2 / 3 / 5), note système de 4 à 10, note finale /20, égalités au classement |
 | `tests/supportProgramme.test.js` | Annonce 1 h avant (texte, destinataires), envoi automatique (étudiants + formateur), pas de doublon, date d'envoi invalide ou passée refusée, brouillon d'un autre formateur ou déjà envoyé non modifiable |
 | `tests/commentairesReactions.test.js` | Fil de discussion (ordre, réponses rattachées, réponses orphelines masquées), réponse refusée sur un autre support, réaction inconnue ou sur un support non publié refusée, 👎 enregistré, avis compétent / non compétent / pas assez d'avis et tri |
-| `tests/vitrine.test.js` | Formulaire d'inscription en ligne (champs, mot de passe, tranches, doublons), inscription à 2 formations (2 inscriptions « en ligne », 2 paiements en attente, total), e-mail déjà utilisé, validation qui reprend le paiement déclaré, route publique limitée à 5 essais par heure |
-| `tests/fichiers.test.js` | Fichier refusé sans connexion, support refusé à un étudiant non inscrit, PDF et image filigranés et sans cache, token accepté dans l'URL, documents administratifs refusés aux étudiants, routes `/supports/:id` toujours accessibles, `../` impossible, support Word refusé à l'upload |
+| `tests/vitrine.test.js` | Formulaire d'inscription en ligne (champs, mot de passe, tranches, doublons), inscription à 2 formations (2 inscriptions « en ligne », 2 paiements en attente, total), e-mail déjà utilisé, validation qui reprend le paiement déclaré, route publique limitée à 5 essais par heure, fond du bandeau (enregistrement, retour au fond par défaut, modification refusée sans connexion) |
+| `tests/fichiers.test.js` | Fichier refusé sans connexion, support refusé à un étudiant non inscrit, PDF et image filigranés et sans cache, token accepté dans l'URL, documents administratifs refusés aux étudiants, routes `/supports/:id` toujours accessibles, `../` impossible, support Word refusé à l'upload, couverture de formation publique sans filigrane |
+| `tests/contenuRiche.test.js` | Texte mis en forme : balises gardées ou converties, XSS supprimé (script, `onclick`, `javascript:`), liens en nouvel onglet, texte vide ; support texte seul, support vide ou sans titre refusé, texte d'un brouillon sans fichier non supprimable |
 | `tests/autorisations.test.js` | Tests HTTP de bout en bout : 401 sans token, session révoquée refusée, étudiant ne pouvant pas modifier un autre compte ni changer son rôle, accès au tableau de paiement d'autrui refusé, tokens jamais renvoyés, erreur 500 sans fuite |
 
 ### 9.2 Analyse statique
@@ -1267,6 +1355,9 @@ Le détail complet se trouve dans [`MODIFICATIONS.md`](MODIFICATIONS.md).
 | Moyenne | Inscription en ligne sans vérification de l'e-mail ni pièces justificatives | Code de confirmation envoyé par e-mail ; envoi des pièces depuis l'application |
 | Basse | Limite anti-abus de l'inscription en ligne gardée en mémoire (remise à zéro au redémarrage) | Limiteur partagé (Redis) si l'API est déployée sur plusieurs serveurs |
 | Basse | Assistance sans réponse écrite | Ajouter un message de réponse de l'Accueil, visible sur le mobile |
+| Moyenne | Audio et vidéo sans filigrane (un enregistrement peut circuler sans trace de son origine) | Filigrane incrusté une fois à l'envoi (ffmpeg), ou diffusion en streaming chiffré (HLS) |
+| Basse | Un support n'a qu'une pièce jointe | Table `support_fichier` pour plusieurs pièces jointes, ou insertion des médias dans le texte |
+| Basse | Éditeur basé sur `document.execCommand` (ancienne API, encore prise en charge par les navigateurs) | Éditeur dédié (TipTap / ProseMirror) |
 | Basse | Déploiement manuel | Intégration continue (tests + lint à chaque push) et environnement de production |
 
 ---

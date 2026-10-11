@@ -1,0 +1,74 @@
+@import './TexteRiche.css';
+
+/* Éditeur de texte mis en forme (support de cours) */
+.editeur {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.editeur:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.editeur-desactive { opacity: 0.6; }
+
+.editeur-barre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+}
+
+.editeur-outil {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.editeur-outil:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.editeur-outil.actif {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.editeur-separateur {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
+.editeur-zone {
+  min-height: 140px;
+  max-height: 420px;
+  padding: 10px 12px;
+  overflow-y: auto;
+  outline: none;
+  cursor: text;
+}
+
+/* Texte d'aide quand la zone est vide */
+.editeur-zone:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}

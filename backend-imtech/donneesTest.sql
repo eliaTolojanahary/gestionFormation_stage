@@ -95,30 +95,36 @@ INSERT INTO etudiant (id_etudiant, id_utilisateur, photo_1, photo_2, certificat_
 -- ============================================
 -- 3. FORMATIONS
 -- ============================================
-INSERT INTO formation (id_formation, id_utilisateur, nom, description, engagement_formateur, tarif, duree, duree_jours, etat) VALUES
+INSERT INTO formation (id_formation, id_utilisateur, nom, description, engagement_formateur, image, tarif, duree, duree_jours, etat) VALUES
 (1, 4, 'Développement web',
  'Créer des sites web modernes avec HTML, CSS et JavaScript : structure des pages, mise en page responsive, interactions. Projet final : un site vitrine complet.',
  'Disponible du lundi au vendredi de 8 h à 17 h. Réponse aux questions sous 24 h, correction des exercices chaque semaine.',
+ 'formations/demo-developpement-web.jpg',
  450000, '3 mois', 90, true),
 (2, 5, 'Bureautique',
  'Maîtriser Word, Excel et PowerPoint pour le travail de bureau : documents professionnels, tableaux de calcul, présentations.',
  'Disponible tous les matins. Séance de questions-réponses chaque vendredi.',
+ 'formations/demo-bureautique.jpg',
  200000, '1 mois', 30, true),
 (3, 6, 'Réseaux informatiques',
  'Comprendre et installer un réseau local : modèle OSI, adressage IP, câblage, configuration d''un routeur et maintenance de base.',
  'Disponible le mardi et le jeudi après-midi.',
+ 'formations/demo-reseaux.jpg',
  350000, '2 mois', 60, true),
 (4, 7, 'Infographie',
  'Créer des visuels avec Photoshop et Illustrator : retouche photo, logos, affiches et charte graphique.',
  NULL, -- pas encore renseigné : la vitrine affiche le texte par défaut
+ 'formations/demo-infographie.jpg',
  300000, '2 mois', 60, true),
 (5, 4, 'Python pour débutants',
  'Apprendre à programmer avec Python : variables, conditions, boucles, fonctions et petits programmes utiles.',
  'Disponible du lundi au vendredi. Les exercices sont corrigés sous 48 h.',
+ 'formations/demo-python.jpg',
  300000, '2 mois', 60, true),
 (6, 5, 'Excel avancé',
  'Tableaux croisés dynamiques, RECHERCHEV, graphiques et tableaux de bord pour suivre une activité.',
  'Disponible tous les matins, accompagnement individuel sur demande.',
+ 'formations/demo-excel.jpg',
  180000, '1 mois', 30, true);
 
 -- ============================================

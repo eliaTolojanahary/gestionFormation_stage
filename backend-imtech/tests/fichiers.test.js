@@ -22,6 +22,7 @@ const UPLOADS = path.join(__dirname, '..', 'uploads');
 const PDF_SUPPORT = `test-${Date.now()}-cours.pdf`;
 const PNG_SUPPORT = `test-${Date.now()}-schema.png`;
 const DOC_ADMIN = `test-${Date.now()}-reglement.pdf`;
+const JPG_COUVERTURE = `test-${Date.now()}-couverture.jpg`;
 const crees = [];
 
 async function creerPdf() {
@@ -43,6 +44,9 @@ before(async () => {
     create: { width: 400, height: 300, channels: 3, background: '#ffffff' },
   }).png().toBuffer());
   ecrire('documents', DOC_ADMIN, await creerPdf());
+  ecrire('formations', JPG_COUVERTURE, await sharp({
+    create: { width: 80, height: 100, channels: 3, background: '#072e4c' },
+  }).jpeg().toBuffer());
 
   server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
@@ -140,7 +144,7 @@ test('impossible de sortir du dossier avec ../', async () => {
   assert.equal(res.status, 404);
 });
 
-test("un support qui n'est ni un PDF ni une image est refusé à l'upload", async () => {
+test("un support qui n'est ni un PDF, ni une image, ni un audio / une vidéo est refusé à l'upload", async () => {
   sessionActive();
   const form = new FormData();
   form.append('id_formation', '1');
@@ -152,5 +156,18 @@ test("un support qui n'est ni un PDF ni une image est refusé à l'upload", asyn
     body: form,
   });
   assert.equal(res.status, 400);
-  assert.match((await res.json()).message, /PDF ou une image/);
+  assert.match((await res.json()).message, /PDF, une image, un audio/);
+});
+
+test('couverture de formation : publique (vitrine sans connexion), sans filigrane', async () => {
+  const res = await get(`/formations/${JPG_COUVERTURE}`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /image\/jpeg/);
+  const original = fs.readFileSync(path.join(UPLOADS, 'formations', JPG_COUVERTURE));
+  assert.deepEqual(Buffer.from(await res.arrayBuffer()), original);
+});
+
+test('les routes /formations/:id restent protégées malgré le dossier public', async () => {
+  const res = await get('/formations/1');
+  assert.equal(res.status, 401);
 });

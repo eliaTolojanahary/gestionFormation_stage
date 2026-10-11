@@ -1,4 +1,5 @@
-// Model des supports de cours (colonne `fichier` = chemin "supports/xxx.pdf").
+// Model des supports de cours : `contenu` = texte mis en forme (HTML nettoyé, voir utils/contenuRiche.js)
+// et / ou `fichier` = pièce jointe, chemin "supports/xxx.pdf" (PDF, image, audio ou vidéo).
 // statut 'publie' : visible par les étudiants ; 'programme' : brouillon, publié automatiquement
 // à date_envoi_prevue (voir services/supportProgrammeService.js).
 const db = require('../config/db');
@@ -8,7 +9,7 @@ const STATUTS_SUPPORT = Object.freeze({ PROGRAMME: 'programme', PUBLIE: 'publie'
 // Supports publiés d'une formation, du plus récent au plus ancien, avec le formateur
 async function getSupportsByFormation(id_formation) {
   const sql = `
-    SELECT s.id_support, s.titre, s.fichier, s.date_publication, f.nom AS nom_formation, u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo as prof_photo, s.id_utilisateur
+    SELECT s.id_support, s.titre, s.contenu, s.fichier, s.date_publication, f.nom AS nom_formation, u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo as prof_photo, s.id_utilisateur
     FROM support s
     JOIN utilisateur u ON s.id_utilisateur = u.id_utilisateur
     JOIN formation f ON f.id_formation=s.id_formation
@@ -22,7 +23,7 @@ async function getSupportsByFormation(id_formation) {
 // Support publié (un brouillon n'est ni consultable, ni commentable)
 async function getSupportById(id_support) {
   const sql = `
-    SELECT s.id_support, s.titre, s.fichier, s.date_publication, s.id_utilisateur,
+    SELECT s.id_support, s.titre, s.contenu, s.fichier, s.date_publication, s.id_utilisateur,
            f.id_formation, f.nom AS nom_formation,
            u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo AS prof_photo
     FROM support s
@@ -36,7 +37,7 @@ async function getSupportById(id_support) {
 
 // Champs communs aux supports programmés (liste du formateur, planificateur)
 const COLONNES_PROGRAMME = `
-  s.id_support, s.titre, s.fichier, s.statut, s.date_envoi_prevue, s.annonce_envoyee, s.id_utilisateur,
+  s.id_support, s.titre, s.contenu, s.fichier, s.statut, s.date_envoi_prevue, s.annonce_envoyee, s.id_utilisateur,
   f.id_formation, f.nom AS nom_formation, u.nom AS prof_nom, u.prenom AS prof_prenom
 `;
 
@@ -95,29 +96,34 @@ async function getSupportsAPublier(maintenant) {
 }
 
 // date_envoi_prevue null : publié tout de suite ; sinon programmé (brouillon)
-async function createSupport({ id_formation, id_utilisateur, titre, fichier, date_envoi_prevue = null }) {
+async function createSupport({ id_formation, id_utilisateur, titre, contenu = null, fichier = null, date_envoi_prevue = null }) {
   const statut = date_envoi_prevue ? STATUTS_SUPPORT.PROGRAMME : STATUTS_SUPPORT.PUBLIE;
   const sql = `
-    INSERT INTO support (id_formation, id_utilisateur, titre, fichier, statut, date_envoi_prevue, date_publication, etat)
-    VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, NOW()), true)
+    INSERT INTO support (id_formation, id_utilisateur, titre, contenu, fichier, statut, date_envoi_prevue, date_publication, etat)
+    VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, NOW()), true)
   `;
   const [result] = await db.query(sql, [
-    id_formation, id_utilisateur, titre, fichier, statut, date_envoi_prevue, date_envoi_prevue,
+    id_formation, id_utilisateur, titre, contenu, fichier, statut, date_envoi_prevue, date_envoi_prevue,
   ]);
   return result.insertId;
 }
 
 // Modifie un brouillon. Si l'heure change, l'annonce repart (avec la nouvelle heure).
-async function updateSupportProgramme(id_support, { titre, fichier, date_envoi_prevue }) {
+// contenu : undefined = inchangé, null = texte supprimé, sinon nouveau texte
+async function updateSupportProgramme(id_support, { titre, contenu, fichier, date_envoi_prevue }) {
   const [result] = await db.query(
     `UPDATE support
      SET titre = COALESCE(?, titre),
+         contenu = IF(?, ?, contenu),
          fichier = COALESCE(?, fichier),
          annonce_envoyee = IF(? IS NULL OR ? = date_envoi_prevue, annonce_envoyee, false),
          date_envoi_prevue = COALESCE(?, date_envoi_prevue),
          date_publication = COALESCE(?, date_publication)
      WHERE id_support = ? AND etat = true AND statut = '${STATUTS_SUPPORT.PROGRAMME}'`,
-    [titre, fichier, date_envoi_prevue, date_envoi_prevue, date_envoi_prevue, date_envoi_prevue, id_support]
+    [
+      titre, contenu !== undefined, contenu ?? null, fichier,
+      date_envoi_prevue, date_envoi_prevue, date_envoi_prevue, date_envoi_prevue, id_support,
+    ]
   );
   return result.affectedRows > 0;
 }

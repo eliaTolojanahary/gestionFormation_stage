@@ -72,6 +72,11 @@ async function filigranerImage(buffer, texte) {
     .toBuffer();
 }
 
+// Types que l'on sait filigraner (audio et vidéo : non, ils sont servis tels quels)
+function peutFiligraner(extension) {
+  return extension === '.pdf' || IMAGES.has(extension);
+}
+
 // Renvoie le fichier filigrané, ou null si ce type de fichier n'est pas pris en charge
 async function filigraner(buffer, extension, utilisateur) {
   const texte = texteFiligrane(utilisateur);
@@ -80,4 +85,4 @@ async function filigraner(buffer, extension, utilisateur) {
   return null;
 }
 
-module.exports = { filigraner, texteFiligrane };
+module.exports = { filigraner, peutFiligraner, texteFiligrane };

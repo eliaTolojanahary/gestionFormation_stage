@@ -1,11 +1,12 @@
 // components/vitrine/formation-detail-modal.tsx
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, ScrollView, ImageBackground } from 'react-native';
 import { BadgeCheck, CalendarClock, Clock, Users, Wallet, X } from 'lucide-react-native';
 import { FormationPublique } from '@/hooks/use-vitrine';
 import { createVitrineStyles } from '@/styles/vitrine.styles';
 import { useThemedStyles } from '@/context/SettingsContext';
 import { formatAriary } from './format-vitrine';
+import { getFileUrl } from '@/utils/format';
 
 interface Props {
   formation: FormationPublique | null;
@@ -46,9 +47,16 @@ export function FormationDetailModal({
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContenu}>
-            <View style={[styles.detailBandeau, { backgroundColor: couleur }]}>
+            {/* Photo de couverture de la formation (couleur si elle n'en a pas) */}
+            <ImageBackground
+              source={formation.image ? { uri: getFileUrl(formation.image) || undefined } : undefined}
+              style={[styles.detailBandeau, { backgroundColor: couleur }]}
+              imageStyle={styles.couvertureImageFond}
+              resizeMode="cover"
+            >
+              {formation.image ? <View style={styles.couvertureVoile} /> : null}
               <Text style={styles.detailBandeauTexte}>{formation.nom}</Text>
-            </View>
+            </ImageBackground>
 
             <View style={styles.detailLigne}>
               <Users size={16} color="#5A6E85" />

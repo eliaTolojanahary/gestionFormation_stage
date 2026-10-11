@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Header from '../../components/header/Header'
 import Informations from '../../components/form/Informations'
 import InputReutilisable from '../../components/form/InputReutilisable'
 import { useFormation } from '../../hooks/useFormation'
 import { useUser } from '../../hooks/useUser'
+import { getFileUrl } from '../../utils/files'
+import './Formations.css'
 
 // id_utilisateur = formateur responsable de la formation
 // engagement_formateur = disponibilité promise par le formateur, affichée dans la vitrine mobile
@@ -13,12 +15,18 @@ const EMPTY_FORM = { nom: '', description: '', engagement_formateur: '', tarif: 
 // La durée est saisie en mois ; duree_jours (utilisé pour l'échéancier) est calculé automatiquement.
 function FormationForm({ user, formationId, onBack, onSaved }) {
   const isEdit = Boolean(formationId)
-  const { getFormation, createFormation, updateFormation } = useFormation()
+  const { getFormation, createFormation, updateFormation, updateFormationImage } = useFormation()
   const { users, isLoading: usersLoading } = useUser()
   const [form, setForm] = useState({ ...EMPTY_FORM, id_utilisateur: user?.id_utilisateur || user?.id || '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
+  // Nouvelle image de couverture choisie (envoyée après l'enregistrement de la formation)
+  const [image, setImage] = useState(null)
+
+  // Aperçu : image choisie, sinon couverture actuelle
+  const apercu = useMemo(() => (image ? URL.createObjectURL(image) : getFileUrl(form.image)), [image, form.image])
+  useEffect(() => () => { if (image) URL.revokeObjectURL(apercu) }, [image, apercu])
 
   useEffect(() => {
     if (!isEdit) return
@@ -52,8 +60,10 @@ function FormationForm({ user, formationId, onBack, onSaved }) {
       id_utilisateur: Number(form.id_utilisateur) 
     }
     try {
+      let id = formationId
       if (isEdit) await updateFormation(formationId, payload)
-      else await createFormation(payload)
+      else id = (await createFormation(payload)).id_formation
+      if (image) await updateFormationImage(id, image)
       onSaved()
     } catch (requestError) {
       setError(requestError.message)
@@ -149,6 +159,24 @@ function FormationForm({ user, formationId, onBack, onSaved }) {
               onChange={handleChange}
               placeholder="Ex. Disponible du lundi au vendredi de 8 h à 17 h, réponse aux questions sous 24 h."
             />
+          </div>
+        </Informations>
+
+        <Informations title="Image de couverture (vitrine « Découvrir » de l'application)">
+          <div className="formation-couverture">
+            {apercu ? (
+              <img className="formation-couverture-apercu" src={apercu} alt="Couverture de la formation" />
+            ) : (
+              <div className="formation-couverture-apercu formation-couverture-vide">Aucune image</div>
+            )}
+            <label className="formation-couverture-champ">
+              <span>JPEG, PNG ou WEBP, 5 Mo max. Format portrait conseillé (ex. 800 × 1000).</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => setImage(event.target.files?.[0] || null)}
+              />
+            </label>
           </div>
         </Informations>
 

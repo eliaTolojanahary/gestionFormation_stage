@@ -106,3 +106,10 @@
   color: var(--heading);
   font-size: 15px;
 }
+/* Pièce jointe facultative sous l'éditeur de texte */
+.support-fichier {
+  display: grid;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}

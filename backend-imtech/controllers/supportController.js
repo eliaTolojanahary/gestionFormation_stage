@@ -1,6 +1,6 @@
-// Controller des supports de cours (fichiers déposés par le formateur pour une formation).
+// Controller des supports de cours (texte mis en forme et / ou fichier déposé par le formateur).
 const supportService = require('../services/supportService');
-const { exigerChamps, badRequest } = require('../utils/errors');
+const { exigerChamps } = require('../utils/errors');
 
 // GET /formations/:id/supports
 async function listerSupportsFormationController(req, res) {
@@ -14,17 +14,18 @@ async function detailSupportController(req, res) {
   res.json({ status: 'success', data: support });
 }
 
-// POST /supports (Formateur) : multipart avec le fichier + id_formation, titre
+// POST /supports (Formateur) : multipart avec id_formation, titre, contenu (texte mis en forme, HTML),
+// fichier (PDF, image, audio, vidéo) — un texte ou un fichier au moins —
 // et date_envoi_prevue (facultative : vide = envoi immédiat, sinon support programmé)
 async function creerSupportController(req, res) {
   exigerChamps(req.body, ['id_formation']);
   const fichiers = req.files || (req.file ? [req.file] : []);
-  if (fichiers.length === 0) throw badRequest("Aucun fichier n'a été fourni.");
 
   const { ids, programme } = await supportService.creerSupports(
     {
       id_formation: req.body.id_formation,
       titre: req.body.titre,
+      contenu: req.body.contenu,
       date_envoi_prevue: req.body.date_envoi_prevue,
       fichiers,
     },
@@ -45,11 +46,16 @@ async function listerSupportsProgrammesController(req, res) {
 }
 
 // PUT /supports/:id (Formateur auteur ou Super Admin) : modifie un support programmé
-// (titre, date_envoi_prevue et / ou nouveau fichier) tant qu'il n'est pas envoyé
+// (titre, contenu, date_envoi_prevue et / ou nouveau fichier) tant qu'il n'est pas envoyé
 async function modifierSupportProgrammeController(req, res) {
   const support = await supportService.modifierSupportProgramme(
     req.params.id,
-    { titre: req.body.titre, date_envoi_prevue: req.body.date_envoi_prevue, fichier: req.file },
+    {
+      titre: req.body.titre,
+      contenu: req.body.contenu,
+      date_envoi_prevue: req.body.date_envoi_prevue,
+      fichier: req.file,
+    },
     req.user
   );
   res.json({ status: 'success', message: 'Support programmé modifié.', data: support });

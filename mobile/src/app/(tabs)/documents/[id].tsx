@@ -17,18 +17,21 @@ import {
   Download,
   MessageCircle,
   Send,
-  Paperclip,
+  Play,
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useDocDetail } from '@/hooks/use-doc-detail';
 import { ReactionBlock } from '@/components/comment/reaction-block';
 import { CommentaireBlock, ReponseBanniere } from '@/components/comment/commentaire-block';
-import { formatAjout, getFileTypeLabel } from '@/utils/format';
+import { formatAjout, getFileKind, getFileTypeLabel } from '@/utils/format';
+import { getSupportVisual } from '@/hooks/use-support-visual';
+import { TexteRiche } from '@/components/doc/texte-riche';
 import { DetailHeader } from '@/components/detail-header';
 import { createDocumentsStyles } from '@/styles/documents.styles';
 import { useSettings, useThemedStyles } from '@/context/SettingsContext';
 
-// Détail d'un support : ouverture du fichier (lecteur sécurisé), réactions et commentaires.
+// Détail d'un support : texte mis en forme, ouverture de la pièce jointe (lecteur sécurisé :
+// PDF, image, audio, vidéo), réactions et commentaires.
 // Logique dans le hook useDocDetail (mode support).
 export default function SupportDetailScreen() {
   const styles = useThemedStyles(createDocumentsStyles);
@@ -65,6 +68,9 @@ export default function SupportDetailScreen() {
 
   // Support ciblé (le hook met supports = [support] en mode support)
   const support = supportId ? supportsParId[Number(supportId)] : undefined;
+  const visuel = getSupportVisual(support?.fichier);
+  const kind = getFileKind(support?.fichier || undefined);
+  const estMedia = kind === 'audio' || kind === 'video';
 
   function retour() {
   if (router.canGoBack()) {
@@ -117,27 +123,37 @@ export default function SupportDetailScreen() {
             {/* Carte support */}
             <View style={styles.card}>
               <View style={styles.supportHeader}>
-                <View style={styles.supportIconWrapper}>
-                  <Paperclip size={20} color={palette.danger} />
+                <View style={[styles.supportIconWrapper, { backgroundColor: visuel.fond }]}>
+                  <visuel.Icone size={20} color={visuel.couleur} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.supportTitle}>
                     {support.titre || 'Support'}
                   </Text>
                   <Text style={styles.supportMeta}>
-                    {getFileTypeLabel(support.fichier)} · Ajouté{' '}
+                    {support.fichier ? getFileTypeLabel(support.fichier) : 'TEXTE'} · Ajouté{' '}
                     {formatAjout(
                       support.date_publication || support.date_ajout
                     ).toLowerCase()}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.downloadBtn}
-                  onPress={() => ouvrirFichier(support)}
-                >
-                  <Download size={18} color={palette.accent} />
-                </TouchableOpacity>
+                {/* Pièce jointe : lecture (audio / vidéo) ou ouverture dans le lecteur sécurisé */}
+                {support.fichier ? (
+                  <TouchableOpacity
+                    style={styles.downloadBtn}
+                    onPress={() => ouvrirFichier(support)}
+                    accessibilityLabel={estMedia ? 'Lire' : 'Ouvrir le fichier'}
+                  >
+                    {estMedia ? (
+                      <Play size={18} color={palette.accent} />
+                    ) : (
+                      <Download size={18} color={palette.accent} />
+                    )}
+                  </TouchableOpacity>
+                ) : null}
               </View>
+
+              <TexteRiche html={support.contenu} />
 
               {support.description ? (
                 <Text style={styles.supportDescription}>

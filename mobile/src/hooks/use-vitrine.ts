@@ -10,6 +10,7 @@ export interface FormationPublique {
   nom: string;
   description?: string;
   engagement_formateur: string;
+  image?: string | null; // couverture "formations/xxx.jpg" (publique)
   tarif: number;
   duree?: string;
   duree_jours: number;
@@ -31,7 +32,8 @@ export interface FormateurCompetent {
 }
 
 export interface Vitrine {
-  presentation: { slogan: string; description: string };
+  // fond : image du bandeau choisie par le Super Admin (« vitrine/xxx.jpg »), null = image par défaut
+  presentation: { slogan: string; description: string; fond?: string | null };
   contacts: { facebook: string; email: string; whatsapp: string; telephone: string; adresse: string };
   formations: FormationPublique[];
   formateurs_competents: FormateurCompetent[];

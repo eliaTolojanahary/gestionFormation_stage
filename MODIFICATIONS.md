@@ -875,3 +875,193 @@ n'avait que `z-index: 30`.
 | Fichier | Changements |
 |---|---|
 | `web/src/components/doc/DocumentAffichage.css` | `.document-lightbox` : `z-index: 9999`, comme `Modal` et `ImageLightBox` |
+
+
+---
+
+## 22. Supports mis en forme (mini-CMS) : texte riche, audio, vidéo et liens
+
+*11/10/2026*
+
+Le formateur ne déposait qu'un fichier (PDF ou image). Il peut maintenant **rédiger** un support
+dans un éditeur (gras, italique, souligné, barré, titres, listes à puces / numérotées, citation,
+liens) et / ou joindre un **PDF, une image, un audio ou une vidéo**. Un support peut donc être un
+texte seul, un fichier seul, ou les deux. Détail du flux : `FLUX-APPLICATION.md` §6.18.
+
+### Base de données (bloc **008** de `alter2.sql`, intégré dans `base.sql`)
+
+| Changement | Rôle |
+|---|---|
+| `support.contenu MEDIUMTEXT NULL` | Texte mis en forme (HTML nettoyé par le serveur). `fichier` était déjà facultatif : `NULL` = support texte seul |
+
+### Backend
+
+| Fichier | Changements |
+|---|---|
+| `package.json` | Dépendance `sanitize-html` (nettoyage du HTML) |
+| `utils/contenuRiche.js` (nouveau) | `nettoyerContenu(html)` : liste blanche de balises (`p, br, strong, em, u, s, h2, h3, ul, ol, li, blockquote, a`), liens `http(s)` / `mailto` uniquement, `target="_blank" rel="noopener noreferrer"` ajoutés, `<b>/<i>/<div>...` du navigateur convertis, `<script>`/`<style>` supprimés avec leur contenu, texte vide (`<p><br></p>`) → `null`. `TAILLE_MAX` = 100 000 caractères |
+| `models/supportModel.js` | `contenu` renvoyé par toutes les lectures ; `createSupport` et `updateSupportProgramme` l'enregistrent (`undefined` = inchangé, `null` = supprimé) |
+| `services/supportService.js` | `lireContenu()` ; `creerSupports` accepte un texte sans fichier (un seul support), exige un texte **ou** un fichier, et un titre s'il n'y a pas de fichier ; `modifierSupportProgramme` modifie le texte et refuse de vider le texte d'un brouillon sans fichier |
+| `controllers/supportController.js` | `contenu` lu dans le formulaire (création et modification) ; l'erreur « Aucun fichier » est remplacée par la règle du service |
+| `middlewares/docUpload.js` | `TYPES_SUPPORT` : + audio (MP3, M4A/AAC, OGG, WAV, WEBM) et vidéo (MP4, WEBM, MOV) |
+| `routes/routes.js` | Taille max d'un support : 10 → **50 Mo** ; nouveau message d'erreur de type |
+| `utils/filigrane.js` | `peutFiligraner(extension)` |
+| `middlewares/fichierMiddleware.js` | Audio / vidéo : pas de filigrane, le fichier n'est plus lu en entier en mémoire ; `sendFile` sert la lecture par morceaux (en-tête `Range`), nécessaire pour avancer dans une vidéo |
+| `tests/contenuRiche.test.js` (nouveau) | 8 tests : balises gardées / converties, XSS (script, `onclick`, `javascript:`), liens, texte vide, support texte seul, support vide ou sans titre refusé, texte d'un brouillon sans fichier non supprimable |
+| `tests/fichiers.test.js` | Message du refus d'upload mis à jour |
+
+### Web
+
+| Fichier | Changements |
+|---|---|
+| `components/editeur/EditeurTexte.jsx` + `.css` (nouveaux) | Éditeur sans dépendance : zone `contentEditable` + barre d'outils (`document.execCommand`), boutons surlignés selon la mise en forme sous le curseur, lien sur le texte sélectionné (`www.site.com` → `https://…`, `javascript:` refusé), recliquer sur un titre / une citation le remet en paragraphe |
+| `components/editeur/TexteRiche.css` (nouveau) | Typographie commune à l'éditeur et à l'affichage (titres, listes, citation, liens), aux couleurs du thème |
+| `components/support/ContenuSupport.jsx` + `.css` (nouveaux) | Texte mis en forme puis pièce jointe : lecteur `<video>` / `<audio>` intégré (sans « Télécharger », sans clic droit, sans image dans l'image), lien d'ouverture pour PDF / image |
+| `components/support/SupportItem.jsx` | Le lien « Ouvrir le support » est remplacé par `ContenuSupport` |
+| `pages/formateur/AccueilFormateur.jsx` + `.css` | « Publier un support » : titre, éditeur, pièce jointe facultative ; bouton actif si fichier, ou texte + titre |
+| `components/support/SupportsProgrammes.jsx` | Éditeur dans la modification d'un brouillon ; résumé « texte + vidéo » dans la liste ; nouveaux types de fichiers |
+| `pages/documents/Documents.jsx` | Les supports texte seul (sans fichier) ne sont pas listés comme documents ; nouveaux types acceptés |
+| `utils/texteRiche.js` (nouveau) | `ACCEPT_SUPPORT`, `contenuVide(html)`, `typeFichier(chemin)` |
+
+### Mobile
+
+| Fichier | Changements |
+|---|---|
+| `components/doc/texte-riche.tsx` (nouveau) | `TexteRiche` : convertit les balises autorisées en `<Text>` / `<View>` natifs (pas de WebView), liens ouverts avec `Linking` (http(s) / mailto seulement) ; `texteBrut()` pour les aperçus |
+| `styles/components/texte-riche.styles.ts` (nouveau) | Styles du texte mis en forme (thème clair / sombre) |
+| `app/(tabs)/documents/[id].tsx` | Texte du support affiché ; icône selon le type ; bouton Lire (audio / vidéo) ou Ouvrir, masqué pour un support texte seul |
+| `app/lecteur.tsx` | `pageMedia()` : lecteur audio / vidéo HTML5 dans la WebView sécurisée (captures toujours bloquées, pas de téléchargement) ; `allowsInlineMediaPlayback`, `allowsFullscreenVideo` |
+| `components/doc/support-block.tsx` | Badge « TEXTE » sans fichier ; aperçu du texte (3 lignes) |
+| `hooks/use-support-visual.ts` | Icône texte (support sans fichier) et icône musique (audio) |
+| `hooks/use-doc-detail.ts` | `ouvrirFichier` d'un support sans fichier ouvre sa page de détail (au lieu d'une alerte) |
+| `hooks/use-support.ts` | Type `Support` : `contenu`, `fichier` peut être `null` |
+
+### Vérifications
+
+- Backend : **77 tests**, tous verts (`npm test`).
+- Web : 0 erreur ESLint sur les fichiers modifiés, `vite build` OK.
+- Mobile : `tsc --noEmit` OK, 0 erreur ESLint ; rendu de `TexteRiche` vérifié sur un HTML d'exemple.
+
+### À faire de ton côté
+
+1. Exécuter le bloc **008** de `alter2.sql` sur la base (`ALTER TABLE support ADD COLUMN contenu ...`).
+2. `cd backend-imtech && npm install` (nouvelle dépendance `sanitize-html`).
+3. Tester sur le téléphone la lecture d'une vidéo MP4 et d'un audio MP3 (Android et iOS).
+
+
+---
+
+## 23. Vitrine « Découvrir » : images des formations et fond de neurones (mobile)
+
+*11/10/2026*
+
+La vitrine affichait des couvertures de couleur unie avec des initiales. Chaque formation a
+maintenant une **photo de couverture** enregistrée en base, et le bandeau du haut porte le titre
+**« Découvrir »** sur une image de **réseau de neurones**.
+
+### Base de données (bloc **009** de `alter2.sql`, intégré dans `base.sql` et `donneesTest.sql`)
+
+| Changement | Rôle |
+|---|---|
+| `formation.image VARCHAR(255) NULL` | Chemin de la couverture (`formations/xxx.jpg`) |
+| `UPDATE formation SET image = ...` | Couvertures des 6 formations de démonstration (par nom, seulement si `image` est vide) |
+
+### Images téléchargées
+
+Photos libres de droits trouvées sur **Wikimedia Commons** (Unsplash bloque les téléchargements
+automatiques). Le script `node scripts/fichiersDemo.js` les télécharge (miniature 960 px), les
+recadre en portrait 800 × 1000 et les compresse (JPEG ~40 à 170 Ko) dans `uploads/formations/`.
+
+| Image | Fichier Wikimedia Commons | Auteur | Licence |
+|---|---|---|---|
+| Fond « Découvrir » (`mobile/assets/images/fond-decouvrir.jpg`) | Neural network - Midjourney and Grok.png | Midjourney (prompt suggéré par Grok) | Domaine public |
+| Développement web | Colorful code (Unsplash).jpg | Markus Spiske | CC0 |
+| Bureautique | Working in open office space (Unsplash).jpg | Crew | CC0 |
+| Réseaux informatiques | EthernetSwitch.jpg | Raysonho (Open Grid Scheduler) | CC0 |
+| Infographie | Math tools utensils (Unsplash).jpg | Jazmin Quaynor | CC0 |
+| Python pour débutants | Laptop coding programs (Unsplash).jpg | Tirza van Dijk | CC0 |
+| Excel avancé | Desktop with laptop and calculator (Unsplash).jpg | Auteur inconnu | CC0 |
+
+### Backend
+
+| Fichier | Changements |
+|---|---|
+| `middlewares/fichierMiddleware.js` | Dossier `formations` **public** (`public: true`) : servi sans token ni filigrane, mis en cache 1 jour — la vitrine est consultée sans connexion. Les routes `/api/formations/:id` restent protégées (un nom qui n'est pas un fichier passe à la route) |
+| `app.js` | `app.use('/api/formations', servirFichiers('formations'))` |
+| `routes/routes.js` | `PUT /formations/:id/image` (Super Admin), uploader `formations` : JPEG / PNG / WEBP, 5 Mo |
+| `controllers/formationController.js`, `services/formationService.js`, `models/formationModel.js` | `modifierImageController` → `modifierImageFormation` → `updateImageFormation` ; `image` renvoyée dans la liste des formations |
+| `models/vitrineModel.js` | `image` renvoyée dans `GET /public/vitrine` |
+| `scripts/fichiersDemo.js` | `COUVERTURES` + `couvertureCommons()` : téléchargement depuis l'API Commons et recadrage avec `sharp` |
+| `tests/fichiers.test.js` | 2 tests : couverture servie sans connexion et sans filigrane ; `/formations/1` toujours refusé sans token |
+
+### Mobile
+
+| Fichier | Changements |
+|---|---|
+| `assets/images/fond-decouvrir.jpg` (nouveau) | Fond du bandeau (1000 × 760, 175 Ko), embarqué dans l'application (s'affiche même hors ligne) |
+| `app/decouvrir.tsx` | Bandeau en `ImageBackground` + voile bleu nuit, étiquette « Centre de formation en informatique », grand titre **Découvrir**, chiffres clés en pastilles translucides. Couvertures : photo + voile sombre, prix en pastille, nom et durée en bas ; sans image, ancienne couverture (couleur + initiales) |
+| `components/vitrine/formation-detail-modal.tsx` | Bandeau de la fiche en photo (170 px) |
+| `styles/vitrine.styles.ts` | Styles du bandeau, du voile, des pastilles et des couvertures |
+| `hooks/use-vitrine.ts` | `FormationPublique.image` |
+
+### Web
+
+| Fichier | Changements |
+|---|---|
+| `pages/formations/FormationForm.jsx` | Bloc « Image de couverture » : aperçu (image actuelle ou choisie) et choix du fichier ; l'image est envoyée après l'enregistrement de la formation (création ou modification) |
+| `hooks/useFormation.js` | `updateFormationImage(id, fichier)` |
+| `pages/formations/Formations.css` | Styles de l'aperçu |
+
+### Vérifications
+
+- Backend : **79 tests**, tous verts.
+- Mobile : `tsc --noEmit` OK, 0 erreur ESLint sur les fichiers modifiés.
+- Web : 0 erreur ESLint, `vite build` OK.
+
+### À faire de ton côté
+
+1. Exécuter le bloc **009** de `alter2.sql` (colonne `image` + couvertures des formations de démo).
+2. `cd backend-imtech && node scripts/fichiersDemo.js` si les images ne sont pas déjà dans `uploads/formations/`
+   (elles y sont sur ce poste ; `uploads/` n'est pas versionné).
+3. Relancer Expo (`npx expo start -c`) pour que la nouvelle image du bandeau soit prise en compte.
+
+## 24. Bandeau « Découvrir » : fond plein écran (mobile)
+
+**Problème :** le fond du bandeau s'arrêtait sous la barre d'état (bande vide en haut de l'écran) et paraissait flou.
+
+| Fichier | Changements |
+|---|---|
+| `mobile/src/app/decouvrir.tsx` | `ImageBackground` remplacé par une `View` + image `expo-image` en `absoluteFill` (`contentFit="cover"`, mise à l'échelle lissée). Le `SafeAreaView` n'applique plus la marge du haut : le bandeau passe sous la barre d'état, et son `paddingTop` vaut `insets.top + 18` pour que le contenu reste lisible. `StatusBar` en `light` sur cet écran (texte clair sur fond sombre) |
+| `mobile/src/styles/vitrine.styles.ts` | Style `heroImage` supprimé (plus utilisé) |
+
+**Limite :** `fond-decouvrir.jpg` ne fait que 1000×760 px (l'original Wikimedia : 1024×1024). Sur un téléphone récent, le bandeau est plus haut que l'image, qui est donc agrandie. D'où la suite : le fond devient modifiable.
+
+### Fond modifiable par le Super Admin
+
+Comme le logo, mais **stocké sur le serveur** : le logo du web est gardé dans le `localStorage` du navigateur, que l'application mobile ne voit pas.
+
+| Fichier | Changements |
+|---|---|
+| `backend-imtech/base.sql`, `alter2.sql` (bloc **010**) | Table `parametre_application (cle, valeur, modifie_le)` ; clé `fond_vitrine` = `vitrine/xxx.jpg`, `NULL` = image par défaut |
+| `backend-imtech/models/parametreModel.js` (nouveau) | `getParametre(cle)`, `setParametre(cle, valeur)` (INSERT … ON DUPLICATE KEY UPDATE) |
+| `backend-imtech/services/vitrineService.js` | `presentation.fond` dans `contenuVitrine()` ; `modifierFondVitrine(fichier)` et `reinitialiserFondVitrine()` (l'ancien fichier est supprimé) |
+| `backend-imtech/controllers/vitrineController.js` | `modifierFondController`, `supprimerFondController` |
+| `backend-imtech/routes/routes.js` | `PUT /vitrine/fond` (multipart `image`, 8 Mo, JPEG/PNG/WEBP) et `DELETE /vitrine/fond`, Super Admin |
+| `backend-imtech/app.js`, `middlewares/fichierMiddleware.js` | Dossier `uploads/vitrine` servi publiquement (vitrine consultée sans connexion) |
+| `backend-imtech/tests/vitrine.test.js` | Enregistrement du fond, image obligatoire, retour au fond par défaut, 401 sans connexion |
+| `web/src/pages/parametres/FondVitrine.jsx` (nouveau) | Ligne « Fond de la vitrine mobile » : aperçu portrait, « Remplacer », « Par défaut » |
+| `web/src/pages/parametres/Parametres.jsx`, `Parametres.css` | Ligne affichée dans Apparence pour le Super Admin seulement ; style de l'aperçu |
+| `web/src/assets/fond-decouvrir.jpg` (nouveau) | Copie de l'image par défaut, pour l'aperçu |
+| `mobile/src/hooks/use-vitrine.ts` | `presentation.fond` |
+| `mobile/src/app/decouvrir.tsx` | Fond choisi par le Super Admin, sinon image embarquée (aussi affichée pendant le chargement) |
+
+### Vérifications
+
+- Backend : **81 tests**, tous verts.
+- Web : 0 erreur ESLint, `vite build` OK.
+- Mobile : `tsc --noEmit` OK, 0 erreur ESLint.
+
+### À faire de ton côté
+
+1. Exécuter le bloc **010** de `alter2.sql` (table `parametre_application`).
+2. Redémarrer le backend, puis choisir une image (portrait, ≥ 1200×1800 px conseillé) dans Paramètres > Apparence en Super Admin.

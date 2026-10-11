@@ -1,5 +1,7 @@
 // Service des supports de cours (publication immédiate ou programmée).
+// Un support = un titre + un texte mis en forme et / ou une pièce jointe (PDF, image, audio, vidéo).
 const supportModel = require('../models/supportModel');
+const { nettoyerContenu, TAILLE_MAX } = require('../utils/contenuRiche');
 const formationModel = require('../models/formationModel');
 const supportProgrammeService = require('./supportProgrammeService');
 const { ROLES } = require('../config/roles');
@@ -25,23 +27,38 @@ function lireDateEnvoi(valeur, maintenant = new Date()) {
   return date;
 }
 
-// Un formateur ne publie que dans SES formations
-async function creerSupports({ id_formation, titre, fichiers, date_envoi_prevue }, auteur) {
+// Texte du support : HTML nettoyé (balises autorisées seulement), null s'il est vide
+function lireContenu(valeur) {
+  const contenu = nettoyerContenu(valeur);
+  if (contenu && contenu.length > TAILLE_MAX) throw badRequest('Le texte du support est trop long.');
+  return contenu;
+}
+
+// Un formateur ne publie que dans SES formations.
+// Il faut un texte, un fichier, ou les deux ; le titre est obligatoire sans fichier.
+async function creerSupports({ id_formation, titre, contenu, fichiers = [], date_envoi_prevue }, auteur) {
   const formation = await formationModel.getFormationById(id_formation);
   if (!formation) throw notFound('Formation introuvable.');
   if (auteur.role === ROLES.FORMATEUR && Number(formation.id_utilisateur) !== Number(auteur.id)) {
     throw forbidden("Cette formation ne vous est pas attribuée.");
   }
   const dateEnvoi = lireDateEnvoi(date_envoi_prevue);
+  const texte = lireContenu(contenu);
+  const titrePropre = titre?.trim() || '';
+  if (!texte && fichiers.length === 0) throw badRequest('Écrivez un texte ou joignez un fichier.');
+  if (!titrePropre && fichiers.length === 0) throw badRequest('Le titre est obligatoire.');
 
-  // Un support par fichier ; sans titre, on prend le nom du fichier
+  // Un support par fichier (le texte va avec chacun) ; sans fichier, un seul support texte.
+  // Sans titre, on prend le nom du fichier.
+  const pieces = fichiers.length ? fichiers : [null];
   const ids = [];
-  for (const fichier of fichiers) {
+  for (const fichier of pieces) {
     const support = {
       id_formation,
       id_utilisateur: auteur.id,
-      titre: titre?.trim() || fichier.originalname,
-      fichier: `supports/${fichier.filename}`,
+      titre: titrePropre || fichier.originalname,
+      contenu: texte,
+      fichier: fichier ? `supports/${fichier.filename}` : null,
       date_envoi_prevue: dateEnvoi,
     };
     ids.push(await supportModel.createSupport(support));
@@ -75,14 +92,22 @@ async function recupererBrouillon(id_support, auteur) {
   return support;
 }
 
-// Modifie le titre, le fichier et / ou l'heure d'envoi d'un support programmé
-async function modifierSupportProgramme(id_support, { titre, fichier, date_envoi_prevue }, auteur) {
-  await recupererBrouillon(id_support, auteur);
+// Modifie le titre, le texte, le fichier et / ou l'heure d'envoi d'un support programmé
+async function modifierSupportProgramme(id_support, { titre, contenu, fichier, date_envoi_prevue }, auteur) {
+  const brouillon = await recupererBrouillon(id_support, auteur);
   const nouveauTitre = titre === undefined ? null : String(titre).trim();
   if (nouveauTitre === '') throw badRequest('Le titre ne peut pas être vide.');
 
+  // contenu absent de la requête = texte inchangé ; contenu vide = texte supprimé
+  const nouveauContenu = contenu === undefined ? undefined : lireContenu(contenu);
+  const resteUnTexte = nouveauContenu === undefined ? Boolean(brouillon.contenu) : Boolean(nouveauContenu);
+  if (!resteUnTexte && !fichier && !brouillon.fichier) {
+    throw badRequest('Un support sans fichier doit garder un texte.');
+  }
+
   await supportModel.updateSupportProgramme(id_support, {
     titre: nouveauTitre,
+    contenu: nouveauContenu,
     fichier: fichier ? `supports/${fichier.filename}` : null,
     date_envoi_prevue: lireDateEnvoi(date_envoi_prevue),
   });
@@ -113,6 +138,7 @@ module.exports = {
   recupererSupport,
   creerSupports,
   lireDateEnvoi,
+  lireContenu,
   listerSupportsProgrammes,
   modifierSupportProgramme,
   envoyerMaintenant,

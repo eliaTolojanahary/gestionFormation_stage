@@ -173,3 +173,49 @@ ALTER TABLE inscription
   ADD COLUMN origine ENUM('accueil', 'en_ligne') NOT NULL DEFAULT 'accueil' AFTER valide;
 
 
+
+
+-- ============================================
+-- MIGRATION 008 : supports mis en forme (texte riche) et supports audio / vidéo
+-- ============================================
+-- Un support peut désormais être un texte mis en forme (gras, italique, titres, listes, liens),
+-- avec ou sans pièce jointe. La pièce jointe peut aussi être un audio ou une vidéo.
+--   contenu : HTML nettoyé par le serveur (balises autorisées seulement, voir utils/contenuRiche.js)
+--   fichier : déjà NULL autorisé ; NULL = support texte seul
+USE gestion_formation_db;
+
+ALTER TABLE support
+  ADD COLUMN contenu MEDIUMTEXT NULL AFTER titre;
+
+
+-- ============================================
+-- MIGRATION 009 : image de couverture des formations (vitrine « Découvrir »)
+-- ============================================
+-- Chemin "formations/xxx.jpg" dans uploads/ ; les couvertures sont publiques (vitrine sans connexion).
+-- Les images de démonstration sont téléchargées par : node scripts/fichiersDemo.js
+USE gestion_formation_db;
+
+ALTER TABLE formation
+  ADD COLUMN image VARCHAR(255) NULL AFTER engagement_formateur;
+
+-- Formations de démonstration (donneesTest.sql) : couvertures téléchargées par le script
+UPDATE formation SET image = 'formations/demo-developpement-web.jpg' WHERE nom = 'Développement web' AND image IS NULL;
+UPDATE formation SET image = 'formations/demo-bureautique.jpg' WHERE nom = 'Bureautique' AND image IS NULL;
+UPDATE formation SET image = 'formations/demo-reseaux.jpg' WHERE nom = 'Réseaux informatiques' AND image IS NULL;
+UPDATE formation SET image = 'formations/demo-infographie.jpg' WHERE nom = 'Infographie' AND image IS NULL;
+UPDATE formation SET image = 'formations/demo-python.jpg' WHERE nom = 'Python pour débutants' AND image IS NULL;
+UPDATE formation SET image = 'formations/demo-excel.jpg' WHERE nom = 'Excel avancé' AND image IS NULL;
+
+
+-- ============================================
+-- MIGRATION 010 : paramètres de l'application (fond de la vitrine « Découvrir »)
+-- ============================================
+-- Clé -> valeur, modifiées par le Super Admin depuis Paramètres > Apparence (web).
+--   fond_vitrine : "vitrine/xxx.jpg" dans uploads/ (public), NULL = image par défaut de l'application mobile
+USE gestion_formation_db;
+
+CREATE TABLE IF NOT EXISTS parametre_application (
+    cle VARCHAR(50) PRIMARY KEY,
+    valeur VARCHAR(255) NULL,
+    modifie_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

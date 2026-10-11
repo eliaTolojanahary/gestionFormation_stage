@@ -7,7 +7,7 @@ const path = require('path');
 const userModel = require('../models/userModel');
 const fichierModel = require('../models/fichierModel');
 const { verifyFileToken } = require('./authMiddleware');
-const { filigraner } = require('../utils/filigrane');
+const { filigraner, peutFiligraner } = require('../utils/filigrane');
 const { ROLES, STAFF } = require('../config/roles');
 const { forbidden } = require('../utils/errors');
 
@@ -18,6 +18,18 @@ const DOCUMENTS_OFFICIELS = /^(fiche|facture|attestation)_/;
 
 // Qui a le droit de voir quoi, par dossier
 const REGLES = {
+  // Couvertures des formations : publiques (vitrine « Découvrir », consultée sans connexion)
+  formations: {
+    public: true,
+    acces: async () => true,
+    filigrane: false,
+  },
+  // Fond du bandeau « Découvrir » : public aussi
+  vitrine: {
+    public: true,
+    acces: async () => true,
+    filigrane: false,
+  },
   // Photos de profil : visibles par tout utilisateur connecté (avatars des commentaires...)
   utilisateurs: {
     acces: async () => true,
@@ -77,6 +89,12 @@ function servirFichiers(dossier) {
     const absolu = await trouverFichier(dossier, req.path);
     if (!absolu) return next();
 
+    // Fichier public : envoyé sans contrôle (mise en cache autorisée)
+    if (regle.public) {
+      res.set({ 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+      return res.sendFile(absolu);
+    }
+
     // Token accepté dans l'en-tête ou dans l'URL (?token=) ; lève une erreur 401 si absent/invalide
     await verifyFileToken(req, res, () => {});
 
@@ -93,8 +111,9 @@ function servirFichiers(dossier) {
       'Content-Disposition': 'inline',
     });
 
-    if (regle.filigrane && !DOCUMENTS_OFFICIELS.test(nomFichier)) {
-      const extension = path.extname(nomFichier).toLowerCase();
+    // Audio / vidéo : pas de filigrane possible ; sendFile gère la lecture par morceaux (Range)
+    const extension = path.extname(nomFichier).toLowerCase();
+    if (regle.filigrane && !DOCUMENTS_OFFICIELS.test(nomFichier) && peutFiligraner(extension)) {
       try {
         const utilisateur = await userModel.findUserById(req.user.id);
         const contenu = await filigraner(await fs.readFile(absolu), extension, utilisateur || {});

@@ -5,6 +5,7 @@ import SearchFilterBar from '../../components/form/Filter'
 import { useDocument } from '../../hooks/useDocument'
 import { useFormation } from '../../hooks/useFormation'
 import { getFileUrl } from '../../utils/files'
+import { ACCEPT_SUPPORT } from '../../utils/texteRiche'
 import './Documents.css'
 import { formatDate } from '../../utils/time'
 
@@ -48,7 +49,8 @@ function Documents({ user }) {
   // Liste unique : les supports sont convertis au même format que les documents administratifs
   const allDocuments = useMemo(() => [
     ...documents.map((document) => ({ ...document, type_document: 'Administratif' })),
-    ...supports.map((support) => ({
+    // Seuls les supports avec une pièce jointe sont des documents (un support texte seul n'a pas de fichier)
+    ...supports.filter((support) => support.fichier).map((support) => ({
       id_document: support.id_support,
       type_document: 'Support',
       nom_document: support.titre,
@@ -158,7 +160,7 @@ function Documents({ user }) {
           ref={supportInputRef}
           className="visually-hidden"
           type="file"
-          accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
+          accept={ACCEPT_SUPPORT}
           onChange={handleSupportUpload}
         />
       </div>

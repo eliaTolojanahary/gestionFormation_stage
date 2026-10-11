@@ -3,7 +3,8 @@
 // du navigateur externe, où l'étudiant pouvait le télécharger et le partager.
 // - captures d'écran et enregistrements bloqués (Android : écran noir ; iOS 13+ : bloqué)
 // - pas de téléchargement, pas d'appui long « Enregistrer l'image », pas de navigation ailleurs
-// - le serveur ajoute un filigrane au nom de l'étudiant (voir backend utils/filigrane.js)
+// - le serveur ajoute un filigrane au nom de l'étudiant sur les PDF et images (voir backend utils/filigrane.js)
+// - audio et vidéo : lecteur HTML5 intégré, sans bouton de téléchargement
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,6 +44,24 @@ function pageImage(url: string, fond: string) {
         onload="envoyer('ok')"
         onerror="envoyer('erreur')">
     </body></html>`;
+}
+
+// Page HTML avec le lecteur audio ou vidéo du navigateur (sans « Télécharger » ni clic droit).
+// Prévient l'écran dès que le fichier est prêt à être lu, ou en cas d'erreur.
+function pageMedia(url: string, kind: 'audio' | 'video', fond: string) {
+  const attributs = `src=${JSON.stringify(url)} controls preload="metadata" controlsList="nodownload"
+    onloadedmetadata="envoyer('ok')" onerror="envoyer('erreur')" oncontextmenu="return false"`;
+  const lecteur = kind === 'video'
+    ? `<video ${attributs} playsinline disablePictureInPicture></video>`
+    : `<audio ${attributs}></audio>`;
+  return `<!doctype html><html><head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>${styleCommun(fond)}
+      body { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+      video { width: 100%; max-height: 100vh; background: #000; }
+      audio { width: calc(100% - 32px); }
+    </style>${SCRIPT_ENVOYER}</head>
+    <body oncontextmenu="return false">${lecteur}</body></html>`;
 }
 
 // Page HTML qui dessine chaque page du PDF dans un <canvas> avec pdf.js,
@@ -106,6 +125,7 @@ export default function LecteurScreen() {
     if (!url) return null;
     if (kind === 'pdf') return pagePdf(url, palette.pageBg);
     if (kind === 'image') return pageImage(url, palette.pageBg);
+    if (kind === 'audio' || kind === 'video') return pageMedia(url, kind, palette.pageBg);
     return null;
   }, [url, kind, palette.pageBg]);
 
@@ -153,6 +173,9 @@ export default function LecteurScreen() {
             req.url.startsWith('about:') || req.url.startsWith('data:') || (!!origine && req.url.replace(/\/$/, '') === origine)
           }
           setSupportMultipleWindows={false}
+          // Vidéo lue dans la page (iOS l'ouvre sinon en plein écran natif) ; plein écran possible sur Android
+          allowsInlineMediaPlayback
+          allowsFullscreenVideo
           allowsLinkPreview={false}
           allowFileAccess={false}
           cacheEnabled={false}

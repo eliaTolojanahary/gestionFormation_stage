@@ -30,6 +30,8 @@ app.get('/', (req, res) => {
 // Fichiers uploadés : connexion + droits obligatoires, filigrane sur les documents
 // (plus de express.static : avant, n'importe qui ayant l'URL pouvait télécharger le fichier)
 app.use('/api/documents', servirFichiers('documents'));
+app.use('/api/formations', servirFichiers('formations'));
+app.use('/api/vitrine', servirFichiers('vitrine'));
 app.use('/api/etudiants', servirFichiers('etudiants'));
 app.use('/api/supports', servirFichiers('supports'));
 app.use('/api/utilisateurs', servirFichiers('utilisateurs'));

@@ -11,9 +11,10 @@ const paiementModel = require('../models/paiementModel');
 const inscriptionModel = require('../models/inscriptionModel');
 const vitrineModel = require('../models/vitrineModel');
 const notifModel = require('../models/notifModel');
+const parametreModel = require('../models/parametreModel');
 const notifService = require('../services/notifService');
 const inscriptionService = require('../services/inscriptionService');
-const { verifierDemande, inscriptionEnLigne } = require('../services/vitrineService');
+const { verifierDemande, inscriptionEnLigne, modifierFondVitrine, reinitialiserFondVitrine } = require('../services/vitrineService');
 
 afterEach(() => mock.restoreAll());
 
@@ -106,6 +107,21 @@ test('validation d\'une inscription en ligne : le paiement déclaré est validé
   assert.equal(inserer.mock.callCount(), 0);
 });
 
+// ─── Fond du bandeau « Découvrir » ──────────
+
+test('fond de la vitrine : enregistré dans vitrine/, image obligatoire, retour au fond par défaut', async () => {
+  mock.method(parametreModel, 'getParametre', async () => null);
+  const enregistrer = mock.method(parametreModel, 'setParametre', async () => {});
+
+  assert.equal(await modifierFondVitrine({ filename: '123-neurones.jpg' }), 'vitrine/123-neurones.jpg');
+  assert.deepEqual(enregistrer.mock.calls[0].arguments, ['fond_vitrine', 'vitrine/123-neurones.jpg']);
+
+  await assert.rejects(modifierFondVitrine(undefined), /Aucune image/);
+
+  await reinitialiserFondVitrine();
+  assert.deepEqual(enregistrer.mock.calls.at(-1).arguments, ['fond_vitrine', null]);
+});
+
 // ─── Routes publiques ───────────────────────
 
 let server;
@@ -124,4 +140,9 @@ test('inscription en ligne : accessible sans connexion, limitée à 5 essais par
 
   for (let i = 0; i < 5; i++) assert.equal((await envoyer()).status, 400); // formulaire vide
   assert.equal((await envoyer()).status, 429);
+});
+
+test('fond de la vitrine : modification refusée sans connexion', async () => {
+  assert.equal((await fetch(`${baseUrl}/vitrine/fond`, { method: 'PUT' })).status, 401);
+  assert.equal((await fetch(`${baseUrl}/vitrine/fond`, { method: 'DELETE' })).status, 401);
 });

@@ -4,7 +4,7 @@ const db = require('../config/db');
 // Formations actives avec leur formateur et le nombre d'inscrits
 async function getFormationsPubliques() {
   const [rows] = await db.query(
-    `SELECT f.id_formation, f.nom, f.description, f.engagement_formateur, f.tarif, f.duree, f.duree_jours,
+    `SELECT f.id_formation, f.nom, f.description, f.engagement_formateur, f.image, f.tarif, f.duree, f.duree_jours,
             u.id_utilisateur AS id_formateur, u.nom AS nom_formateur, u.prenom AS prenom_formateur,
             (SELECT COUNT(*) FROM inscription i WHERE i.id_formation = f.id_formation AND i.etat = true) AS nb_inscrits
      FROM formation f

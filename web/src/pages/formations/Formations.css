@@ -22,3 +22,36 @@
   color: var(--text-muted);
   background: var(--line);
 }
+
+/* Image de couverture d'une formation (formulaire) */
+.formation-couverture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.formation-couverture-apercu {
+  width: 120px;
+  height: 150px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
+
+.formation-couverture-vide {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  background: var(--accent-soft);
+}
+
+.formation-couverture-champ {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 220px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}

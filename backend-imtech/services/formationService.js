@@ -42,6 +42,14 @@ async function modifierFormation(id, data) {
   if (!ok) throw notFound('Formation introuvable.');
 }
 
+// Nouvelle couverture (image déjà enregistrée dans uploads/formations par multer)
+async function modifierImageFormation(id, fichier) {
+  if (!fichier) throw badRequest("Aucune image n'a été fournie.");
+  const ok = await formationModel.updateImageFormation(id, `formations/${fichier.filename}`);
+  if (!ok) throw notFound('Formation introuvable.');
+  return `formations/${fichier.filename}`;
+}
+
 async function supprimerFormation(id) {
   const ok = await formationModel.deleteFormation(id);
   if (!ok) throw notFound('Formation introuvable.');
@@ -49,5 +57,5 @@ async function supprimerFormation(id) {
 
 module.exports = {
   listerFormations, recupererFormation, recupererEtudiantsFormation,
-  creerFormation, modifierFormation, supprimerFormation
+  creerFormation, modifierFormation, modifierImageFormation, supprimerFormation
 };

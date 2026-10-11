@@ -12,7 +12,8 @@ export interface Support {
   description?: string;
   type?: string;          // 'PDF' | 'VIDEO' | 'DOC' ...
   url?: string;
-  fichier?: string;       // chemin relatif du fichier (uploads/supports/...)
+  fichier?: string | null; // pièce jointe : chemin relatif (supports/...) ; null = support texte seul
+  contenu?: string | null; // texte mis en forme (HTML nettoyé par le serveur), voir TexteRiche
   date_ajout?: string;
   // Champs réellement renvoyés par GET /formations/:id/supports
   date_publication?: string;

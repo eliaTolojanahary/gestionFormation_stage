@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import Icon from '../icon/Icon'
 import Avatar from '../avatar/Avatar'
+import ContenuSupport from './ContenuSupport'
 import { useSupport } from '../../hooks/useSupport'
 import { useReaction } from '../../hooks/useReaction'
-import { getFileUrl } from '../../utils/files'
 import { formatRelative } from '../../utils/time'
 import './SupportItem.css'
 
@@ -56,7 +56,8 @@ function CommentRow({ comment, isReply, canDelete, onReply, onDelete, children }
   )
 }
 
-// Carte d'un support de cours, façon publication de réseau social : auteur, lien vers le fichier,
+// Carte d'un support de cours, façon publication de réseau social : auteur, texte mis en forme et
+// pièce jointe (lecteur audio / vidéo, ou lien vers le PDF / l'image),
 // réactions, commentaires principaux avec leurs réponses (« Voir les réponses ») et formulaire.
 function SupportItem({
   support,
@@ -259,15 +260,7 @@ function SupportItem({
       <div className="support-card-body">
         <h3 className="support-card-title">{support.titre}</h3>
 
-        <a
-          className="support-card-file"
-          href={getFileUrl(support.fichier)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <Icon name="file" />
-          <span>Ouvrir le support</span>
-        </a>
+        <ContenuSupport support={support} />
       </div>
 
       {/* ==================== STATS ==================== */}

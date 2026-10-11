@@ -81,6 +81,7 @@ CREATE TABLE formation (
     nom VARCHAR(150) NOT NULL,
     description TEXT,
     engagement_formateur TEXT NULL, -- disponibilité promise par le formateur (vitrine)
+    image VARCHAR(255) NULL,        -- couverture "formations/xxx.jpg" (publique, vitrine)
     tarif DECIMAL(10,2) NOT NULL,
     duree VARCHAR(50),
     duree_jours INT NOT NULL DEFAULT 30,
@@ -126,7 +127,8 @@ CREATE TABLE support (
     id_formation INT NOT NULL,
     id_utilisateur INT NOT NULL,
     titre VARCHAR(150) NOT NULL,
-    fichier VARCHAR(255),
+    contenu MEDIUMTEXT NULL,                                       -- texte mis en forme (HTML nettoyé)
+    fichier VARCHAR(255),                                          -- NULL = support texte seul
     statut ENUM('programme', 'publie') NOT NULL DEFAULT 'publie', -- programme = brouillon invisible des étudiants
     date_envoi_prevue DATETIME NULL,                               -- heure de publication automatique
     annonce_envoyee BOOLEAN NOT NULL DEFAULT FALSE,                -- étudiants prévenus 1 h avant
@@ -297,6 +299,14 @@ CREATE TABLE presence (
     CONSTRAINT uq_presence UNIQUE (id_utilisateur, jour),
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
 );
+-- Paramètres de l'application modifiables par le Super Admin (clé -> valeur)
+--   fond_vitrine : image du bandeau « Découvrir » de l'application mobile ("vitrine/xxx.jpg"), NULL = image par défaut
+CREATE TABLE parametre_application (
+    cle VARCHAR(50) PRIMARY KEY,
+    valeur VARCHAR(255) NULL,
+    modifie_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 CREATE INDEX idx_commentaire_support ON commentaire(id_support);
 CREATE INDEX idx_commentaire_parent ON commentaire(id_parent);
 CREATE INDEX idx_notification_utilisateur ON notification_inapp(id_utilisateur, lu);

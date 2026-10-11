@@ -6,6 +6,7 @@ import './Parametres.css'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { formatDate } from '../../utils/time'
+import FondVitrine from './FondVitrine'
 
 // Couleurs proposées pour la couleur principale de l'interface
 const colorOptions = [
@@ -20,6 +21,7 @@ const colorOptions = [
 
 // Page Paramètres, deux onglets :
 //  - Apparence : thème, couleur, taille du texte, densité, menu réduit, logo
+//    (+ fond de la vitrine mobile pour le Super Admin, enregistré sur le serveur)
 //    (appliqués et sauvegardés par DashboardLayout via onSettingsChange) ;
 //  - Sécurité : changement de mot de passe, dernière connexion, sessions, déconnexion globale.
 function Parametres({ user, settings, onSettingsChange }) {
@@ -336,6 +338,16 @@ async function handlePasswordSubmit(event) {
                   />
                 </div>
               </div>
+
+              {/* Fond du bandeau « Découvrir » de l'application mobile (Super Admin) */}
+              {user?.role === 'Super Admin' && (
+                <FondVitrine
+                  onSaved={() => {
+                    setSaved(true)
+                    window.setTimeout(() => setSaved(false), 1800)
+                  }}
+                />
+              )}
             </section>
           )}
 

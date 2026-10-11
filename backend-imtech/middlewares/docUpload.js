@@ -78,9 +78,15 @@ function createUploader(folderName, options = {}) {
   });
 }
 
-// Supports de cours : seulement PDF et images, les seuls formats que l'on sait filigraner
-// et afficher dans le lecteur sécurisé (web et mobile)
-const TYPES_SUPPORT = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+// Supports de cours : formats affichables dans le lecteur sécurisé (web et mobile).
+// PDF et images sont filigranés à la volée ; audio et vidéo sont lus tels quels (lecteur intégré).
+const TYPES_SUPPORT = new Set([
+  'application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  // Audio
+  'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/webm',
+  // Vidéo (mp4 / webm : lisibles par tous les navigateurs et les WebView Android / iOS)
+  'video/mp4', 'video/webm', 'video/quicktime',
+]);
 
 module.exports = createUploader;
 module.exports.TYPES_SUPPORT = TYPES_SUPPORT;

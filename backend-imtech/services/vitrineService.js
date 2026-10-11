@@ -6,6 +6,8 @@
 //      fonction que l'Accueil), puis premier paiement déclaré EN ATTENTE ;
 //   3. l'Accueil voit les inscriptions « En ligne » dans sa liste et valide chacune séparément.
 // Tout se fait dans une seule transaction : en cas d'erreur, rien n'est créé.
+const fs = require('fs/promises');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const etudiantModel = require('../models/etudiantModel');
 const inscriptionModel = require('../models/inscriptionModel');
@@ -13,6 +15,7 @@ const echeanceModel = require('../models/echeanceModel');
 const paiementModel = require('../models/paiementModel');
 const userModel = require('../models/userModel');
 const vitrineModel = require('../models/vitrineModel');
+const parametreModel = require('../models/parametreModel');
 const notifModel = require('../models/notifModel');
 const inscriptionService = require('./inscriptionService');
 const reactionService = require('./reactionService');
@@ -22,16 +25,19 @@ const { CONTACTS, PRESENTATION, ENGAGEMENT_PAR_DEFAUT } = require('../config/vit
 const { badRequest, conflict } = require('../utils/errors');
 
 const MAX_TRANCHES = 4;
+const FOND_VITRINE = 'fond_vitrine';
+const DOSSIER_UPLOADS = path.join(__dirname, '..', 'uploads');
 const MOT_DE_PASSE_MIN = 8;
 const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Contenu de la vitrine : présentation, contacts, formations (avec avis sur le formateur)
 // et formateurs compétents
 async function contenuVitrine() {
-  const [formations, avis, modesPaiement] = await Promise.all([
+  const [formations, avis, modesPaiement, fond] = await Promise.all([
     vitrineModel.getFormationsPubliques(),
     reactionService.avisFormateurs(),
     vitrineModel.getModesPaiement(),
+    parametreModel.getParametre(FOND_VITRINE),
   ]);
   const avisParFormateur = new Map(avis.map((f) => [Number(f.id_utilisateur), f]));
 
@@ -62,7 +68,8 @@ async function contenuVitrine() {
     }));
 
   return {
-    presentation: PRESENTATION,
+    // fond : image du bandeau choisie par le Super Admin, null = image par défaut de l'application
+    presentation: { ...PRESENTATION, fond },
     contacts: CONTACTS,
     formations: formationsPubliques,
     formateurs_competents: formateursCompetents,
@@ -169,4 +176,29 @@ async function inscriptionEnLigne(demande) {
   return { email, inscriptions: resultat.inscriptions, total_premier_paiement: total };
 }
 
-module.exports = { contenuVitrine, verifierDemande, inscriptionEnLigne, MOT_DE_PASSE_MIN };
+// ─── Fond du bandeau « Découvrir » (Super Admin) ───
+
+// Supprime l'ancienne image du fond (sans bloquer si elle a déjà disparu)
+async function supprimerAncienFond(ancien) {
+  if (!ancien) return;
+  await fs.unlink(path.join(DOSSIER_UPLOADS, ancien)).catch(() => {});
+}
+
+// Nouveau fond (image déjà enregistrée dans uploads/vitrine par multer) ; renvoie son chemin
+async function modifierFondVitrine(fichier) {
+  if (!fichier) throw badRequest("Aucune image n'a été fournie.");
+  const ancien = await parametreModel.getParametre(FOND_VITRINE);
+  const fond = `vitrine/${fichier.filename}`;
+  await parametreModel.setParametre(FOND_VITRINE, fond);
+  await supprimerAncienFond(ancien);
+  return fond;
+}
+
+// Retour à l'image par défaut de l'application mobile
+async function reinitialiserFondVitrine() {
+  const ancien = await parametreModel.getParametre(FOND_VITRINE);
+  await parametreModel.setParametre(FOND_VITRINE, null);
+  await supprimerAncienFond(ancien);
+}
+
+module.exports = { contenuVitrine, verifierDemande, inscriptionEnLigne, MOT_DE_PASSE_MIN, modifierFondVitrine, reinitialiserFondVitrine };

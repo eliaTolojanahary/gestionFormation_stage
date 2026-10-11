@@ -1,0 +1,19 @@
+/* Contenu d'un support : texte mis en forme et lecteurs audio / vidéo */
+.support-texte {
+  padding: 2px 0;
+}
+
+.support-media {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+}
+
+.support-video {
+  max-height: 420px;
+  background: #000;
+}
+
+.support-audio {
+  height: 40px;
+}

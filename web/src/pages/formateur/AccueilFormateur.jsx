@@ -4,13 +4,15 @@ import Icon from '../../components/icon/Icon'
 import SupportItem from '../../components/support/SupportItem'
 import SupportsProgrammes from '../../components/support/SupportsProgrammes'
 import ClassementFormation from '../../components/classement/ClassementFormation'
+import EditeurTexte from '../../components/editeur/EditeurTexte'
 import { useFormation } from '../../hooks/useFormation'
 import { useSupport } from '../../hooks/useSupport'
 import { toDatetimeLocal } from '../../utils/time'
+import { ACCEPT_SUPPORT, contenuVide } from '../../utils/texteRiche'
 import './AccueilFormateur.css'
 
 // Espace formateur : ses formations et leurs étudiants, classement / notes d'attestation,
-// dépôt de supports (envoi immédiat ou programmé), brouillons programmés et fil des supports
+// rédaction / dépôt de supports (texte mis en forme, PDF, image, audio, vidéo ; envoi immédiat ou programmé), brouillons programmés et fil des supports
 // avec réactions et commentaires.
 function AccueilFormateur({ user }) {
   const { formations, isLoading, error, getEtudiants } = useFormation()
@@ -21,6 +23,8 @@ function AccueilFormateur({ user }) {
   const [studentsByFormation, setStudentsByFormation] = useState({})
   const [selectedFormation, setSelectedFormation] = useState('')
   const [title, setTitle] = useState('')
+  // Texte mis en forme (HTML de l'éditeur) ; le fichier est facultatif s'il y a un texte
+  const [contenu, setContenu] = useState('')
   const [file, setFile] = useState(null)
   // Envoi programmé : vide = envoi immédiat
   const [programmer, setProgrammer] = useState(false)
@@ -69,23 +73,28 @@ function AccueilFormateur({ user }) {
     setProgrammes(await getSupportsProgrammes())
   }
 
-  // Dépôt d'un support (une formation et un fichier sont requis) : envoyé tout de suite,
-  // ou programmé à l'heure choisie (brouillon modifiable jusque-là)
+  // Un support = un texte, un fichier, ou les deux ; sans fichier, le titre est obligatoire
+  const aUnTexte = !contenuVide(contenu)
+  const supportComplet = Boolean(selectedFormation) && (Boolean(file) || (aUnTexte && Boolean(title.trim())))
+
+  // Envoi d'un support : envoyé tout de suite, ou programmé à l'heure choisie (brouillon modifiable jusque-là)
   async function handleUpload(event) {
     event.preventDefault()
-    if (!file || !selectedFormation) return
+    if (!supportComplet) return
     if (programmer && !dateEnvoi) return
 
     const formData = new FormData()
     formData.append('id_formation', selectedFormation)
     formData.append('titre', title.trim() || file.name)
-    formData.append('fichier', file)
+    if (aUnTexte) formData.append('contenu', contenu)
+    if (file) formData.append('fichier', file)
     // Heure locale du navigateur convertie en ISO : le serveur reçoit l'instant exact
     if (programmer) formData.append('date_envoi_prevue', new Date(dateEnvoi).toISOString())
 
     try {
       await uploadSupport(formData)
       setTitle('')
+      setContenu('')
       setFile(null)
       setProgrammer(false)
       setDateEnvoi('')
@@ -148,10 +157,11 @@ function AccueilFormateur({ user }) {
       <form className="workspace-panel support-upload-panel" onSubmit={handleUpload}>
         <div className="panel-heading">
           <div>
-            <h2>Déposer un support</h2>
+            <h2>Publier un support</h2>
             <p>
-              Envoyé tout de suite, ou programmé : les étudiants sont prévenus une heure avant,
-              puis le support est envoyé automatiquement à l'heure choisie.
+              Rédigez un texte mis en forme (gras, titres, listes, liens) et / ou joignez un PDF, une image,
+              un audio ou une vidéo (50 Mo max). Envoyé tout de suite, ou programmé : les étudiants sont
+              prévenus une heure avant, puis le support est envoyé automatiquement à l'heure choisie.
             </p>
           </div>
           <Icon name="upload" />
@@ -169,16 +179,26 @@ function AccueilFormateur({ user }) {
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Titre du support"
+          placeholder={file ? 'Titre du support (nom du fichier par défaut)' : 'Titre du support'}
         />
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
-          onChange={(event) => setFile(event.target.files?.[0] || null)}
+        <EditeurTexte
+          value={contenu}
+          onChange={setContenu}
+          placeholder="Rédigez votre support : consignes, résumé du cours, liens utiles…"
           disabled={!selectedFormation || supportLoading}
         />
+
+        <label className="support-fichier">
+          <span>Pièce jointe (facultative) : PDF, image, audio ou vidéo</span>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPT_SUPPORT}
+            onChange={(event) => setFile(event.target.files?.[0] || null)}
+            disabled={!selectedFormation || supportLoading}
+          />
+        </label>
 
         <label className="support-programmer">
           <input
@@ -203,7 +223,7 @@ function AccueilFormateur({ user }) {
         <button
           type="submit"
           className="primary-button"
-          disabled={!selectedFormation || !file || (programmer && !dateEnvoi) || supportLoading}
+          disabled={!supportComplet || (programmer && !dateEnvoi) || supportLoading}
         >
           {programmer ? "Programmer l'envoi" : 'Envoyer maintenant'}
         </button>

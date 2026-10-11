@@ -35,12 +35,25 @@ const roles = (...liste) => [verifyToken, checkRole(...liste)];
 const utilisateurUpload = createUploader('utilisateurs');
 const etudiantUpload = createUploader('etudiants');
 const documentUpload = createUploader('documents', { maxSizeMb: 10 });
+// Supports : 50 Mo pour laisser passer une courte vidéo ou un enregistrement audio
 const supportUpload = createUploader('supports', {
-  maxSizeMb: 10,
+  maxSizeMb: 50,
   types: createUploader.TYPES_SUPPORT,
-  messageType: 'Un support doit être un PDF ou une image (PNG, JPEG, WEBP, GIF).',
+  messageType: 'Un support doit être un PDF, une image, un audio (MP3, M4A, OGG, WAV) ou une vidéo (MP4, WEBM, MOV).',
 });
 const notifUpload = createUploader('notifications');
+// Couvertures des formations (vitrine publique)
+const formationUpload = createUploader('formations', {
+  maxSizeMb: 5,
+  types: new Set(['image/jpeg', 'image/png', 'image/webp']),
+  messageType: 'La couverture doit être une image (JPEG, PNG ou WEBP).',
+});
+// Fond du bandeau « Découvrir » (vitrine publique) : 8 Mo pour une image assez grande pour rester nette
+const vitrineUpload = createUploader('vitrine', {
+  maxSizeMb: 8,
+  types: new Set(['image/jpeg', 'image/png', 'image/webp']),
+  messageType: 'Le fond doit être une image (JPEG, PNG ou WEBP).',
+});
 
 // Pièces jointes du dossier étudiant (un fichier max par champ)
 const piecesEtudiant = etudiantUpload.fields([
@@ -62,6 +75,9 @@ const limiteInscription = limiteRequetes({
 });
 router.get('/public/vitrine', vitrine.vitrineController);
 router.post('/public/inscriptions', limiteInscription, vitrine.inscriptionEnLigneController);
+// Fond du bandeau « Découvrir » choisi par le Super Admin (Paramètres > Apparence)
+router.put('/vitrine/fond', roles(SUPER_ADMIN), vitrineUpload.single('image'), vitrine.modifierFondController);
+router.delete('/vitrine/fond', roles(SUPER_ADMIN), vitrine.supprimerFondController);
 
 router.post('/auth/login', auth.login);
 router.post('/auth/forgot-password', auth.forgotPasswordController);
@@ -97,6 +113,7 @@ router.get('/formations/:id/etudiants', roles(SUPER_ADMIN, ACCUEIL, FORMATEUR), 
 router.get('/formations/:id/supports', roles(...TOUS), support.listerSupportsFormationController);
 router.post('/formations', roles(SUPER_ADMIN), formation.creerFormationController);
 router.put('/formations/:id', roles(SUPER_ADMIN), formation.updateFormationController);
+router.put('/formations/:id/image', roles(SUPER_ADMIN), formationUpload.single('image'), formation.modifierImageController);
 router.delete('/formations/:id', roles(SUPER_ADMIN), formation.deleteFormationController);
 
 // Classement d'activité des étudiants et notes d'attestation suggérées

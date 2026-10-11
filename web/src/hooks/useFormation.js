@@ -51,6 +51,13 @@ export function useFormation() {
   }
 
   
+  // Couverture de la formation (vitrine mobile) : multipart, champ "image"
+  function updateFormationImage(id, fichier) {
+    const formData = new FormData()
+    formData.append('image', fichier)
+    return apiRequest(`/formations/${id}/image`, { method: 'PUT', body: formData })
+  }
+
   async function deleteFormation(id) {
     const result = await apiRequest(`/formations/${id}`, { method: 'DELETE' })
     setFormations((current) => current.filter((formation) => formation.id_formation !== Number(id)))
@@ -70,6 +77,7 @@ export function useFormation() {
     getEtudiants,
     createFormation,
     updateFormation,
+    updateFormationImage,
     deleteFormation,
   }
 }

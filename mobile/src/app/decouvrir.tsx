@@ -4,15 +4,19 @@ import {
   View,
   Text,
   Image,
+  ImageBackground,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Linking,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image as ImageNette } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { BadgeCheck, CalendarClock, Check, Mail, MessageCircle, ShieldCheck, Users } from 'lucide-react-native';
+import { BadgeCheck, CalendarClock, Check, Clock, Mail, MessageCircle, ShieldCheck, Sparkles, Users } from 'lucide-react-native';
 import { FormationPublique, useVitrine } from '@/hooks/use-vitrine';
 import { COULEURS_COUVERTURE, createVitrineStyles } from '@/styles/vitrine.styles';
 import { useThemedStyles } from '@/context/SettingsContext';
@@ -20,13 +24,20 @@ import { FormationDetailModal } from '@/components/vitrine/formation-detail-moda
 import { InscriptionModal } from '@/components/vitrine/inscription-modal';
 import { formatAriary, initialesFormation } from '@/components/vitrine/format-vitrine';
 import { alerte } from '@/utils/alert';
+import { getFileUrl } from '@/utils/format';
+
+// Fond du bandeau par défaut : réseau de neurones (image du domaine public, Wikimedia Commons).
+// Le Super Admin peut le remplacer depuis le web (Paramètres > Apparence) : presentation.fond.
+const FOND_DECOUVRIR = require('../../assets/images/fond-decouvrir.jpg');
 
 // Vitrine pour une personne non inscrite (façon Wattpad) : formations en couvertures,
-// formateurs compétents, engagement d'IMTECH INFO et contacts. Une formation qui intéresse
+// formateurs compétents, engagement d'IMTECH INFO et contacts. Bandeau « Découvrir » sur fond de
+// réseau de neurones ; chaque formation a sa photo de couverture (formation.image). Une formation qui intéresse
 // ouvre sa fiche puis l'inscription ; plusieurs formations peuvent être choisies d'un coup.
 export default function DecouvrirScreen() {
   const router = useRouter();
   const styles = useThemedStyles(createVitrineStyles);
+  const insets = useSafeAreaInsets();
   const { vitrine, chargement, erreur, chargerVitrine } = useVitrine();
 
   const [formationOuverte, setFormationOuverte] = useState<FormationPublique | null>(null);
@@ -77,16 +88,29 @@ export default function DecouvrirScreen() {
   }
 
   const contacts = vitrine?.contacts;
+  const fondChoisi = getFileUrl(vitrine?.presentation.fond);
   const competents = vitrine?.formateurs_competents ?? [];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={[]}>
+      {/* Texte clair sur le bandeau sombre, qui passe sous la barre d'état */}
+      <StatusBar style="light" />
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={chargement} onRefresh={chargerVitrine} />}
       >
         {/* ─── Bandeau ─── */}
-        <View style={styles.hero}>
+        <View style={[styles.hero, { paddingTop: insets.top + 18 }]}>
+          {/* expo-image : mise à l'échelle lissée, l'image couvre tout le bandeau (barre d'état comprise) */}
+          <ImageNette
+            source={fondChoisi ? { uri: fondChoisi } : FOND_DECOUVRIR}
+            placeholder={FOND_DECOUVRIR}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            contentPosition="center"
+            transition={200}
+          />
+          <View style={styles.heroVoile} />
           <View style={styles.heroHaut}>
             <View style={styles.heroMarque}>
               <Image source={require('../../assets/logoImtech.png')} style={styles.heroLogo} resizeMode="contain" />
@@ -96,6 +120,11 @@ export default function DecouvrirScreen() {
               <Text style={styles.heroConnexionTexte}>Se connecter</Text>
             </TouchableOpacity>
           </View>
+          <View style={styles.heroEtiquette}>
+            <Sparkles size={13} color="#7DD3FC" />
+            <Text style={styles.heroEtiquetteTexte}>Centre de formation en informatique</Text>
+          </View>
+          <Text style={styles.heroTitre}>Découvrir</Text>
           <Text style={styles.heroSlogan}>{vitrine?.presentation.slogan}</Text>
           <Text style={styles.heroDescription}>{vitrine?.presentation.description}</Text>
           <View style={styles.heroChiffres}>
@@ -126,10 +155,31 @@ export default function DecouvrirScreen() {
                   activeOpacity={0.85}
                   onPress={() => setFormationOuverte(f)}
                 >
-                  <View style={[styles.couvertureImage, { backgroundColor: couleurDe(f.id_formation) }]}>
-                    <Text style={styles.couvertureInitiales}>{initialesFormation(f.nom)}</Text>
-                    <Text style={styles.couvertureNomImage} numberOfLines={3}>{f.nom}</Text>
-                  </View>
+                  {/* Photo de couverture ; sans image, couleur + initiales */}
+                  <ImageBackground
+                    source={f.image ? { uri: getFileUrl(f.image) || undefined } : undefined}
+                    style={[styles.couvertureImage, { backgroundColor: couleurDe(f.id_formation) }]}
+                    imageStyle={styles.couvertureImageFond}
+                    resizeMode="cover"
+                  >
+                    {f.image ? <View style={styles.couvertureVoile} /> : null}
+                    {f.image ? (
+                      <View style={styles.couvertureTarif}>
+                        <Text style={styles.couvertureTarifTexte}>{formatAriary(f.tarif)}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.couvertureInitiales}>{initialesFormation(f.nom)}</Text>
+                    )}
+                    <View>
+                      <Text style={styles.couvertureNomImage} numberOfLines={3}>{f.nom}</Text>
+                      <View style={styles.couvertureDuree}>
+                        <Clock size={11} color="#FFFFFF" />
+                        <Text style={styles.couvertureDureeTexte}>
+                          {f.duree ? f.duree : `${f.duree_jours} jours`}
+                        </Text>
+                      </View>
+                    </View>
+                  </ImageBackground>
                   <TouchableOpacity
                     style={styles.couvertureSelection}
                     onPress={() => basculerSelection(f.id_formation)}
@@ -139,7 +189,7 @@ export default function DecouvrirScreen() {
                   </TouchableOpacity>
                   <Text style={styles.couvertureTitre} numberOfLines={1}>{f.nom}</Text>
                   <Text style={styles.couvertureMeta} numberOfLines={1}>
-                    {f.prenom_formateur} {f.nom_formateur} · {formatAriary(f.tarif)}
+                    {f.prenom_formateur} {f.nom_formateur}{f.image ? '' : ` · ${formatAriary(f.tarif)}`}
                   </Text>
                   {f.avis_formateur === 'competent' ? (
                     <Text style={styles.couvertureBadge}>★ Formateur compétent</Text>

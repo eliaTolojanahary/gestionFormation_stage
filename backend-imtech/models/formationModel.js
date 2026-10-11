@@ -4,7 +4,7 @@ const db = require('../config/db');
 // Formations actives ; si idUtilisateur est fourni, seulement celles de ce formateur
 async function getAllFormations(idUtilisateur) {
   const sql = `
-    SELECT f.id_formation, f.id_utilisateur, f.nom, f.description, f.engagement_formateur, f.tarif, f.duree, f.duree_jours, f.etat,
+    SELECT f.id_formation, f.id_utilisateur, f.nom, f.description, f.engagement_formateur, f.image, f.tarif, f.duree, f.duree_jours, f.etat,
            u.nom AS nom_formateur, u.prenom AS prenom_formateur 
     FROM formation f
     JOIN utilisateur u ON f.id_utilisateur = u.id_utilisateur
@@ -68,12 +68,19 @@ async function updateFormation(id_formation, { nom, description, engagement_form
   return result.affectedRows > 0;
 }
 
+// Couverture de la formation (chemin "formations/xxx.jpg")
+async function updateImageFormation(id_formation, image) {
+  const [result] = await db.query('UPDATE formation SET image = ? WHERE id_formation = ? AND etat = true', [image, id_formation]);
+  return result.affectedRows > 0;
+}
+
 async function deleteFormation(id_formation) {
   const [result] = await db.query('UPDATE formation SET etat = false WHERE id_formation = ?', [id_formation]);
   return result.affectedRows > 0;
 }
 
 module.exports = {
+  updateImageFormation,
   getAllFormations, getFormationById, getEtudiantsByFormation,
   insertFormation, updateFormation, deleteFormation
 };

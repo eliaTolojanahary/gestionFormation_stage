@@ -5,6 +5,7 @@ import { Download, ArrowRight } from 'lucide-react-native';
 import { Support } from '@/hooks/use-support';
 import { Reaction, REACTION_TYPES, TypeReaction } from '@/hooks/use-reaction';
 import { getSupportVisual } from '@/hooks/use-support-visual';
+import { texteBrut } from '@/components/doc/texte-riche';
 import { formatAjout, getFileTypeLabel } from '@/utils/format';
 import { createSupportBlockStyles } from '@/styles/components/support-block.styles';
 import { useThemedStyles } from '@/context/SettingsContext';
@@ -44,6 +45,9 @@ export function SupportBlock({
   const styles = useThemedStyles(createSupportBlockStyles);
   const { Icone, fond, couleur } = getSupportVisual(support.fichier);
   const datePublication = support.date_publication || support.date_ajout;
+  // Support texte seul : badge « TEXTE » ; aperçu du texte sous le titre (hors mode compact)
+  const typeLabel = support.fichier ? getFileTypeLabel(support.fichier) : 'TEXTE';
+  const apercu = support.description || texteBrut(support.contenu);
 
   // Contenu commun aux deux modes d'affichage
   const contenu = (
@@ -79,7 +83,7 @@ export function SupportBlock({
 
         <View style={styles.typeBadge}>
           <Text style={styles.typeBadgeText}>
-            {getFileTypeLabel(support.fichier)}
+            {typeLabel}
           </Text>
         </View>
 
@@ -97,9 +101,9 @@ export function SupportBlock({
       </View>
 
       {/* Description (masquée en mode compact) */}
-      {!compact && support.description ? (
-        <Text style={styles.supportDescription} numberOfLines={2}>
-          {support.description}
+      {!compact && apercu ? (
+        <Text style={styles.supportDescription} numberOfLines={3}>
+          {apercu}
         </Text>
       ) : null}
 

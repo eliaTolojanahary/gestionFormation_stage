@@ -50,6 +50,8 @@ Codes d'erreur : 400 (champ manquant / invalide), 401 (non connecté / session r
 | GET | /formations/:id/etudiants | SA, AC, FO (un FO : uniquement ses formations) |
 | GET | /formations/:id/classement | SA, AC, FO (un FO : uniquement ses formations) — classement + note système /10 (paiement 2 ou 5 + présence 2, 3 ou 5, enregistrée en base) |
 | POST / PUT / DELETE | /formations(/:id) | SA |
+| PUT | /formations/:id/image | SA — multipart, champ `image` (JPEG / PNG / WEBP, 5 Mo) : couverture de la vitrine ; renvoie `image` (`formations/xxx.jpg`) |
+| GET | /formations/&lt;fichier&gt; (ex. `/api/formations/demo-python.jpg`) | **public** — couverture d'une formation (sans token, sans filigrane) |
 
 ## Inscriptions & échéances
 | Méthode | Route | Accès |
@@ -96,10 +98,10 @@ Seuls les paiements `valide` comptent dans les totaux, le dashboard et les factu
 
 | Méthode | Route | Accès |
 |---|---|---|
-| GET | /formations/:id/supports, /supports/:id | tous — supports **publiés** uniquement |
-| POST | /supports | FO (uniquement dans ses formations) — `date_envoi_prevue` facultative (ISO, dans le futur) : support **programmé** (brouillon), sinon publié tout de suite et les inscrits sont notifiés |
+| GET | /formations/:id/supports, /supports/:id | tous — supports **publiés** uniquement ; `contenu` (HTML propre ou `null`) et `fichier` (chemin ou `null` pour un support texte seul) |
+| POST | /supports | FO (uniquement dans ses formations) — multipart : `id_formation`, `titre`, `contenu` (texte mis en forme, HTML nettoyé par le serveur) et / ou `fichier` (PDF, image, audio, vidéo — 50 Mo max) : un texte ou un fichier au moins, titre obligatoire sans fichier ; `date_envoi_prevue` facultative (ISO, dans le futur) : support **programmé** (brouillon), sinon publié tout de suite et les inscrits sont notifiés |
 | GET | /supports/programmes | FO (les siens), SA (tous) — supports programmés pas encore envoyés |
-| PUT | /supports/:id | FO (les siens), SA — modifie un support programmé : `titre`, `date_envoi_prevue`, `fichier` (multipart) ; 409 s'il est déjà envoyé |
+| PUT | /supports/:id | FO (les siens), SA — modifie un support programmé : `titre`, `contenu` (vide = texte supprimé, refusé sans fichier), `date_envoi_prevue`, `fichier` (multipart) ; 409 s'il est déjà envoyé |
 | POST | /supports/:id/envoyer | FO (les siens), SA — envoie tout de suite un support programmé |
 | DELETE | /supports/:id | FO (ses supports, publiés ou programmés), SA |
 | GET | /supports/:id/commentaires | tous — fil de discussion : commentaires principaux (plus récent d'abord), chacun avec `reponses` et `nb_reponses` |
@@ -135,7 +137,7 @@ Chaque alerte n'est envoyée qu'une fois (table `alerte_envoyee`).
 
 ## Tests automatisés
 ```bash
-npm test   # 69 tests : échéancier, paiements, note d'attestation, supports programmés, commentaires et réactions, vitrine et inscription en ligne, fichiers, autorisations HTTP (sans base de données)
+npm test   # 81 tests : texte mis en forme des supports, échéancier, paiements, note d'attestation, supports programmés, commentaires et réactions, vitrine et inscription en ligne, fichiers, autorisations HTTP (sans base de données)
 ```
 
 # tests:
@@ -225,8 +227,10 @@ payer :
 ## Vitrine publique (sans connexion)
 | Méthode | Route | Accès |
 |---|---|---|
-| GET | /public/vitrine | public — présentation et contacts (`.env`), formations actives (formateur, tarif, durée, `engagement_formateur`, nombre d'inscrits, avis sur le formateur), formateurs compétents, modes de paiement |
+| GET | /public/vitrine | public — présentation et contacts (`.env`), `presentation.fond` (fond du bandeau choisi par le SA, `vitrine/xxx.jpg`, `null` = image par défaut de l'application), formations actives (formateur, tarif, durée, `engagement_formateur`, `image` de couverture, nombre d'inscrits, avis sur le formateur), formateurs compétents, modes de paiement |
 | POST | /public/inscriptions | public, **5 essais par heure et par adresse IP** (429 au-delà) — `{ nom, prenom, email, telephone, mot_de_passe, formations: [{ id_formation, nombre_tranches }], id_mode_paiement, reference_virement }` : crée le compte, une inscription « en ligne » par formation et le premier paiement en attente ; 409 si l'e-mail existe |
+| PUT | /vitrine/fond | SA — multipart, champ `image` (JPEG / PNG / WEBP, 8 Mo) : fond du bandeau « Découvrir » ; remplace et supprime l'ancien ; renvoie `fond` (`vitrine/xxx.jpg`) |
+| DELETE | /vitrine/fond | SA — retour à l'image par défaut de l'application (l'ancien fichier est supprimé) |
 
 `GET /inscriptions` renvoie aussi `origine` (`accueil` / `en_ligne`), `reference_declaree` et
 `montant_declare` (premier paiement déclaré). `POST /inscriptions/:id/valid` valide ce paiement

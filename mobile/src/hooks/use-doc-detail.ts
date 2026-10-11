@@ -1,6 +1,5 @@
 // hooks/use-doc-detail.ts
 import { useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Formation, useFormationEtudiant } from './use-formation';
 import { Commentaire, Support, useSupport } from './use-support';
@@ -300,13 +299,14 @@ export function useDocDetail(
 
   // ─── Fichiers ──────────────────────────────
   // Ouvre le support dans le lecteur sécurisé de l'app (plus de navigateur externe :
-  // il permettait de télécharger le fichier et de le partager hors d'IMTECH)
+  // il permettait de télécharger le fichier et de le partager hors d'IMTECH).
+  // Support texte seul : on ouvre sa page de détail, où le texte est affiché.
   function ouvrirFichier(support: Support) {
     if (!support.fichier) {
-      Alert.alert(
-        'Fichier indisponible',
-        "Aucun fichier n'est associé à ce support."
-      );
+      router.push({
+        pathname: '/(tabs)/documents/[id]',
+        params: { id: String(support.id_support) },
+      } as any);
       return;
     }
     router.push({

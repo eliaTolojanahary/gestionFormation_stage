@@ -235,6 +235,13 @@
   background: var(--surface);
 }
 
+/* Aperçu du fond de la vitrine mobile : format portrait, comme sur le téléphone */
+.logo-control img.fond-vitrine-apercu {
+  width: 44px;
+  height: 66px;
+  object-fit: cover;
+}
+
 /* --------------------------------------------------------------------------
    8. LABEL DE CONFIRMATION
    -------------------------------------------------------------------------- */

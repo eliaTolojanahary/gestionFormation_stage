@@ -1,13 +1,25 @@
 import { useState } from 'react'
+import EditeurTexte from '../editeur/EditeurTexte'
 import { useSupport } from '../../hooks/useSupport'
 import { formatDateHeureLocale, toDatetimeLocal } from '../../utils/time'
+import { ACCEPT_SUPPORT, typeFichier } from '../../utils/texteRiche'
 import './SupportsProgrammes.css'
 
-// Un support programmé : affichage, ou formulaire de modification (titre, heure, fichier)
+// Ex. « texte + vidéo », « PDF », « texte »
+const LIBELLES_FICHIER = { pdf: 'PDF', image: 'image', audio: 'audio', video: 'vidéo', autre: 'fichier' }
+function resumeContenu(support) {
+  const parties = []
+  if (support.contenu) parties.push('texte')
+  if (support.fichier) parties.push(LIBELLES_FICHIER[typeFichier(support.fichier)])
+  return parties.join(' + ')
+}
+
+// Un support programmé : affichage, ou formulaire de modification (titre, texte, heure, fichier)
 function LigneProgramme({ support, onChange }) {
   const { updateSupportProgramme, envoyerSupport, deleteSupport, isLoading } = useSupport()
   const [enEdition, setEnEdition] = useState(false)
   const [titre, setTitre] = useState(support.titre)
+  const [contenu, setContenu] = useState(support.contenu || '')
   const [dateEnvoi, setDateEnvoi] = useState(toDatetimeLocal(support.date_envoi_prevue))
   const [fichier, setFichier] = useState(null)
   const [erreur, setErreur] = useState('')
@@ -26,6 +38,8 @@ function LigneProgramme({ support, onChange }) {
     event.preventDefault()
     const formData = new FormData()
     formData.append('titre', titre)
+    // Toujours envoyé : un texte vidé est supprimé (refusé par l'API si le support n'a pas de fichier)
+    formData.append('contenu', contenu)
     // Heure locale du navigateur convertie en ISO : le serveur reçoit l'instant exact
     formData.append('date_envoi_prevue', new Date(dateEnvoi).toISOString())
     if (fichier) formData.append('fichier', fichier)
@@ -56,9 +70,10 @@ function LigneProgramme({ support, onChange }) {
           onChange={(event) => setDateEnvoi(event.target.value)}
           required
         />
+        <EditeurTexte value={contenu} onChange={setContenu} disabled={isLoading} />
         <input
           type="file"
-          accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
+          accept={ACCEPT_SUPPORT}
           onChange={(event) => setFichier(event.target.files?.[0] || null)}
           aria-label="Remplacer le fichier (facultatif)"
         />
@@ -76,7 +91,7 @@ function LigneProgramme({ support, onChange }) {
       <div>
         <strong>{support.titre}</strong>
         <small>
-          {support.nom_formation} · envoi le {formatDateHeureLocale(support.date_envoi_prevue)}
+          {support.nom_formation} · {resumeContenu(support)} · envoi le {formatDateHeureLocale(support.date_envoi_prevue)}
           {support.annonce_envoyee ? ' · étudiants prévenus' : ''}
         </small>
       </div>

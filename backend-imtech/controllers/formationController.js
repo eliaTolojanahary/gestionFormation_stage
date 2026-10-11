@@ -36,10 +36,16 @@ async function updateFormationController(req, res) {
   res.json({ status: 'success', message: 'Formation mise à jour.' });
 }
 
+// PUT /formations/:id/image (Super Admin) : multipart, champ "image" (couverture affichée dans la vitrine)
+async function modifierImageController(req, res) {
+  const image = await formationService.modifierImageFormation(req.params.id, req.file);
+  res.json({ status: 'success', message: 'Image de la formation mise à jour.', image });
+}
+
 // DELETE /formations/:id (Super Admin) : suppression logique
 async function deleteFormationController(req, res) {
   await formationService.supprimerFormation(req.params.id);
   res.json({ status: 'success', message: 'Formation désactivée.' });
 }
 
-module.exports = { listerFormations, detailFormation, etudiantsFormation, creerFormationController, updateFormationController, deleteFormationController };
+module.exports = { listerFormations, detailFormation, etudiantsFormation, creerFormationController, updateFormationController, modifierImageController, deleteFormationController };

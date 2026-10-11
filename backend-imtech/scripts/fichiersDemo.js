@@ -2,6 +2,7 @@
 //   - photos de profil téléchargées sur randomuser.me      -> uploads/utilisateurs/demo-*.jpg
 //   - pièces du dossier étudiant (photo, CIN, résidence)    -> uploads/etudiants/demo-*
 //   - supports de cours (PDF générés, une image)            -> uploads/supports/demo-*
+//   - couvertures des formations (Wikimedia Commons)        -> uploads/formations/demo-*.jpg
 // Usage : node scripts/fichiersDemo.js   (relançable : les fichiers déjà présents sont gardés)
 const fs = require('fs');
 const path = require('path');
@@ -193,6 +194,36 @@ const SUPPORTS_PDF = [
   },
 ];
 
+// Couvertures des formations : photos libres de droits (CC0, issues d'Unsplash) hébergées sur
+// Wikimedia Commons. Fichier Commons -> uploads/formations/<fichier> (chemin enregistré dans formation.image)
+const COUVERTURES = [
+  { fichier: 'demo-developpement-web.jpg', commons: 'Colorful code (Unsplash).jpg', auteur: 'Markus Spiske' },
+  { fichier: 'demo-bureautique.jpg', commons: 'Working in open office space (Unsplash).jpg', auteur: 'Crew' },
+  { fichier: 'demo-reseaux.jpg', commons: 'EthernetSwitch.jpg', auteur: 'Raysonho (Open Grid Scheduler)' },
+  { fichier: 'demo-infographie.jpg', commons: 'Math tools utensils (Unsplash).jpg', auteur: 'Jazmin Quaynor' },
+  { fichier: 'demo-python.jpg', commons: 'Laptop coding programs (Unsplash).jpg', auteur: 'Tirza van Dijk' },
+  { fichier: 'demo-excel.jpg', commons: 'Desktop with laptop and calculator (Unsplash).jpg', auteur: 'Auteur inconnu' },
+];
+
+// Wikimedia demande un User-Agent qui identifie l'outil
+const ENTETES_COMMONS = { 'User-Agent': 'IMTECH-demo/1.0 (projet de stage)' };
+
+// Miniature 960 px d'un fichier Commons, recadrée en 800 x 1000 (format portrait des couvertures)
+async function couvertureCommons(titre, destination) {
+  const api = 'https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({
+    action: 'query', format: 'json', prop: 'imageinfo', iiprop: 'url', iiurlwidth: '960', titles: `File:${titre}`,
+  });
+  const reponse = await fetch(api, { headers: ENTETES_COMMONS });
+  if (!reponse.ok) throw new Error(`Commons ${titre} : HTTP ${reponse.status}`);
+  const page = Object.values((await reponse.json()).query.pages)[0];
+  const image = await fetch(page.imageinfo[0].thumburl, { headers: ENTETES_COMMONS });
+  if (!image.ok) throw new Error(`${titre} : HTTP ${image.status}`);
+  await sharp(Buffer.from(await image.arrayBuffer()))
+    .resize(800, 1000, { fit: 'cover', position: 'attention' })
+    .jpeg({ quality: 80, mozjpeg: true })
+    .toFile(destination);
+}
+
 async function telecharger(url, destination) {
   const reponse = await fetch(url);
   if (!reponse.ok) throw new Error(`${url} : HTTP ${reponse.status}`);
@@ -280,6 +311,12 @@ async function main() {
   }
   const palette = path.join(supports, 'demo-palette-couleurs.png');
   if (!fs.existsSync(palette)) { await supportPalette(palette); crees++; }
+
+  const formations = dossier('formations');
+  for (const couverture of COUVERTURES) {
+    const destination = path.join(formations, couverture.fichier);
+    if (!fs.existsSync(destination)) { await couvertureCommons(couverture.commons, destination); crees++; }
+  }
 
   console.log(`Fichiers de démonstration prêts (${crees} créé(s)) dans ${UPLOADS}`);
 }

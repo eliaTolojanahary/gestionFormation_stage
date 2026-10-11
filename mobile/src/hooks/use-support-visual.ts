@@ -2,7 +2,7 @@
 // Icône + couleurs d'un support selon la nature réelle du fichier
 // (extension de `fichier` : pdf, mp4, png, docx, ...).
 import React from 'react';
-import { FileText, Image, File, Play } from 'lucide-react-native';
+import { FileText, Image, File, Play, Music, AlignLeft } from 'lucide-react-native';
 import { getFileKind } from '../utils/format';
 
 export type VisuelSupport = {
@@ -12,7 +12,9 @@ export type VisuelSupport = {
 };
 
 // Ex. getSupportVisual('supports/cours.pdf') -> icône FileText sur fond rouge clair
-export function getSupportVisual(fichier?: string): VisuelSupport {
+// Support sans fichier (texte seul) : icône de texte
+export function getSupportVisual(fichier?: string | null): VisuelSupport {
+  if (!fichier) return { Icone: AlignLeft, fond: '#E4F0F9', couleur: '#0A3B66' };
   switch (getFileKind(fichier)) {
     case 'pdf':
       return { Icone: FileText, fond: '#FDECEC', couleur: '#E53935' };
@@ -23,7 +25,7 @@ export function getSupportVisual(fichier?: string): VisuelSupport {
     case 'doc':
       return { Icone: File, fond: '#E8F5E9', couleur: '#2E7D32' };
     case 'audio':
-      return { Icone: File, fond: '#FFF3E0', couleur: '#EF6C00' };
+      return { Icone: Music, fond: '#FFF3E0', couleur: '#EF6C00' };
     default:
       return { Icone: File, fond: '#F1F5F9', couleur: '#5A6E85' };
   }

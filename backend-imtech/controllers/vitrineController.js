@@ -22,4 +22,16 @@ async function inscriptionEnLigneController(req, res) {
   });
 }
 
-module.exports = { vitrineController, inscriptionEnLigneController };
+// PUT /vitrine/fond (Super Admin) : multipart, champ "image" ; renvoie le chemin "vitrine/xxx.jpg"
+async function modifierFondController(req, res) {
+  const fond = await vitrineService.modifierFondVitrine(req.file);
+  res.json({ status: 'success', message: 'Fond de la vitrine mis à jour.', fond });
+}
+
+// DELETE /vitrine/fond (Super Admin) : retour à l'image par défaut
+async function supprimerFondController(req, res) {
+  await vitrineService.reinitialiserFondVitrine();
+  res.json({ status: 'success', message: 'Fond par défaut rétabli.' });
+}
+
+module.exports = { vitrineController, inscriptionEnLigneController, modifierFondController, supprimerFondController };
