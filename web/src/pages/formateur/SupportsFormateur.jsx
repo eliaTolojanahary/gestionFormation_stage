@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
 import Icon from '../../components/icon/Icon'
 import ListeSupports from '../../components/support/ListeSupports'
@@ -15,6 +15,7 @@ import './SupportsFormateur.css'
 // (recherche, filtres et tri : ListeSupports). Les brouillons programmés ont leur propre page.
 function SupportsFormateur({ user }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { formations, error } = useFormation()
   const { getSupports, uploadSupport, isLoading: supportLoading, error: supportError } = useSupport()
 
@@ -200,7 +201,10 @@ function SupportsFormateur({ user }) {
         </button>
       </form>
 
+      {/* key : une nouvelle recherche globale réinitialise les filtres avec son texte */}
       <ListeSupports
+        key={location.key}
+        rechercheInitiale={location.state?.recherche || ''}
         supports={supports}
         formations={ownFormations}
         user={user}

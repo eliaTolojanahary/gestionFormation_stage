@@ -249,7 +249,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #2e7d32;
+  color: var(--success);
   font-size: var(--fs-sm);
 }
 

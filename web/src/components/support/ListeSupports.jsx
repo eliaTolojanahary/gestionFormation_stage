@@ -28,8 +28,8 @@ function texteRecherche(support) {
 }
 
 // Supports publiés de l'espace formateur : recherche, filtres (formation, type), tri et affichage par pages
-function ListeSupports({ supports, formations, user, userId, commentBusy, onSupportDeleted }) {
-  const [recherche, setRecherche] = useState('')
+function ListeSupports({ supports, formations, user, userId, commentBusy, onSupportDeleted, rechercheInitiale = '' }) {
+  const [recherche, setRecherche] = useState(rechercheInitiale)
   const [idFormation, setIdFormation] = useState('')
   const [type, setType] = useState('')
   const [tri, setTri] = useState('recents')

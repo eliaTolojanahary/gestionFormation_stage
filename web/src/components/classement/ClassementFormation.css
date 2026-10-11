@@ -47,8 +47,8 @@
 .classement-resume .a-noter,
 .classement-resume .a-noter strong {
   border-color: transparent;
-  color: #b26a00;
-  background: rgba(226, 160, 25, 0.14);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
 }
 
 /* ─── Tableau ─── */
@@ -159,13 +159,13 @@
 }
 
 .classement-pastille.atteint {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.12);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
 .classement-pastille.manque {
-  color: #c62828;
-  background: rgba(198, 40, 40, 0.1);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 /* Présence : barre de progression + points */
@@ -188,11 +188,11 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 999px;
-  background: #e2a019;
+  background: var(--warning);
 }
 
 .classement-barre span.atteint {
-  background: #2e7d32;
+  background: var(--success);
 }
 
 .classement-presence small {
@@ -261,7 +261,7 @@
 .classement-erreur {
   display: block;
   margin-top: 4px;
-  color: #c62828;
+  color: var(--danger);
   font-size: 9px;
 }
 
@@ -275,9 +275,9 @@
   white-space: nowrap;
 }
 
-.classement-finale.bon { color: #2e7d32; background: rgba(46, 125, 50, 0.12); }
-.classement-finale.moyen { color: #b26a00; background: rgba(226, 160, 25, 0.16); }
-.classement-finale.faible { color: #c62828; background: rgba(198, 40, 40, 0.1); }
+.classement-finale.bon { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.classement-finale.moyen { color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); }
+.classement-finale.faible { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 
 .classement-finale.a-noter {
   border: 1px dashed var(--line);

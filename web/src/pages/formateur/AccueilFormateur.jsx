@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import Header from '../../components/header/Header'
 import Modal from '../../components/modal/Modal'
 import Avatar from '../../components/avatar/Avatar'
@@ -69,6 +70,15 @@ function AccueilFormateur({ user }) {
   const ownFormations = formations.filter(
     (formation) => Number(formation.id_utilisateur) === Number(userId)
   )
+
+  // Arrivée depuis la recherche globale : ouvre la fenêtre des étudiants de cette formation
+  const location = useLocation()
+  const idDemande = location.state?.formationOuverte
+  const [demandeTraitee, setDemandeTraitee] = useState(null)
+  if (idDemande && demandeTraitee !== location.key && ownFormations.length) {
+    setDemandeTraitee(location.key)
+    setFormationOuverte(ownFormations.find((f) => Number(f.id_formation) === Number(idDemande)) || null)
+  }
 
   // Charge les étudiants de chaque formation du formateur
   useEffect(() => {

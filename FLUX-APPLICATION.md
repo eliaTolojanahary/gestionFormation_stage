@@ -1126,6 +1126,14 @@ Objectif : le formateur publie un support comme dans un petit CMS. Un support co
 ou les deux. L'envoi immédiat ou programmé ([§6.15](#615-envoi-programmé-des-supports)), les
 commentaires et les réactions ne changent pas.
 
+#### Recherche globale (web)
+
+Dans la barre du haut de chaque page : bouton **Rechercher…** (ou **Ctrl+K**). Une fenêtre cherche à
+la fois dans les **pages du menu** (sur place) et dans les données (`GET /recherche`, selon le rôle).
+↑ ↓ pour choisir, Entrée pour ouvrir. Un résultat ouvre directement la bonne fiche : étudiant,
+formation, inscription, compte utilisateur ; pour le formateur, son espace avec la fenêtre des
+étudiants de la formation, ou la page Supports filtrée sur le support trouvé.
+
 #### a) Rédaction (web, page « Supports » du formateur)
 
 Le menu du formateur sépare trois pages : **Espace formateur** (formations, étudiants en fenêtre,
@@ -1224,7 +1232,7 @@ une erreur, et un **gestionnaire unique** (dans `app.js`) construit la réponse.
 
 ### 9.1 Tests automatisés du backend
 
-Lancement : `cd backend-imtech && npm test` (81 tests, sans base de données : les models
+Lancement : `cd backend-imtech && npm test` (87 tests, sans base de données : les models
 sont remplacés par des simulations).
 
 | Fichier | Ce qui est vérifié |
@@ -1235,6 +1243,7 @@ sont remplacés par des simulations).
 | `tests/supportProgramme.test.js` | Annonce 1 h avant (texte, destinataires), envoi automatique (étudiants + formateur), pas de doublon, date d'envoi invalide ou passée refusée, brouillon d'un autre formateur ou déjà envoyé non modifiable |
 | `tests/commentairesReactions.test.js` | Fil de discussion (ordre, réponses rattachées, réponses orphelines masquées), réponse refusée sur un autre support, réaction inconnue ou sur un support non publié refusée, 👎 enregistré, avis compétent / non compétent / pas assez d'avis et tri |
 | `tests/vitrine.test.js` | Formulaire d'inscription en ligne (champs, mot de passe, tranches, doublons), inscription à 2 formations (2 inscriptions « en ligne », 2 paiements en attente, total), e-mail déjà utilisé, validation qui reprend le paiement déclaré, route publique limitée à 5 essais par heure, fond du bandeau (enregistrement, retour au fond par défaut, modification refusée sans connexion) |
+| `tests/recherche.test.js` | Recherche globale : rien sous 2 caractères, `%` / `_` échappés, groupes selon le rôle (SA avec utilisateurs, Accueil sans, formateur limité à ses formations / étudiants / supports), route 401 sans connexion, 403 pour un étudiant |
 | `tests/fichiers.test.js` | Fichier refusé sans connexion, support refusé à un étudiant non inscrit, PDF et image filigranés et sans cache, token accepté dans l'URL, documents administratifs refusés aux étudiants, routes `/supports/:id` toujours accessibles, `../` impossible, support Word refusé à l'upload, couverture de formation publique sans filigrane |
 | `tests/contenuRiche.test.js` | Texte mis en forme : balises gardées ou converties, XSS supprimé (script, `onclick`, `javascript:`), liens en nouvel onglet, texte vide ; support texte seul, support vide ou sans titre refusé, texte d'un brouillon sans fichier non supprimable |
 | `tests/autorisations.test.js` | Tests HTTP de bout en bout : 401 sans token, session révoquée refusée, étudiant ne pouvant pas modifier un autre compte ni changer son rôle, accès au tableau de paiement d'autrui refusé, tokens jamais renvoyés, erreur 500 sans fuite |

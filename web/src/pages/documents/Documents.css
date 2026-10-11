@@ -139,13 +139,13 @@
 }
 
 .document-action-danger {
-  color: #d32f2f;
-  border-color: rgba(211, 47, 47, 0.3);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 .document-action-danger:hover {
   color: #fff;
-  border-color: #d32f2f;
+  border-color: var(--danger);
   background: #d32f2f;
 }
 

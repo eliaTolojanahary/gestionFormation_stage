@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import logoImtech from '../../assets/logoImtech.png'
 import Sidebar from '../../components/sidebar/Sidebar'
 import ProfileModal from '../../components/profile/ProfileModal'
@@ -28,6 +28,8 @@ import ProgrammesFormateur from '../formateur/ProgrammesFormateur'
 import { useNotification } from '../../hooks/useNotification'
 import { apiRequest } from '../../utils/api'
 import { peutOuvrir } from '../../utils/navigation'
+import { appliquerCouleurPrincipale } from '../../utils/theme'
+import RechercheGlobale from '../../components/recherche/RechercheGlobale'
 import '../WorkspacePages.css'
 
 // Vue affichée dans une section : 'list', 'detail', 'create' ou 'edit' (+ id de l'élément)
@@ -69,6 +71,20 @@ function DashboardLayout(props) {
 
   const [currentUser, setCurrentUser] = useState(user)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  // Recherche globale : bouton du header ou Ctrl+K (⌘K sur Mac)
+  const [isRechercheOpen, setIsRechercheOpen] = useState(false)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    function raccourci(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setIsRechercheOpen(true)
+      }
+    }
+    window.addEventListener('keydown', raccourci)
+    return () => window.removeEventListener('keydown', raccourci)
+  }, [])
   // Vue courante de chaque section (liste / détail / formulaire), sans changer d'URL
   const [studentView, setStudentView] = useState(INITIAL_VIEW)
   const [userView, setUserView] = useState(INITIAL_VIEW)
@@ -112,8 +128,8 @@ const [settings, setSettings] = useState(function () {
   // 1. Thème
   root.dataset.theme = settings.theme
 
-  // 2. Couleur principale
-  root.style.setProperty('--accent', settings.color)
+  // 2. Couleur principale (version claire et version sombre, voir utils/theme.js)
+  appliquerCouleurPrincipale(root, settings.color)
 
   // 3. Taille de police
   root.dataset.fontSize = settings.fontSize || 'normale'
@@ -299,6 +315,36 @@ const [settings, setSettings] = useState(function () {
     )
   }
 
+  // Ouvre un résultat de la recherche globale : page, ou fiche dans la bonne section.
+  // Le formateur n'a pas accès aux fiches étudiant / formation du personnel : on ouvre son
+  // espace avec la fenêtre des étudiants de la formation concernée.
+  function ouvrirResultat(resultat) {
+    setIsRechercheOpen(false)
+    const estFormateur = currentUser.role === 'Formateur'
+
+    if (resultat.type === 'page') {
+      navigate(resultat.chemin)
+    } else if (estFormateur && (resultat.type === 'etudiant' || resultat.type === 'formation')) {
+      const idFormation = resultat.type === 'formation' ? resultat.id : resultat.idFormation
+      navigate('/dashboard/formateur', { state: { formationOuverte: idFormation } })
+    } else if (resultat.type === 'etudiant') {
+      openStudentView('detail', resultat.id)
+      navigate('/dashboard/etudiants')
+    } else if (resultat.type === 'formation') {
+      openFormationView('detail', resultat.id)
+      navigate('/dashboard/formations')
+    } else if (resultat.type === 'inscription') {
+      openInscriptionView('detail', resultat.id)
+      navigate('/dashboard/inscriptions')
+    } else if (resultat.type === 'utilisateur') {
+      openUserView('edit', resultat.id)
+      navigate('/dashboard/utilisateurs')
+    } else if (resultat.type === 'support') {
+      if (resultat.statut === 'programme') navigate('/dashboard/programmes')
+      else navigate('/dashboard/supports', { state: { recherche: resultat.titre } })
+    }
+  }
+
   // Page /dashboard/<segment> : affichée seulement si le rôle y a droit (même règle que le menu,
   // utils/navigation.js) ; sinon, une URL tapée à la main ramène à l'accueil du tableau de bord
   function pageAutorisee(segment, page) {
@@ -306,7 +352,13 @@ const [settings, setSettings] = useState(function () {
   }
 
   return (
-    <ProfileProvider value={{ onProfile: function () { setIsProfileOpen(true) }, updateCurrentUser }}>
+    <ProfileProvider
+      value={{
+        onProfile: function () { setIsProfileOpen(true) },
+        onRecherche: function () { setIsRechercheOpen(true) },
+        updateCurrentUser,
+      }}
+    >
     <main className="dashboard-page">
       <Sidebar
         user={currentUser}
@@ -340,6 +392,14 @@ const [settings, setSettings] = useState(function () {
           element={pageAutorisee('parametres', <Parametres user={currentUser} settings={settings} onSettingsChange={setSettings} />)}
         />
       </Routes>
+
+      {isRechercheOpen && (
+        <RechercheGlobale
+          user={currentUser}
+          onClose={function () { setIsRechercheOpen(false) }}
+          onOuvrir={ouvrirResultat}
+        />
+      )}
 
       {isProfileOpen && (
         <ProfileModal

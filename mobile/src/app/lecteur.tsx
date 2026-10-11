@@ -147,9 +147,16 @@ export default function LecteurScreen() {
         ? "Ce type de fichier ne peut pas être affiché dans l'application."
         : null;
 
+  // Retour : écran précédent s'il existe ; sinon (lecteur ouvert directement, ex. rechargement
+  // de la page web) liste des documents, au lieu de l'avertissement « GO_BACK non géré »
+  function retour() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/documents' as any);
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: palette.pageBg }} edges={['top']}>
-      <DetailHeader title={titre || 'Support'} onBack={() => router.back()} />
+      <DetailHeader title={titre || 'Support'} onBack={retour} />
 
       {html && etat !== 'erreur' && Platform.OS === 'web' && (
         // srcDoc sans sandbox : l'iframe garde l'origine de l'app, le PDF est chargé normalement.

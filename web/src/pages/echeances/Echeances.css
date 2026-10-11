@@ -7,24 +7,24 @@
 }
 
 .echeance-statut-rouge {
-  color: #d32f2f;
-  background: rgba(211, 47, 47, 0.12);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .echeance-statut-jaune {
-  color: #b77921;
-  background: rgba(183, 121, 33, 0.12);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 
 .echeance-statut-vert {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.12);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
 /* Paiement envoyé par l'étudiant depuis le mobile, en attente de validation */
 .echeance-en-attente {
   display: block;
   margin-top: 3px;
-  color: #b77921;
+  color: var(--warning);
   font-size: 8px;
 }

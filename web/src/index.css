@@ -11,8 +11,17 @@
   --heading: #063a5c;
   --line: #e0e8ed;
 
-  --accent: #063a5c;
-  --accent-soft: rgba(6, 58, 92, 0.1);
+  /* Couleur principale : --accent-clair / --accent-sombre posées par utils/theme.js
+     selon la couleur choisie dans Paramètres */
+  --accent: var(--accent-clair, #063a5c);
+  --accent-soft: color-mix(in srgb, var(--accent) 10%, transparent);
+  /* Texte posé sur un fond --accent (boutons, onglets sélectionnés...) */
+  --on-accent: #ffffff;
+
+  /* Couleurs d'état (payé / atteint, retard / erreur, attention) et leurs fonds pâles */
+  --success: #2e7d32;
+  --danger: #c62828;
+  --warning: #9a5800;
 
   /* Densité (par défaut : confortable) */
   --density-gap: 14px;
@@ -39,8 +48,17 @@
   --text-muted: #94a3b8;
   --heading: #f8fafc;
   --line: #334155;
-  --accent: #38bdf8;
-  --accent-soft: rgba(56, 189, 248, 0.15);
+  --accent: var(--accent-sombre, #38bdf8);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --on-accent: #0f172a;
+
+  /* Versions claires des couleurs d'état : lisibles sur fond sombre */
+  --success: #4ade80;
+  --danger: #f87171;
+  --warning: #fbbf24;
+
+  /* Champs, listes déroulantes, calendriers et barres de défilement natifs en sombre */
+  color-scheme: dark;
 }
 
 /* ==========================================

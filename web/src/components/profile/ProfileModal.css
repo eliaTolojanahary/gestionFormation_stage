@@ -6,7 +6,7 @@
   height: 72px;
   overflow: hidden;
   border-radius: 12px;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   font-size: 24px;
   font-weight: 700;
@@ -30,17 +30,17 @@
 .profile-password-note {
   margin: 14px 0 0;
   padding: 8px 12px;
-  color: #9a6b17;
-  background: rgba(183, 121, 33, 0.12);
-  border-left: 3px solid #d9a441;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border-left: 3px solid var(--warning);
   border-radius: 4px;
   font-size: 11px;
   line-height: 1.4;
 }
 
 :root[data-theme='dark'] .profile-password-note {
-  color: #e2b357;
-  background: rgba(217, 164, 65, 0.15);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
 }
 
 .profile-error,
@@ -56,15 +56,15 @@
 }
 
 .profile-error {
-  color: #d32f2f;
-  background: rgba(211, 47, 47, 0.12);
-  border: 1px solid rgba(211, 47, 47, 0.25);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
 }
 
 .profile-success {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.12);
-  border: 1px solid rgba(46, 125, 50, 0.25);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
 }
 
 .profile-modal-actions {

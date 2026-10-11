@@ -135,9 +135,14 @@ Chaque alerte n'est envoyée qu'une fois (table `alerte_envoyee`).
 `GET /dashboard/kpi`, `/dashboard/evolution?periode=`, `/dashboard/export-csv`,
 `/dashboard/inscriptionParMois`, `/dashboard/topInscription` — SA, AC.
 
+## Recherche globale
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /recherche?q=texte | SA, AC, FO — au moins 2 caractères (sinon groupes vides), 5 résultats max par groupe : `{ etudiants, formations, inscriptions, utilisateurs, supports }`. SA : étudiants, formations, inscriptions, utilisateurs ; AC : sans utilisateurs ; FO : ses formations, les étudiants inscrits à ses formations (avec `id_formation`, `nom_formation`), ses supports publiés et programmés. Cherche dans nom, prénom, nom complet, e-mail, téléphone, nom / description de formation, titre / texte de support ; `%` et `_` sont cherchés tels quels |
+
 ## Tests automatisés
 ```bash
-npm test   # 81 tests : texte mis en forme des supports, échéancier, paiements, note d'attestation, supports programmés, commentaires et réactions, vitrine et inscription en ligne, fichiers, autorisations HTTP (sans base de données)
+npm test   # 87 tests : recherche globale, texte mis en forme des supports, échéancier, paiements, note d'attestation, supports programmés, commentaires et réactions, vitrine et inscription en ligne, fichiers, autorisations HTTP (sans base de données)
 ```
 
 # tests:

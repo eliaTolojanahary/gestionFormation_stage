@@ -157,7 +157,7 @@
 .student-top-avatar {
   width: 25px;
   height: 25px;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   font-size: 10px;
 }
@@ -186,8 +186,8 @@
 }
 
 .student-status.actif {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.12);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
 .student-status.inactif {
@@ -235,7 +235,7 @@
 
 .pagination button:hover:not(:disabled),
 .pagination button.current-page {
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
   background: var(--accent);
 }

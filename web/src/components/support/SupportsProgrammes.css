@@ -10,7 +10,7 @@
   margin-left: 4px;
   padding: 0 5px;
   border-radius: 999px;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   font-size: 10px;
   vertical-align: middle;
@@ -96,8 +96,8 @@
 
 .programme-etiquette.prevenus {
   border-color: transparent;
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.12);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
 .programme-actions {

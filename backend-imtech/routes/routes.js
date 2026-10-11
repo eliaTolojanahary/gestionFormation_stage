@@ -23,6 +23,7 @@ const dashboard = require('../controllers/dashboardController');
 const assistance = require('../controllers/assistanceController');
 const classement = require('../controllers/classementController');
 const vitrine = require('../controllers/vitrineController');
+const recherche = require('../controllers/rechercheController');
 const { limiteRequetes } = require('../middlewares/limiteRequetes');
 
 const { SUPER_ADMIN, ACCUEIL, FORMATEUR, ETUDIANT } = ROLES;
@@ -105,6 +106,9 @@ router.get('/etudiants/:id/dashboard-paiement', roles(SUPER_ADMIN, ACCUEIL, ETUD
 router.post('/etudiants', staff, piecesEtudiant, etudiant.creerEtudiantController);
 router.put('/etudiants/:id', staff, piecesEtudiant, etudiant.updateEtudiantController);
 router.delete('/etudiants/:id', staff, etudiant.deleteEtudiantController);
+
+// ─── Recherche globale (barre du tableau de bord web) ───
+router.get('/recherche', roles(SUPER_ADMIN, ACCUEIL, FORMATEUR), recherche.rechercheController);
 
 // ─── Formations ─────────────────────────────
 router.get('/formations', verifyToken, formation.listerFormations);

@@ -70,8 +70,8 @@
 }
 
 .support-menu-btn:hover {
-  color: #d64545;
-  background: color-mix(in srgb, #d64545 10%, transparent);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 .support-menu-btn:disabled {
@@ -312,7 +312,7 @@
 }
 
 .comment-delete:hover {
-  color: #d64545;
+  color: var(--danger);
   text-decoration: underline;
 }
 
@@ -433,8 +433,8 @@
   margin: 0;
   padding: 8px 12px;
   border-radius: 8px;
-  color: #b64242;
-  background: color-mix(in srgb, #b64242 10%, transparent);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   font-size: var(--fs-sm);
 }
 

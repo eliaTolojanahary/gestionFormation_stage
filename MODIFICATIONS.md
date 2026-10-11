@@ -1176,3 +1176,76 @@ Les menus sont identiques à avant (vérifié avec un script sur `menuDuRole` / 
 
 - Web : 0 erreur ESLint, `vite build` OK.
 
+## 31. Web : couleurs lisibles en mode clair et en mode sombre
+
+**Problèmes :**
+1. **La couleur principale masquait le thème sombre.** `DashboardLayout` posait `--accent` en dur sur `<html>` avec la couleur choisie (par défaut `#063a5c`, bleu nuit) : en mode sombre, liens, pastilles, onglets et textes d'accent étaient bleu foncé sur fond foncé (contraste **1,2:1**, quasi invisible).
+2. **Couleurs d'état écrites en dur** (vert « payé / atteint », rouge « retard », orange) prévues pour un fond clair : en sombre, `#2e7d32` = 2,9:1 et `#c62828` = 2,6:1.
+3. **Texte blanc sur fond d'accent** (boutons principaux, onglets sélectionnés, pagination…) : en sombre l'accent devient clair, le blanc devenait illisible (2,1:1).
+4. **Champs natifs** (listes déroulantes, calendriers, barres de défilement) restés clairs en mode sombre.
+5. **Messages `.form-message`** (succès / erreur) stylés seulement dans `Login.css`, avec des fonds très clairs éblouissants en sombre.
+
+| Fichier | Changements |
+|---|---|
+| `web/src/index.css` | `--accent` = `--accent-clair` (clair) ou `--accent-sombre` (sombre) ; `--accent-soft` calculé depuis l'accent ; nouvelles variables `--on-accent` (texte sur fond d'accent), `--success`, `--danger`, `--warning` avec une version claire pour le sombre ; `color-scheme: dark` en mode sombre |
+| `web/src/utils/theme.js` (nouveau) | `appliquerCouleurPrincipale(root, couleur)` : pose `--accent-clair` et `--accent-sombre` (version vive de chaque couleur proposée : Bleu IMTECH → `#38bdf8`, azur → `#2dd4bf`, vert → `#4ade80`, bordeaux → `#f472b6`, jaune → `#fbbf24`, gris → `#94a3b8`, rouge → `#f87171`) |
+| `web/src/pages/dashboard/DashboardLayout.jsx` | Utilise `appliquerCouleurPrincipale` au lieu de poser `--accent` |
+| 18 fichiers CSS (`WorkspacePages`, `DashboardContent`, `Paiements`, `Echeances`, `ProfileModal`, `ClassementFormation`, `AvisFormateurs`, `SupportItem`, `Notifications`…) | Couleurs d'état en dur → `var(--success / --danger / --warning)` ; fonds pâles → `color-mix(in srgb, var(--…) N%, transparent)` (même intensité qu'avant) ; `color: #fff` sur fond `var(--accent)` → `var(--on-accent)` |
+| `web/src/pages/WorkspacePages.css` | `.form-message.error / .success` dans le tableau de bord et les fenêtres : couleurs du thème |
+| `web/src/pages/auth/Login.css` | Champ de connexion : fond blanc explicite (la page de connexion garde son propre style, indépendant du thème) |
+
+Non modifiés volontairement : la barre latérale (fond sombre dans les deux thèmes), les médailles du podium, les couleurs pleines des graphiques et des badges (texte blanc sur couleur vive, lisible dans les deux thèmes).
+
+**Contrastes (texte sur fond de carte / de page)** — seuil recommandé : 4,5:1
+
+| Couleur | Mode clair | Mode sombre (avant → après) |
+|---|---|---|
+| Accent (Bleu IMTECH) | 11,9 | 1,2 → **6,8** |
+| Succès | 5,1 | 2,9 → **8,4** |
+| Erreur | 5,6 | 2,6 → **5,3** |
+| Attention | 5,6 (`#9a5800`, avant 4,2) | → **8,8** |
+| Texte sur bouton d'accent | — | 2,1 → **8,3** |
+
+### Vérifications
+
+- Web : 0 erreur ESLint, `vite build` OK ; aucun texte blanc restant sur un fond `var(--accent)` (script) ; aucune couleur en dur dans les attributs JSX.
+
+## 32. Mobile : avertissement « The action 'GO_BACK' was not handled by any navigator »
+
+**Cause :** le bouton retour du lecteur de support (`app/lecteur.tsx`) appelait `router.back()` sans vérifier qu'il existe un écran précédent (lecteur ouvert directement, page web rechargée sur le lecteur…). Tous les autres écrans faisaient déjà `router.canGoBack()` avant.
+
+| Fichier | Changements |
+|---|---|
+| `mobile/src/app/lecteur.tsx` | `retour()` : `router.back()` s'il y a un écran précédent, sinon `router.replace('/(tabs)/documents')` (même logique que le détail d'un support) |
+
+### Vérifications
+
+- Mobile : `tsc --noEmit` OK, 0 erreur ESLint ; plus aucun `router.back()` sans `canGoBack()` dans `mobile/src`.
+
+## 33. Web : recherche globale dans la barre du haut (Ctrl+K)
+
+Un bouton **Rechercher… (Ctrl K)** dans le header de chaque page ouvre une fenêtre de recherche : pages du menu et données, résultats groupés, navigation au clavier.
+
+| Rôle | Ce qu'on trouve | Clic sur un résultat |
+|---|---|---|
+| Super Admin | Pages, étudiants, formations, inscriptions, utilisateurs | Fiche étudiant / formation / inscription, modification du compte |
+| Accueil | Pages, étudiants, formations, inscriptions | Idem (pas de comptes utilisateurs) |
+| Formateur | Pages, ses formations, ses étudiants, ses supports | Espace formateur avec la fenêtre des étudiants de la formation ; support publié → page Supports filtrée sur son titre ; support programmé → page Supports programmés |
+
+| Fichier | Changements |
+|---|---|
+| `backend-imtech/models/rechercheModel.js` (nouveau) | Requêtes `LIKE` par type (nom, prénom, nom complet dans les deux sens, e-mail, téléphone, formation, titre / texte de support), 5 résultats max |
+| `backend-imtech/services/rechercheService.js` (nouveau) | Groupes selon le rôle ; minimum 2 caractères ; `%` et `_` échappés (cherchés tels quels) ; texte limité à 100 caractères |
+| `backend-imtech/controllers/rechercheController.js` (nouveau), `routes/routes.js` | `GET /recherche?q=` (SA, AC, FO) |
+| `backend-imtech/tests/recherche.test.js` (nouveau) | 6 tests (rôles, échappement, longueur minimale, 401 / 403 / 200) |
+| `web/src/components/recherche/RechercheGlobale.jsx` / `.css` (nouveaux) | Fenêtre : champ, pages du menu filtrées sur place (sans accents), appel au serveur 250 ms après la dernière frappe (réponse dépassée ignorée), groupes avec avatar ou icône, ↑ ↓ / Entrée / Échap, couleurs du thème |
+| `web/src/components/header/Header.jsx` | Bouton « Rechercher… Ctrl K » (icône seule sous 760 px) |
+| `web/src/pages/dashboard/DashboardLayout.jsx` | Raccourci Ctrl+K (⌘K sur Mac), `onRecherche` dans le contexte partagé, `ouvrirResultat()` (page ou fiche dans la bonne section) |
+| `web/src/pages/formateur/AccueilFormateur.jsx` | Ouvre la fenêtre des étudiants demandée par la recherche (`location.state.formationOuverte`) |
+| `web/src/pages/formateur/SupportsFormateur.jsx`, `components/support/ListeSupports.jsx` | Recherche des supports pré-remplie (`rechercheInitiale`) |
+
+### Vérifications
+
+- Backend : **87 tests** verts ; service essayé sur la base locale (SA / Accueil / formateur, `%` cherché tel quel).
+- Web : 0 erreur ESLint, `vite build` OK.
+

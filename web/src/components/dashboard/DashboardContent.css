@@ -35,7 +35,7 @@
 
 .period-tabs button.selected,
 .chart-tabs button.selected {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
 }
 
@@ -86,25 +86,25 @@
 
 .kpi-card > small.green,
 .kpi-card > small.success {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.12);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
 .kpi-card > small.yellow,
 .kpi-card > small.warning {
-  color: #b77921;
-  background: rgba(183, 121, 33, 0.12);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 
 .kpi-card > small.orange {
-  color: #c85a17;
-  background: rgba(200, 90, 23, 0.12);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 
 .kpi-card > small.red,
 .kpi-card > small.danger {
-  color: #d32f2f;
-  background: rgba(211, 47, 47, 0.12);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .kpi-icon {
@@ -125,25 +125,25 @@
 
 .kpi-icon.green,
 .kpi-icon.success {
-  color: #2e7d32;
-  background: rgba(46, 125, 50, 0.15);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
 }
 
 .kpi-icon.yellow,
 .kpi-icon.warning {
-  color: #b77921;
-  background: rgba(183, 121, 33, 0.15);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
 }
 
 .kpi-icon.orange {
-  color: #c85a17;
-  background: rgba(200, 90, 23, 0.15);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
 }
 
 .kpi-icon.red,
 .kpi-icon.danger {
-  color: #d32f2f;
-  background: rgba(211, 47, 47, 0.15);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
 }
 
 .kpi-icon.neutral {
@@ -252,13 +252,13 @@
 
 .line-chart polyline:first-child {
   fill: none;
-  stroke: #4d8b42;
+  stroke: var(--success);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
 .line-chart polyline.area {
-  fill: rgba(77, 139, 66, 0.15);
+  fill: color-mix(in srgb, var(--success) 15%, transparent);
   stroke: none;
 }
 
@@ -314,8 +314,8 @@
   margin-left: 5px;
   padding: 3px 5px;
   border-radius: 8px;
-  color: #d94c4c;
-  background: rgba(217, 76, 76, 0.12);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
   font-size: 7px;
   font-style: normal;
 }
@@ -348,18 +348,18 @@
 }
 
 .status.late {
-  color: #d95353;
-  background: rgba(217, 83, 83, 0.12);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .status.soon {
-  color: #99711a;
-  background: rgba(153, 113, 26, 0.12);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 
 .status.ok {
-  color: #39874e;
-  background: rgba(57, 135, 78, 0.12);
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
 .action {
@@ -378,12 +378,12 @@
 }
 
 .action.danger {
-  border-color: rgba(214, 75, 75, 0.4);
-  color: #d64b4b;
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  color: var(--danger);
 }
 
 .action.danger:hover {
-  background: rgba(214, 75, 75, 0.1);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 .table-footer {

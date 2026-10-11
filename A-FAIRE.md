@@ -1,55 +1,97 @@
-# À faire — tests et mise en application mobile (prévu le 08/10/2026)
+# À faire — état au 11/10/2026
+
+Note de l'audit du 11/10/2026 : **7/10** (structure backend 8,5 · sécurité 7,5 · tests 7 ·
+structure web / mobile 6,5 · scalabilité 5,5 · documentation 9).
+Les points ci-dessous sont ce qui reste pour aller plus haut, par ordre d'importance.
 
 ---
 
-## 1. Tester la protection des documents (lot 3)
+## 1. Améliorations restantes (audit)
 
-Avant tout : **relancer le backend** (`cd backend-imtech && npm run dev`) et **relancer Expo** (`cd mobile && npx expo start`).
+### 1.1 Pagination côté serveur — priorité haute (scalabilité)
+`GET /etudiants`, `/paiements`, `/inscriptions`, `/notifications` (et `/echeances`, `/documents`,
+`/assistances`, `/utilisateurs`) renvoient **toutes** les lignes. Avec quelques milliers de
+paiements, la page devient lente.
+- [ ] Accepter `?page=1&limite=20` (+ filtres / recherche) dans les models (`LIMIT ? OFFSET ?`)
+      et renvoyer `{ data, total, page, limite }`.
+- [ ] Web : brancher les hooks (`useEtudiant`, `usePaiement`, `useInscription`…) et la pagination
+      existante sur ces paramètres au lieu de tout charger.
+- [ ] Commencer par **Paiements** et **Étudiants** (les plus gros).
 
-### Backend / web
-- [ ] Copier l'URL d'un support **sans** `?token=...` dans un nouvel onglet → doit répondre **401**.
-- [ ] Se déconnecter, puis rouvrir un ancien lien de fichier (avec token) → doit répondre **401**.
-- [ ] Ouvrir un support PDF depuis le web → le **filigrane** « IMTECH INFO · Nom · e-mail · date » apparaît en diagonale.
-- [ ] Ouvrir une image (support ou pièce d'un étudiant) → filigrane présent.
-- [ ] Ouvrir une **facture / attestation / fiche** → **pas** de filigrane (documents officiels).
-- [ ] Les photos de profil (avatars) s'affichent toujours, sans filigrane.
-- [ ] Ajouter un support **Word** → refusé avec le message « Un support doit être un PDF ou une image ».
-- [ ] Ajouter un support PDF et un support PNG → acceptés.
+### 1.2 Limiter les essais de connexion — priorité haute (sécurité, petit correctif)
+`POST /auth/login`, `/auth/forgot-password`, `/auth/reset-password` n'ont aucune limite : on peut
+essayer des mots de passe à l'infini.
+- [ ] Réutiliser `middlewares/limiteRequetes.js` (déjà utilisé pour l'inscription en ligne),
+      ex. 10 essais / 15 min par IP sur la connexion, 5 / heure sur le mot de passe oublié.
+- [ ] Test dans `tests/autorisations.test.js` (429 au-delà de la limite).
 
-### Mobile (Expo web, dans le navigateur)
-- [ ] Ouvrir un support PDF → s'affiche dans le lecteur (iframe), page par page, avec filigrane.
-- [ ] Ouvrir un support image → s'affiche avec filigrane.
-- [ ] Vérifier la console : plus d'erreur « React Native WebView does not support this platform ».
+### 1.3 Mettre les fiches dans l'URL (web)
+Les vues ouvertes (fiche étudiant, formation, inscription, formulaire) sont gardées en mémoire
+dans `DashboardLayout` : un rechargement (F5) revient à la liste, et on ne peut pas partager un
+lien vers une fiche.
+- [ ] Routes du type `/dashboard/etudiants/:id`, `/dashboard/inscriptions/:id`,
+      `/dashboard/formations/:id/modifier` (react-router `useParams`).
+- [ ] Remplacer `studentView`, `formationView`, `inscriptionView`, `userView` par ces routes ;
+      `ouvrirResultat()` de la recherche globale devient un simple `navigate()`.
 
-### Mobile (vrai téléphone, Expo Go)
-- [ ] Ouvrir un support PDF → s'affiche **dans l'app** (plus de navigateur externe).
-- [ ] **Android** : faire une capture d'écran dans le lecteur → écran **noir** (ou capture refusée).
-- [ ] **Android** : lancer un enregistrement d'écran → le lecteur apparaît noir.
-- [ ] Appui long sur une image → pas de menu « Enregistrer l'image ».
-- [ ] Revenir en arrière → les captures sont de nouveau autorisées ailleurs dans l'app.
-- [ ] Étudiant non inscrit à une formation → ne peut pas ouvrir ses supports (message d'erreur dans le lecteur).
+### 1.4 Préparer plusieurs serveurs (seulement si l'application grandit)
+Aujourd'hui tout vit dans un seul processus Node, ce qui suffit pour IMTECH INFO.
+- [ ] Limiteur de requêtes et tâches automatiques (rappels, supports programmés) : compteur dans
+      Redis / tâches dans un seul processus dédié. (Les mises à jour sont déjà atomiques : pas de
+      double envoi, mais des vérifications en double.)
+- [ ] Fichiers uploadés : stockage objet (S3, Cloudinary…) au lieu du disque local `uploads/`.
+- [ ] Pool MySQL : `connectionLimit` dans le `.env` (10 aujourd'hui).
 
-### Si l'erreur web « does not provide an export named 'getFileUrl' » revient
-1. Recharger avec **Ctrl+F5**.
-2. Sinon arrêter puis relancer `npm run dev` (web).
-3. En dernier recours : supprimer `web/node_modules/.vite` puis relancer.
-
-> L'erreur `_sender is not defined` vient d'une **extension du navigateur**, pas de l'application
-> (vérifier en navigation privée).
+### 1.5 Qualité du code
+- [ ] Découper les gros fichiers : `web/src/pages/parametres/Parametres.jsx` (531 lignes : un
+      composant par onglet), `web/src/pages/dashboard/DashboardLayout.jsx` (415),
+      `mobile/src/app/(tabs)/index.tsx` (569), `mobile/src/app/parametres.tsx` (409).
+- [ ] Corriger les avertissements ESLint : **17 web**, **14 mobile** (surtout `exhaustive-deps`).
+- [ ] Ajouter quelques tests front (Vitest + Testing Library sur le web) : recherche globale,
+      redirection par rôle (`utils/navigation.js`), formulaire de paiement.
+- [ ] En-têtes de sécurité HTTP (`helmet`) sur le backend.
 
 ---
 
-## 2. Transformer l'application mobile en APK (Android)
+## 2. Tester les nouveautés du 11/10 (dans l'application)
 
-### 2.1 Préparer le projet (à faire avant le build)
+Avant : **relancer le backend** (`cd backend-imtech && npm run dev`), le web et Expo.
+Base déjà à jour (bloc **010** de `alter2.sql` exécuté).
 
-- [ ] **`app.json`** : donner un vrai nom et un identifiant Android
+### Web
+- [ ] **Recherche globale** : bouton « Rechercher… » ou **Ctrl+K** ; essayer un nom d'étudiant,
+      une formation, « paie » (page Paiements) ; ↑ ↓ + Entrée ouvre la bonne fiche.
+- [ ] Recherche en **formateur** : un étudiant ouvre l'espace formateur avec la fenêtre des
+      étudiants ; un support ouvre la page Supports filtrée.
+- [ ] **Mode sombre** : parcourir Paiements, Échéances, Espace formateur, Classement, Paramètres,
+      Profil → plus de texte illisible ; tester aussi avec une autre couleur principale.
+- [ ] **Redirection par rôle** : en Accueil, taper `/dashboard/utilisateurs` → retour au tableau
+      de bord ; en formateur, `/dashboard/paiements` → idem.
+- [ ] **Formateur** : menus Espace formateur / Supports / Supports programmés / Notifications ;
+      clic sur une formation → fenêtre des étudiants ; recherche, filtres, tri et « Voir plus »
+      des supports ; tableau des notes (saisie + Entrée, couleurs de la note finale).
+- [ ] **Fond de la vitrine** (Super Admin, Paramètres > Apparence) : remplacer l'image, puis
+      « Par défaut ».
+- [ ] **Se déconnecter partout** (Paramètres > Sécurité) avec **deux navigateurs différents**
+      (ou web + téléphone) : l'autre est renvoyé à la connexion en moins d'une minute.
+
+### Mobile
+- [ ] Page **Découvrir** : le fond remplit tout le haut (sous la barre d'état) et affiche le fond
+      choisi par le Super Admin.
+- [ ] Session révoquée depuis le web → alerte « Session fermée » puis écran de connexion.
+- [ ] Lecteur de support : bouton retour sans l'avertissement « GO_BACK ».
+
+---
+
+## 3. Transformer l'application mobile en APK (Android) — pas encore fait
+
+### 3.1 Préparer le projet
+- [ ] **`app.json`** : vrai nom et identifiant Android (aujourd'hui `"name": "mobile"`)
   ```json
   "name": "IMTECH INFO",
   "android": { "package": "mg.imtech.app", ... }
   ```
   (optionnel : icône et splash aux couleurs d'IMTECH)
-
 - [ ] **Autoriser le HTTP** (sinon une app compilée refuse `http://192.168...`) :
   ```bash
   cd mobile
@@ -59,10 +101,8 @@ Avant tout : **relancer le backend** (`cd backend-imtech && npm run dev`) et **r
   ```json
   ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }]
   ```
-
-- [ ] **Adresse de l'API dans `eas.json`** : dans un APK, `__DEV__` vaut `false`. Sans
-  `EXPO_PUBLIC_API_URL`, l'app appelle `https://api.imtech.info/api`, qui n'existe pas.
-  Le `.env` est ignoré par git, donc **EAS ne l'envoie pas** : il faut mettre l'URL dans `eas.json`.
+- [ ] **`eas.json`** (n'existe pas encore) avec l'adresse de l'API : dans un APK, `__DEV__` vaut
+  `false` et le `.env` n'est pas envoyé à EAS (ignoré par git).
   ```json
   {
     "build": {
@@ -74,50 +114,40 @@ Avant tout : **relancer le backend** (`cd backend-imtech && npm run dev`) et **r
     }
   }
   ```
-  ⚠️ Vérifier l'IP du PC le jour du test (`ipconfig`) : elle peut changer.
+  ⚠️ Vérifier l'IP du PC le jour du test (`ipconfig`).
 
-### 2.2 Lancer le build
-
+### 3.2 Lancer le build
 ```bash
 npm install -g eas-cli
 eas login                 # compte gratuit sur expo.dev
 cd mobile
-eas build:configure       # crée eas.json (puis y ajouter le profil "preview" ci-dessus)
+eas build:configure       # crée eas.json (y ajouter le profil "preview" ci-dessus)
 eas build -p android --profile preview
 ```
+- 10 à 30 min ; à la fin, lien + QR code pour installer l'APK (autoriser les sources inconnues).
 
-- Durée : 10 à 30 min (file d'attente du compte gratuit).
-- À la fin : un **lien + QR code** pour télécharger l'APK sur le téléphone.
-- Sur le téléphone : autoriser l'installation depuis des **sources inconnues**.
+### 3.3 Pour que l'app fonctionne
+- [ ] PC du backend allumé, **même Wi-Fi** que le téléphone, port **3000** autorisé dans le pare-feu.
+- [ ] Tester : connexion, Découvrir, formations, lecteur (filigrane, capture bloquée), paiement,
+      assistance, session révoquée.
 
-### 2.3 Pour que l'app fonctionne
-
-- [ ] Le **PC du backend allumé** et sur le **même Wi-Fi** que le téléphone.
-- [ ] **Pare-feu Windows** : autoriser le port **3000** (entrant) pour Node.
-- [ ] Tester sur le téléphone : connexion, formations, ouverture d'un support (lecteur + filigrane),
-      capture d'écran bloquée, paiement, assistance.
-
-### 2.4 Plus tard (hors Wi-Fi local)
-
-- [ ] Héberger le backend + MySQL en ligne **avec HTTPS** (Railway, Render, VPS...).
-- [ ] Mettre cette URL dans `eas.json` → plus besoin de `usesCleartextTraffic`.
-- [ ] Rebuild : `eas build -p android --profile preview`.
-
-### Autres options (pour info)
-- **Sans EAS** : `npx expo run:android --variant release` → compile sur le PC, mais demande Android Studio + SDK.
-- **iPhone** : compte Apple Developer obligatoire (99 $/an) → pour une démo, utiliser **Expo Go**.
+### 3.4 Plus tard
+- [ ] Héberger backend + MySQL en ligne **en HTTPS** (Railway, Render, VPS…), mettre l'URL dans
+      `eas.json`, retirer `usesCleartextTraffic`, rebuild.
+- iPhone : compte Apple Developer obligatoire → pour une démo, **Expo Go**.
 
 ---
 
-## 3. Commit (à faire soi-même)
+## 4. Commit (à faire soi-même)
 
-Commit proposé pour le lot 3 :
-`feat(securite): fichiers protégés, filigrane, lecteur mobile sécurisé`
+Fichiers encore **non suivis** à ajouter :
+- Backend : `controllers/rechercheController.js`, `models/rechercheModel.js`,
+  `services/rechercheService.js`, `tests/recherche.test.js`
+- Web : `src/components/recherche/` (RechercheGlobale.jsx / .css), `src/utils/theme.js`
 
-- Backend : `middlewares/fichierMiddleware.js`, `models/fichierModel.js`, `utils/filigrane.js`,
-  `tests/fichiers.test.js` (nouveaux) ; `app.js`, `middlewares/authMiddleware.js`,
-  `middlewares/docUpload.js`, `routes/routes.js`, `package.json`, `package-lock.json`
-- Web : `src/utils/api.js`, `src/utils/files.js`, `src/pages/documents/Documents.jsx`
-- Mobile : `src/app/lecteur.tsx` (nouveau) ; `src/utils/api.ts`, `src/utils/format.ts`,
-  `src/hooks/use-doc-detail.ts`, `src/app/_layout.tsx`, `package.json`, `package-lock.json`
-- Doc : `FLUX-APPLICATION.md`, `MODIFICATIONS.md`, `A-FAIRE.md`
+Plus les fichiers modifiés (`git status`). Messages proposés, si commit séparé :
+- `feat(web): recherche globale (Ctrl+K) selon le rôle`
+- `fix(web): couleurs lisibles en mode sombre`
+- `feat(web): pages par rôle, notifications du formateur`
+- `fix(mobile): retour du lecteur sans écran précédent`
+- Doc : `MODIFICATIONS.md` (sections 24 à 33), `FLUX-APPLICATION.md`, `api.md`, `A-FAIRE.md`
