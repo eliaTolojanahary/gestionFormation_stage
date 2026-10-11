@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import { getFileUrl } from '../../utils/files'
 import './DocumentAffichage.css'
 
+// Affiche une pièce du dossier (photo, CIN, certificat...) : miniature cliquable pour les images,
+// lien de téléchargement pour tous les fichiers, "Non fourni" si aucun chemin.
 function DocumentAffichage({ label, path }) {
   const url = getFileUrl(path)
   const isImage = /\.(jpeg|jpg|png|webp|gif)$/i.test(path || '')
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
+  // Touche Échap pour fermer l'aperçu (écouteur actif seulement quand il est ouvert)
   useEffect(() => {
     if (!isPreviewOpen) return
 
@@ -52,6 +55,7 @@ function DocumentAffichage({ label, path }) {
         </a>
       </div>
 
+      {/* Aperçu en grand ; clic sur le fond pour fermer */}
       {isPreviewOpen && (
         <div className="document-lightbox" role="presentation" onClick={handleBackgroundClick}>
           <div className="document-lightbox-content" role="dialog" aria-modal="true" aria-label={label}>

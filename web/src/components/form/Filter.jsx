@@ -1,6 +1,8 @@
 import Icon from '../icon/Icon'
 import './Filter.css'
 
+// Barre de recherche + filtres déroulants + bouton Réinitialiser, utilisée au-dessus des tableaux.
+// filters = [{ name, label, value, options: [...], onChange }]
 function SearchFilterBar({
   searchValue,
   onSearchChange,

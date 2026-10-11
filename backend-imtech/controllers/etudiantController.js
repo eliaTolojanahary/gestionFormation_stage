@@ -1,120 +1,67 @@
+// Controller des étudiants (compte utilisateur + dossier avec pièces justificatives).
 const etudiantService = require('../services/etudiantService');
+const { exigerChamps } = require('../utils/errors');
 
+// Transforme req.files (multer .fields) en { champ: 'dossier/nom-fichier' } à enregistrer en base.
+// "photo" (photo de profil) va dans utilisateurs/, les pièces justificatives dans etudiants/
+function cheminsFichiers(files) {
+  return Object.fromEntries(
+    Object.entries(files || {}).map(([field, fichiers]) => {
+      const dossier = field === 'photo' ? 'utilisateurs' : 'etudiants';
+      return [field, `${dossier}/${fichiers[0].filename}`];
+    })
+  );
+}
+
+// GET /etudiants
 async function listerEtudiants(req, res) {
-  try {
-    const etudiants = await etudiantService.listerEtudiants();
-    return res.json({ status: "success", data: etudiants });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const etudiants = await etudiantService.listerEtudiants();
+  res.json({ status: 'success', data: etudiants });
 }
 
+// GET /etudiants/:id
 async function detailEtudiant(req, res) {
-  try {
-    const etudiant = await etudiantService.recupererEtudiant(req.params.id);
-    if (!etudiant) {
-      return res.status(404).json({ status: "error", message: "Étudiant introuvable." });
-    }
-    return res.json({ status: "success", data: etudiant });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const etudiant = await etudiantService.recupererEtudiant(req.params.id);
+  res.json({ status: 'success', data: etudiant });
 }
 
+// GET /etudiants/:id/formations : formations où l'étudiant est inscrit
 async function formationsEtudiant(req, res) {
-  try {
-    const formations = await etudiantService.recupererFormationsEtudiant(req.params.id);
-    return res.json({ status: "success", data: formations });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const formations = await etudiantService.recupererFormationsEtudiant(req.params.id);
+  res.json({ status: 'success', data: formations });
 }
+
+// POST /etudiants : crée le compte utilisateur (rôle Étudiant) et la fiche étudiant
 async function creerEtudiantController(req, res) {
-  try {
-    const { nom, prenom, email, mot_de_passe, telephone, id_role } = req.body;
+  exigerChamps(req.body, ['nom', 'prenom', 'email', 'mot_de_passe']);
+  const { nom, prenom, email, mot_de_passe, telephone } = req.body;
+  const fichiers = cheminsFichiers(req.files);
 
-    if (!nom || !prenom || !email || !mot_de_passe || !id_role) {
-      return res.status(400).json({ status: 'error', message: 'nom, prenom, email, mot_de_passe et id_role sont requis.' });
-    }
+  const id_etudiant = await etudiantService.creerEtudiant({
+    nom, prenom, email, mot_de_passe, telephone,
+    photo: fichiers.photo,
+    photo_1: fichiers.photo_1,
+    photo_2: fichiers.photo_2,
+    certificat_residence: fichiers.certificat_residence,
+    photocopie_cin: fichiers.photocopie_cin,
+  });
 
-    // Dossier différent selon le champ : "photo" -> utilisateurs/, le reste -> etudiants/
-    const paths = Object.fromEntries(
-      Object.entries(req.files || {}).map(([field, files]) => {
-        const dossier = field === 'photo' ? 'utilisateurs' : 'etudiants';
-        return [field, `${dossier}/${files[0].filename}`];
-      })
-    );
-
-    const id_etudiant = await etudiantService.creerEtudiant({
-      nom,
-      prenom,
-      email,
-      mot_de_passe,
-      telephone,
-      id_role,
-      photo: paths.photo,
-      photo_1: paths.photo_1,
-      photo_2: paths.photo_2,
-      certificat_residence: paths.certificat_residence,
-      photocopie_cin: paths.photocopie_cin,
-    });
-
-    return res.status(201).json({ status: 'success', message: 'Étudiant créé.', id_etudiant });
-  } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ status: 'error', message: 'Cet email existe déjà.' });
-    }
-    console.error(error);
-    return res.status(500).json({ status: 'error', message: 'Erreur serveur.' });
-  }
+  res.status(201).json({ status: 'success', message: 'Étudiant créé.', id_etudiant });
 }
 
+// PUT /etudiants/:id : infos + nouveaux fichiers éventuels
 async function updateEtudiantController(req, res) {
-  try {
-    const { nom, prenom, email, telephone, id_role } = req.body;
+  const { nom, prenom, email, telephone } = req.body;
+  const updateData = { nom, prenom, email, telephone, ...cheminsFichiers(req.files) };
 
-    const paths = Object.fromEntries(
-      Object.entries(req.files || {}).map(([field, files]) => {
-        const dossier = field === 'photo' ? 'utilisateurs' : 'etudiants';
-        return [field, `${dossier}/${files[0].filename}`];
-      })
-    );
-
-    const updateData = {
-      nom,
-      prenom,
-      email,
-      telephone,
-      id_role,
-      ...paths, 
-    };
-
-    const updated = await etudiantService.modifierEtudiant(req.params.id, updateData);
-    if (!updated) {
-      return res.status(404).json({ status: 'error', message: 'Étudiant introuvable.' });
-    }
-
-    return res.json({ status: 'success', data: updateData });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: 'error', message: "Erreur lors de la mise à jour de l'étudiant." });
-  }
+  await etudiantService.modifierEtudiant(req.params.id, updateData);
+  res.json({ status: 'success', data: updateData });
 }
 
+// DELETE /etudiants/:id : suppression logique (désactivation)
 async function deleteEtudiantController(req, res) {
-  try {
-    const ok = await etudiantService.supprimerEtudiant(req.params.id);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Étudiant introuvable." });
-    }
-    return res.json({ status: "success", message: "Étudiant désactivé." });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  await etudiantService.supprimerEtudiant(req.params.id);
+  res.json({ status: 'success', message: 'Étudiant désactivé.' });
 }
 
 module.exports = { listerEtudiants, detailEtudiant, formationsEtudiant, creerEtudiantController, updateEtudiantController, deleteEtudiantController };

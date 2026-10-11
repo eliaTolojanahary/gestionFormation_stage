@@ -4,10 +4,9 @@ import Informations from '../../components/form/Informations'
 import Tableau from '../../components/tableau/Tableau'
 import DocumentAffichage from '../../components/doc/DocumentAffichage'
 import { useEtudiant } from '../../hooks/useEtudiant'
-import { getFileUrl } from '../../utils/files'
 import './Etudiants.css'
 
-
+// Fiche détaillée d'un étudiant : informations, formations suivies et pièces justificatives.
 function EtudiantDetail({ user, studentId, onBack, onEdit }) {
   const { getEtudiant, getFormations } = useEtudiant()
   const [student, setStudent] = useState(null)
@@ -30,7 +29,18 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
 
   const formationColumns = [
     { key: 'nom', header: 'Formation' },
-    { key: 'description', header: 'Description' },
+    {
+      key: 'description',
+      header: 'Description',
+      cellClassName: 'formation-description-cell',
+      // Limitée à 2 lignes (texte complet au survol) : une longue description ne doit pas
+      // élargir le tableau et repousser la colonne Documents
+      render: (formation) => (
+        <span className="formation-description" title={formation.description || ''}>
+          {formation.description || '—'}
+        </span>
+      ),
+    },
     {
       key: 'tarif',
       header: 'Tarif',
@@ -39,6 +49,7 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
     { key: 'date_inscription', header: 'Inscription' },
   ]
 
+  // [libellé, chemin du fichier] des pièces du dossier
   const documents = [
     ['Photo 1', student?.photo_1],
     ['Photo 2', student?.photo_2],
@@ -64,11 +75,6 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
       </main>
     )
   }
-
-  // URL complète de la photo de profil ou image par défaut si vide
-  const photoUrl = student.photo
-    ? getFileUrl(student.photo)
-    : null
 
   const informationItems = [
     { label: 'Nom complet', value: `${student.prenom || ''} ${student.nom || ''}`.trim() },

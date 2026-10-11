@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des étudiants : liste (chargée au montage), détail, formations suivies, CRUD.
 export function useEtudiant() {
   const [etudiants, setEtudiants] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -35,6 +36,7 @@ export function useEtudiant() {
     return data.data || []
   }
 
+// formData = FormData avec les infos et les pièces justificatives (photos, CIN, certificat)
 function createEtudiant(formData) {
   return apiRequest('/etudiants', {
     method: 'POST',
@@ -43,9 +45,6 @@ function createEtudiant(formData) {
 }
 
 function updateEtudiant(id, formData) {
-  for (const [key, value] of formData.entries()) {
-  console.log(key, value)
-}
   return apiRequest(`/etudiants/${id}`, {
     method: 'PUT',
     body: formData,

@@ -1,84 +1,142 @@
-# API REST IMTECH INFO (Version Finale)
+# API REST IMTECH INFO
 
-## Authentification (Publique & Protégée)
-POST /auth/login
-POST /auth/logout
-POST /auth/forgot-password
-POST /auth/reset-password
-GET  /auth/profil                      
+Préfixe : `/api`. Toutes les routes sauf celles marquées **public** exigent l'en-tête
+`Authorization: Bearer <token>` **et** une session active (un logout invalide réellement le token).
 
-## Utilisateurs / Staff
-GET    /utilisateurs
-GET    /utilisateurs/:id
-POST   /utilisateurs
-PUT    /utilisateurs/:id
-DELETE /utilisateurs/:id
+Rôles : **SA** = Super Admin, **AC** = Accueil, **FO** = Formateur, **ET** = Étudiant.
+
+Format des réponses : `{ "status": "success", ... }` ou `{ "status": "error", "message": "..." }`.
+Codes d'erreur : 400 (champ manquant / invalide), 401 (non connecté / session révoquée),
+403 (rôle ou propriétaire incorrect), 404 (introuvable), 409 (conflit : doublon, déjà traité), 500.
+
+## Authentification
+| Méthode | Route | Accès |
+|---|---|---|
+| POST | /auth/login | public |
+| POST | /auth/forgot-password | public |
+| POST | /auth/reset-password | public (déconnecte tous les appareils) |
+| POST | /auth/logout | connecté (désactive la session courante) |
+| GET | /auth/profil | connecté |
+| PUT | /auth/change-password | connecté (déconnecte les autres appareils) |
+| GET | /auth/sessions | connecté (les tokens ne sont jamais renvoyés) |
+| GET | /auth/last-login | connecté |
+| PUT | /auth/logout-all | connecté |
+
+## Utilisateurs
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /utilisateurs | SA |
+| GET | /utilisateurs/:id | soi-même ou SA |
+| POST | /utilisateurs | SA |
+| PUT | /utilisateurs/:id | soi-même ou SA (seul SA peut changer `id_role` / `mot_de_passe`) |
+| DELETE | /utilisateurs/:id | SA |
 
 ## Étudiants
-GET    /etudiants
-GET    /etudiants/:id
-GET    /etudiants/:id/formations
-POST   /etudiants
-PUT    /etudiants/:id
-DELETE /etudiants/:id
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /etudiants | SA, AC, FO |
+| GET | /etudiants/:id | SA, AC |
+| GET | /etudiants/:id/formations | tous (un ET : uniquement les siennes) |
+| GET | /etudiants/:id/dashboard-paiement | SA, AC, ET (un ET : uniquement le sien) |
+| POST | /etudiants | SA, AC (le rôle Étudiant est imposé par le serveur) |
+| PUT | /etudiants/:id | SA, AC |
+| DELETE | /etudiants/:id | SA, AC |
 
 ## Formations
-GET    /formations
-GET    /formations/:id
-GET    /formations/:id/etudiants
-POST   /formations
-PUT    /formations/:id
-DELETE /formations/:id
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /formations | connecté (un FO ne voit que les siennes) |
+| GET | /formations/:id | connecté |
+| GET | /formations/:id/etudiants | SA, AC, FO (un FO : uniquement ses formations) |
+| GET | /formations/:id/classement | SA, AC, FO (un FO : uniquement ses formations) — classement + note système /10 (paiement 2 ou 5 + présence 2, 3 ou 5, enregistrée en base) |
+| POST / PUT / DELETE | /formations(/:id) | SA |
 
-## Inscriptions
-GET    /inscriptions
-GET    /inscriptions/:id
-POST   /inscriptions               <-- Génère automatiquement l'échéancier
-DELETE /inscriptions/:id
+## Inscriptions & échéances
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /inscriptions, /inscriptions/:id | SA, AC |
+| POST | /inscriptions | SA, AC — crée l'inscription **et** l'échéancier dans une transaction |
+| POST | /inscriptions/:id/valid | SA, AC — valide (une seule fois) et enregistre le 1er paiement |
+| DELETE | /inscriptions/:id | SA, AC |
+| GET | /inscriptions/:id/echeances | SA, AC |
+| PUT | /inscriptions/:id/note | SA, FO (ses formations) — `{ note_presentation }` entre 0 et 10 (au-delà : 400), vide = effacer. Note d'attestation = note système + présentation /20 |
+| GET | /echeances | SA, AC — `statut_paiement` : VERT (payée ou loin), JAUNE (J-2 à J), ROUGE (en retard) |
+| PUT | /echeances/:id | SA, AC |
+| POST | /echeances/:id/rappeler | SA, AC — bouton « Rappeler » : notification in-app + e-mail à l'étudiant |
 
-## Échéances & Paiements
-GET    /inscriptions/:id/echeances 
-GET    /echeances                  <-- Pour la vue globale des impayés (Vert/Orange/Rouge)
-PUT    /echeances/:id
-POST   /paiements                 
-GET    /paiements/:id
-PUT    /paiements/:id
+## Paiements
+Un paiement a un `statut` : `en_attente`, `valide` ou `refuse`.
+Seuls les paiements `valide` comptent dans les totaux, le dashboard et les factures.
 
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /paiements?statut=en_attente | SA, AC (tout) — ET (uniquement les siens) |
+| GET | /paiements/:id | SA, AC — ET (uniquement les siens) |
+| POST | /paiements | SA, AC : paiement `valide`, partiel autorisé, plafonné au reste à payer.<br>ET : uniquement sur sa propre échéance, montant imposé, statut `en_attente`. |
+| PUT | /paiements/:id | SA, AC |
+| PUT | /paiements/:id/valider | SA, AC — notifie l'étudiant |
+| PUT | /paiements/:id/refuser | SA, AC — notifie l'étudiant |
 
 ## Documents
-GET /factures/:id
-GET /attestations/:id
-GET /fiche/:id
-GET /verification/:uuid
+| Méthode | Route | Accès |
+|---|---|---|
+| POST | /fiche/:id_inscription/generer | SA, AC |
+| POST | /factures/:id_paiement/generer | SA, AC (paiement validé uniquement) |
+| POST | /attestations/:id_inscription/generer | SA, AC (la note est imprimée sur l'attestation) |
+| POST | /attestations/:id_inscription/envoyer | SA, AC — génère puis envoie à l'étudiant (in-app + e-mail avec le PDF) |
+| GET | /verification/:uuid | public (QR code des attestations) |
+| GET | /documents | SA, AC, FO |
+| POST | /documents | SA, AC |
+| DELETE | /documents/:id | SA |
 
-## Supports de cours & Commentaires & reactions
-GET    /formations/:id/supports    
-POST   /supports                  
-DELETE /supports/:id
-GET    /supports/:id/commentaires
-POST   /commentaires
-DELETE /commentaires/:id           
-POST	/supports/:id/reactions	 
-DELETE	/supports/:id/reactions	
-GET	/supports/:id/reactions
+## Supports, commentaires & réactions
+> Envoi programmé : un planificateur (chaque minute) annonce le support aux étudiants inscrits
+> 1 h avant (« X va envoyer le support … dans une heure »), puis le publie à l'heure prévue et
+> prévient étudiants et formateur (« Le support … a été envoyé dans la formation … »).
 
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /formations/:id/supports, /supports/:id | tous — supports **publiés** uniquement |
+| POST | /supports | FO (uniquement dans ses formations) — `date_envoi_prevue` facultative (ISO, dans le futur) : support **programmé** (brouillon), sinon publié tout de suite et les inscrits sont notifiés |
+| GET | /supports/programmes | FO (les siens), SA (tous) — supports programmés pas encore envoyés |
+| PUT | /supports/:id | FO (les siens), SA — modifie un support programmé : `titre`, `date_envoi_prevue`, `fichier` (multipart) ; 409 s'il est déjà envoyé |
+| POST | /supports/:id/envoyer | FO (les siens), SA — envoie tout de suite un support programmé |
+| DELETE | /supports/:id | FO (ses supports, publiés ou programmés), SA |
+| GET | /supports/:id/commentaires | tous — fil de discussion : commentaires principaux (plus récent d'abord), chacun avec `reponses` et `nb_reponses` |
+| POST | /commentaires | ET, FO, SA |
+| DELETE | /commentaires/:id | SA (tout), FO (ses formations), ET (ses commentaires) |
+| GET / POST / DELETE | /supports/:id/reactions | SA, FO, ET — POST `{ type_reaction: 'like' \| 'coeur' \| 'utile' \| 'dislike' }` (`id_type_reaction` encore accepté) ; support publié uniquement |
+| GET | /formateurs/avis | SA, AC — formateurs avec réactions reçues par type, % positif et avis (`competent`, `non_competent`, `pas_assez_avis`) |
 
 ## Notifications
-GET    /notifications
-PUT    /notifications/:id/lu
-DELETE /notifications/:id
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /notifications | connecté (les siennes) |
+| PUT | /notifications/:id/lu | connecté |
+| DELETE | /notifications/:id | connecté |
+| POST | /notifications/in-app, /notifications/email, /notifications/email/piece-jointe | SA, AC |
 
-## Dashboard & Export
-GET /dashboard/kpi
-GET /dashboard/evolution
-GET /dashboard/export-csv
+## Assistance
+| Méthode | Route | Accès |
+|---|---|---|
+| POST | /assistances | ET — `{ objet, contenu }`, statut « En attente », l'Accueil est notifié |
+| GET | /assistances?statut= | SA, AC (toutes) — ET (les siennes) |
+| PUT | /assistances/:id/resoudre | SA, AC — statut « Résolu », l'étudiant est notifié |
 
-## Assistance / Tickets
-GET    /assistances
-POST   /assistances
-PUT    /assistances/:id
-DELETE /assistances/:id
+## Alertes automatiques (sans route)
+Au démarrage du serveur puis toutes les heures, l'Accueil et le Super Admin reçoivent une notification in-app :
+- « Étudiant A doit être rappelé » : échéance passée au statut JAUNE (non soldée, J-2, J-1 ou J ; même règle que la page Échéances) ;
+- « Étudiant A a fini sa formation, envoyez-lui son attestation » : date d'inscription + durée dépassée, sans attestation.
+Chaque alerte n'est envoyée qu'une fois (table `alerte_envoyee`).
 
+## Dashboard
+`GET /dashboard/kpi`, `/dashboard/evolution?periode=`, `/dashboard/export-csv`,
+`/dashboard/inscriptionParMois`, `/dashboard/topInscription` — SA, AC.
+
+## Tests automatisés
+```bash
+npm test   # 69 tests : échéancier, paiements, note d'attestation, supports programmés, commentaires et réactions, vitrine et inscription en ligne, fichiers, autorisations HTTP (sans base de données)
+```
 
 # tests:
 
@@ -163,3 +221,14 @@ payer :
   "montant": 50000.00,
   "reference": "MVOLA-REF-998823"
 }
+
+## Vitrine publique (sans connexion)
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | /public/vitrine | public — présentation et contacts (`.env`), formations actives (formateur, tarif, durée, `engagement_formateur`, nombre d'inscrits, avis sur le formateur), formateurs compétents, modes de paiement |
+| POST | /public/inscriptions | public, **5 essais par heure et par adresse IP** (429 au-delà) — `{ nom, prenom, email, telephone, mot_de_passe, formations: [{ id_formation, nombre_tranches }], id_mode_paiement, reference_virement }` : crée le compte, une inscription « en ligne » par formation et le premier paiement en attente ; 409 si l'e-mail existe |
+
+`GET /inscriptions` renvoie aussi `origine` (`accueil` / `en_ligne`), `reference_declaree` et
+`montant_declare` (premier paiement déclaré). `POST /inscriptions/:id/valid` valide ce paiement
+déclaré s'il existe, sinon enregistre le premier paiement comme avant.
+`POST / PUT /formations` acceptent `engagement_formateur`.

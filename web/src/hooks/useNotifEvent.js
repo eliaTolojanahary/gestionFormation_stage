@@ -1,6 +1,8 @@
 
 import { useNotification } from './useNotification'
 
+// Messages de notification prêts à l'emploi pour les événements courants
+// (nouveau support, commentaire, mention, inscription confirmée, facture).
 export function useNotifEvent() {
   const {
     envoyerNotifInApp,
@@ -29,6 +31,7 @@ export function useNotifEvent() {
     })
   }
 
+  // Notification in-app + e-mail envoyés en parallèle
   function confirmationInscription({ idDestinataire, email, contenuHtml }) {
     return Promise.all([
       envoyerNotifInApp({
@@ -44,6 +47,7 @@ export function useNotifEvent() {
     ])
   }
 
+  // Notification in-app + e-mail avec la facture en pièce jointe (envoi multipart)
   function facturePaiement({ idDestinataire, email, contenuHtml, fichier, nomFichier }) {
     const formData = new FormData()
     formData.append('id_destinataire', idDestinataire)
@@ -61,39 +65,11 @@ export function useNotifEvent() {
     ])
   }
 
-  function relancePaiement({ idDestinataire, email, contenuHtml }) {
-    return Promise.all([
-      envoyerNotifInApp({
-        id_destinataire: idDestinataire,
-        message: 'Un paiement est à relancer bientôt.',
-      }),
-      envoyerEmail({
-        id_destinataire: idDestinataire,
-        email,
-        sujet: 'Relance de paiement',
-        contenuHtml,
-      }),
-    ])
-  }
-
-  function attestationPrete({ idDestinataire, email, contenuHtml, fichier, nomFichier }) {
-    const formData = new FormData()
-    formData.append('id_destinataire', idDestinataire)
-    formData.append('email', email)
-    formData.append('sujet', 'Votre attestation est prête')
-    formData.append('contenuHtml', contenuHtml)
-    formData.append('piece_jointe', fichier, nomFichier)
-
-    return envoyerEmailPieceJointe(formData)
-  }
-
   return {
     nouveauSupport,
     nouveauCommentaire,
     mentionCommentaire,
     confirmationInscription,
     facturePaiement,
-    relancePaiement,
-    attestationPrete,
   }
 }

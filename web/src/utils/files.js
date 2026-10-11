@@ -1,7 +1,8 @@
-const API_URL = 'http://localhost:3000/'
+import { fileUrl } from './api'
 
+// URL d'un fichier uploadé (photo, support, document) : passe par fileUrl, qui ajoute le token
 export function getFileUrl(filePath) {
   if (!filePath) return ''
   if (filePath.startsWith('http')) return filePath
-  return `${API_URL}${filePath.replace(/^\//, '')}`
+  return fileUrl(filePath)
 }

@@ -1,49 +1,138 @@
-const db = require('../config/db');
+// Service des commentaires sur les supports : fil de discussion (commentaires principaux +
+// réponses) et mentions d'étudiants.
+const commentaireModel = require('../models/commentaireModel')
+const supportModel = require('../models/supportModel')
+const notifService = require('./notifService')
+const { ROLES } = require('../config/roles')
+const { avecTransaction } = require('../utils/transaction')
+const { badRequest, forbidden, notFound } = require('../utils/errors')
 
-async function getCommentairesBySupport(id_support) {
-  const sql = `
-    SELECT c.id_commentaire, c.contenu, c.date_commentaire, c.etat,
-           COALESCE(u_etudiant.nom, u_auteur.nom) AS nom,
-           COALESCE(u_etudiant.prenom, u_auteur.prenom) AS prenom
-    FROM commentaire c
-    LEFT JOIN etudiant e ON c.id_etudiant = e.id_etudiant
-    LEFT JOIN utilisateur u_etudiant ON e.id_utilisateur = u_etudiant.id_utilisateur
-    LEFT JOIN utilisateur u_auteur ON c.id_utilisateur = u_auteur.id_utilisateur
-    WHERE c.id_support = ? AND c.etat = true
-    ORDER BY c.date_commentaire ASC
-  `;
-  const [rows] = await db.query(sql, [id_support]);
-  return rows;
+// Range les commentaires en fil de discussion, comme sur les réseaux sociaux :
+// commentaires principaux du plus récent au plus ancien, chacun avec ses réponses
+// (ordre chronologique) et leur nombre. Les réponses dont le commentaire principal
+// a été supprimé disparaissent avec lui. Fonction pure, testée.
+function construireFil(commentaires) {
+  const principaux = commentaires
+    .filter((c) => !c.id_parent)
+    .map((c) => ({ ...c, reponses: [] }))
+  const parId = new Map(principaux.map((c) => [c.id_commentaire, c]))
+
+  for (const c of commentaires) {
+    if (c.id_parent) parId.get(c.id_parent)?.reponses.push(c)
+  }
+
+  const date = (c) => new Date(c.date_commentaire).getTime()
+  return principaux
+    .map((c) => ({
+      ...c,
+      reponses: c.reponses.sort((a, b) => date(a) - date(b)),
+      nb_reponses: c.reponses.length,
+    }))
+    .sort((a, b) => date(b) - date(a))
 }
 
-async function getIdEtudiantByUtilisateur(id_utilisateur) {
-  const [rows] = await db.query('SELECT id_etudiant FROM etudiant WHERE id_utilisateur = ?', [id_utilisateur]);
-  return rows[0]?.id_etudiant;
+async function listerCommentairesParSupport(idSupport) {
+  return construireFil(await commentaireModel.getCommentairesBySupport(idSupport))
 }
 
-async function insertCommentaire(connection, { id_support, id_etudiant, id_utilisateur, contenu }) {
-  const [result] = await connection.query(
-    `INSERT INTO commentaire (id_support, id_etudiant, id_utilisateur, contenu, date_commentaire, etat) 
-     VALUES (?, ?, ?, ?, CURDATE(), true)`,
-    [id_support, id_etudiant || null, id_utilisateur || null, contenu]
-  );
-  return result.insertId;
+// Réponse : le commentaire visé doit exister sur le même support.
+// Une réponse à une réponse est rattachée au même commentaire principal (un seul niveau).
+async function trouverParent(idParent, idSupport) {
+  if (!idParent) return null
+  const parent = await commentaireModel.getCommentaireParent(idParent)
+  if (!parent || Number(parent.id_support) !== Number(idSupport)) {
+    throw notFound('Le commentaire auquel vous répondez est introuvable.')
+  }
+  return { ...parent, id_principal: parent.id_parent || parent.id_commentaire }
 }
 
-async function insertMentions(connection, id_commentaire, mentions) {
-  const values = mentions.map(id_etudiant_mentionne => [id_commentaire, id_etudiant_mentionne]);
-  await connection.query(
-    `INSERT INTO commentaire_mention (id_commentaire, id_etudiant_mentionne) VALUES ?`,
-    [values]
-  );
+// `auteur` = utilisateur connecté (req.user : id, role, id_etudiant)
+// `idParent` (facultatif) = commentaire auquel on répond
+async function creerCommentaire({ idSupport, idParent, contenu, mentions }, auteur) {
+  if (!idSupport) throw badRequest('Le support est requis.')
+  if (!contenu || !contenu.trim()) throw badRequest('Le contenu du commentaire est requis.')
+
+  const support = await supportModel.getSupportById(idSupport)
+  if (!support) throw notFound('Support introuvable ou désactivé.')
+  const parent = await trouverParent(idParent, idSupport)
+
+  // id_etudiant renseigné seulement si l'auteur est un étudiant (sinon formateur / admin)
+  let idEtudiant = null
+  if (auteur.role === ROLES.ETUDIANT) {
+    idEtudiant = auteur.id_etudiant
+    if (!idEtudiant) throw forbidden('Profil étudiant introuvable.')
+  }
+
+  // Mentions sans doublon, en excluant l'auteur lui-même
+  const mentionsUniques = Array.isArray(mentions)
+    ? [...new Set(mentions.map(Number))].filter((id) => id && id !== Number(idEtudiant))
+    : []
+
+  // Commentaire + mentions enregistrés ensemble (transaction)
+  const idCommentaire = await avecTransaction(async (connection) => {
+    const id = await commentaireModel.insertCommentaire(connection, {
+      idSupport,
+      idParent: parent?.id_principal,
+      idEtudiant,
+      idUtilisateur: auteur.id,
+      contenu: contenu.trim(),
+    })
+    if (mentionsUniques.length > 0) {
+      await commentaireModel.insertMentions(connection, id, mentionsUniques)
+    }
+    return id
+  })
+
+  // Notification après le commit : un échec d'envoi ne doit pas annuler le commentaire
+  if (mentionsUniques.length > 0) {
+    try {
+      await notifService.notifierMention({
+        idCommentaire,
+        idSupport,
+        mentions: mentionsUniques,
+        auteur: { idUtilisateur: auteur.id },
+      })
+    } catch (notifError) {
+      console.warn('Notification de mention échouée:', notifError.message)
+    }
+  }
+
+  // Prévient l'auteur du commentaire auquel on répond (sauf s'il se répond à lui-même)
+  if (parent && parent.id_utilisateur_auteur && Number(parent.id_utilisateur_auteur) !== Number(auteur.id)) {
+    try {
+      await notifService.notifierReponse({ idDestinataire: parent.id_utilisateur_auteur, idSupport, auteur: { idUtilisateur: auteur.id } })
+    } catch (notifError) {
+      console.warn('Notification de réponse échouée:', notifError.message)
+    }
+  }
+
+  // Renvoie le commentaire complet (nom, photo de l'auteur...) pour l'afficher tout de suite
+  const commentaires = await commentaireModel.getCommentairesBySupport(idSupport)
+  return commentaires.find((c) => c.id_commentaire === idCommentaire) || { id_commentaire: idCommentaire }
 }
 
-async function deleteCommentaire(id_commentaire) {
-  const [result] = await db.query('UPDATE commentaire SET etat = false WHERE id_commentaire = ?', [id_commentaire]);
-  return result.affectedRows > 0;
+// Super Admin : tout ; Formateur : commentaires de ses formations ; Étudiant : ses propres commentaires.
+async function supprimerCommentaire(idCommentaire, auteur) {
+  const commentaire = await commentaireModel.getCommentaireAvecFormateur(idCommentaire)
+  if (!commentaire) throw notFound('Commentaire introuvable.')
+
+  const autorise =
+    auteur.role === ROLES.SUPER_ADMIN ||
+    (auteur.role === ROLES.FORMATEUR && Number(commentaire.id_formateur) === Number(auteur.id)) ||
+    (auteur.role === ROLES.ETUDIANT && auteur.id_etudiant && Number(commentaire.id_etudiant) === Number(auteur.id_etudiant))
+
+  if (!autorise) {
+    throw forbidden(auteur.role === ROLES.FORMATEUR
+      ? 'Vous ne pouvez supprimer que les commentaires de vos formations.'
+      : 'Vous ne pouvez supprimer que vos propres commentaires.')
+  }
+
+  await commentaireModel.deleteCommentaire(idCommentaire)
 }
 
 module.exports = {
-  getCommentairesBySupport, getIdEtudiantByUtilisateur,
-  insertCommentaire, insertMentions, deleteCommentaire
-};
+  construireFil,
+  listerCommentairesParSupport,
+  creerCommentaire,
+  supprimerCommentaire,
+}

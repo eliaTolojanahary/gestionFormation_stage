@@ -68,7 +68,8 @@
 
 .document-lightbox {
   position: fixed;
-  z-index: 30;
+  /* Au-dessus de la barre du haut (sticky, z-index 100), comme Modal et ImageLightBox */
+  z-index: 9999;
   inset: 0;
   display: grid;
   place-items: center;

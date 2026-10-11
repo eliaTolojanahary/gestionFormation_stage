@@ -1,17 +1,41 @@
 import { useState } from 'react'
-
+import { formatDate } from '../../utils/time'
 import Icon from '../../components/icon/Icon'
 import Header from '../../components/header/Header'
 import { useNotification } from '../../hooks/useNotification'
 
 import './Notifications.css'
 
+// Déduit la catégorie d'une notification (icône, couleur, titre) à partir de mots-clés
+// de son message, puisque l'API ne stocke que le texte.
 function formatNotification(notification) {
   const message = notification.message || 'Nouvelle notification.'
   const lowerMessage = message.toLowerCase()
 
+  if (lowerMessage.includes("demande d'assistance")) {
+    return {
+      ...notification,
+      icon: 'help',
+      tone: 'info',
+      title: 'Assistance',
+      text: message
+    }
+  }
+
+  if (lowerMessage.includes('attestation')) {
+    return {
+      ...notification,
+      icon: 'book',
+      tone: 'success',
+      title: 'Attestation',
+      text: message
+    }
+  }
+
   if (
     lowerMessage.includes('paiement') ||
+    lowerMessage.includes('payé') ||
+    lowerMessage.includes('rappel') ||
     lowerMessage.includes('relance')
   ) {
     return {
@@ -68,15 +92,8 @@ function formatNotification(notification) {
   }
 }
 
-function formatDate(value) {
-  if (!value) return ''
-
-  return new Intl.DateTimeFormat('fr-FR', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(new Date(value))
-}
-
+// Page Notifications : onglets Toutes / Non lues, marquer comme lu (un clic sur la ligne suffit),
+// tout marquer comme lu, supprimer.
 function Notifications({ user }) {
   const {
     notifications,
@@ -208,6 +225,7 @@ function Notifications({ user }) {
               <div className="notification-actions">
                 <button
                   type="button"
+                  // stopPropagation : évite de déclencher aussi le clic de la ligne
                   onClick={(event) => {
                     event.stopPropagation()
                     markRead(notification.id_notification)

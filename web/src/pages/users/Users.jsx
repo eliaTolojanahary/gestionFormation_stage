@@ -7,12 +7,15 @@ import { useUser } from '../../hooks/useUser'
 import Avatar from '../../components/avatar/Avatar'
 import './Users.css'
 
+// Liste des comptes utilisateurs (Super Admin) avec recherche et filtre par rôle.
+// "Désactiver" fait une suppression logique côté API.
 function Users({ user, onCreate, onEdit }) {
   const { users, isLoading, error, deleteUser } = useUser()
   const [search, setSearch] = useState('')
   const [role, setRole] = useState('Tous')
   const [actionError, setActionError] = useState('')
 
+  // Utilisateurs correspondant à la recherche (nom, prénom, e-mail, téléphone) et au rôle choisi
   const filteredUsers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 

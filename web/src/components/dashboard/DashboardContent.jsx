@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom'
 import Icon from '../icon/Icon'
 import Header from '../header/Header'
 import Tableau from '../tableau/Tableau'
+import AvisFormateurs from './AvisFormateurs'
 import { useDashboard } from '../../hooks/useDashboard'
 
 import {
@@ -12,6 +14,10 @@ import {
 
 import './DashboardContent.css'
 
+// Page d'accueil du tableau de bord (Accueil / Super Admin), découpée en sous-composants :
+// KpiList, DashboardCharts, PopularFormations et PaymentTable.
+
+// Cartes des indicateurs clés ; `tone` donne la couleur de l'icône
 function KpiList({ kpis }) {
   const kpiCards = [
     { label: 'Nombre de formations', value: kpis.nombre_formations, icon: 'book', tone: 'neutral' },
@@ -38,11 +44,15 @@ function KpiList({ kpis }) {
   )
 }
 
+// Deux graphiques :
+//  - histogramme des encaissements (période au choix) : hauteur de barre = total / plus grand total ;
+//  - courbe SVG des inscriptions par mois.
 function DashboardCharts({ evolution, inscriptionsParMois, onPeriodeChange }) {
   const periodes = ['quotidien', 'hebdomadaire', 'mensuel', 'annuel']
   const points = evolution.points || []
   const inscriptionPoints = inscriptionsParMois || []
   const maxTotal = Math.max(...points.map((p) => Number(p.total)), 1)
+  // Points de la courbe ("x,y x,y ...") ; la zone colorée est fermée par les deux coins du bas
   const linePoints = buildLineChartPoints(inscriptionPoints)
   const linePointsAttribute = linePoints
     .map(({ x, y }) => `${x},${y}`)
@@ -129,6 +139,7 @@ function DashboardCharts({ evolution, inscriptionsParMois, onPeriodeChange }) {
   )
 }
 
+// Composant principal : charge les données via useDashboard et assemble la page
 function DashboardContent({ user ,onProfile}) {
   const {
     kpis,
@@ -165,6 +176,7 @@ function DashboardContent({ user ,onProfile}) {
 
       <PopularFormations topInscriptions={topInscriptions} />
       <PaymentTable paymentTable={paymentTable}/>
+      <AvisFormateurs />
       
     </section>
   )
@@ -172,6 +184,7 @@ function DashboardContent({ user ,onProfile}) {
 
 
 
+// Top 5 des formations : barre de progression proportionnelle à la formation la plus suivie
 function PopularFormations({ topInscriptions }) {
   const formations = topInscriptions || []
   const maxInscriptions = Math.max(
@@ -214,7 +227,10 @@ function PopularFormations({ topInscriptions }) {
   )
 }
 
+// Aperçu des 5 premières échéances ; alerte = échéance JAUNE ou ROUGE.
+// Les boutons renvoient vers la page Échéances, où le rappel est réellement envoyé.
 function PaymentTable({ paymentTable }) {
+  const navigate = useNavigate()
   const payments = paymentTable || []
   const alertCount = payments.filter(
     (payment) => payment.statut_paiement !== 'VERT'
@@ -256,8 +272,9 @@ function PaymentTable({ paymentTable }) {
           <button
             className={shouldRemind ? 'action danger' : 'action'}
             type="button"
+            onClick={() => navigate('/dashboard/echeances')}
           >
-            {shouldRemind ? 'Relancer' : 'Voir'}
+            {shouldRemind ? 'Rappeler' : 'Voir'}
           </button>
         )
       },
@@ -272,7 +289,7 @@ function PaymentTable({ paymentTable }) {
             Paiements à surveiller <em>{alertCount} alertes</em>
           </h2>
         </div>
-        <a href="/paiements">Filtres avancés</a>
+        <a href="/dashboard/echeances">Filtres avancés</a>
       </div>
 
       <Tableau

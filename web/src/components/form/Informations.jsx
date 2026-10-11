@@ -1,4 +1,7 @@
 import './Informations.css'
+
+// Carte d'informations "libellé : valeur" (pages de détail).
+// items = [{ label, value }] ; on peut aussi passer un contenu libre en children.
 function Informations({ title, items = [], children }) {
   return (
     <section className="information-card">

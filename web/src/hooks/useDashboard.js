@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook du tableau de bord : charge les indicateurs, l'évolution des encaissements,
+// les inscriptions par mois, le top des formations et le tableau des échéances.
+
+// Valeurs affichées avant la réponse de l'API
 const INITIAL_KPIS = {
   nombre_formations: 0,
   formations_actives: 0,
@@ -28,6 +32,7 @@ export function useDashboard() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Indicateurs clés (montant encaissé, reste à encaisser, retards...)
   async function getKpiList() {
     setError('')
     setIsLoading(true)
@@ -51,6 +56,7 @@ export function useDashboard() {
     }
   }
 
+  // Encaissements sur la période choisie + total cumulé pour l'affichage
   async function getEvolution(periode = 'hebdomadaire') {
     setError('')
     setIsLoading(true)
@@ -97,6 +103,7 @@ export function useDashboard() {
     }
   }
 
+  // Tableau de suivi des paiements = liste des échéances avec leur statut de couleur
   async function getPaymentTable() {
     setError('')
     try {
@@ -109,6 +116,7 @@ export function useDashboard() {
     }
   }
 
+  // Chargement de toutes les données à l'ouverture du tableau de bord
   useEffect(() => {
     getKpiList()
     getEvolution()

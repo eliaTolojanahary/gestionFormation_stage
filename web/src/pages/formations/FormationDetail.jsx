@@ -5,13 +5,14 @@ import Tableau from '../../components/tableau/Tableau'
 import { useFormation } from '../../hooks/useFormation'
 import './Formations.css'
 
-
+// Détail d'une formation : informations (tarif, durée, formateur) et étudiants inscrits.
 function FormationDetail({ user, formationId, onBack, onEdit }) {
   const { getFormation, getEtudiants } = useFormation()
   const [formation, setFormation] = useState(null)
   const [students, setStudents] = useState([])
   const [error, setError] = useState('')
 
+  // Formation et étudiants inscrits chargés en parallèle
   useEffect(() => {
     Promise.all([getFormation(formationId), getEtudiants(formationId)]).then(([data, studentData]) => { setFormation(data); setStudents(studentData) }).catch((requestError) => setError(requestError.message))
   }, [formationId, getFormation, getEtudiants])

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
@@ -8,37 +8,51 @@ import PaymentFormModal from '../../components/paiements/PaymentFormModal'
 
 import { useEcheance } from '../../hooks/useEcheance'
 import { usePaiement } from '../../hooks/usePaiement'
-import { useNotifEvent } from '../../hooks/useNotifEvent'
+import { formatDate } from '../../utils/time'
+import { getPaymentStatus } from '../../utils/dashboardUtils'
 
 import './Echeances.css'
 
+// VERT : payée ou encore loin · JAUNE : J-2, J-1, J (l'Accueil est notifié) · ROUGE : en retard
+const LIBELLE_STATUT = (statut) => getPaymentStatus(statut).label
+const FILTRES_STATUT = ['Tous', ...['VERT', 'JAUNE', 'ROUGE'].map(LIBELLE_STATUT)]
+
+// Page Échéances : suivi de toutes les échéances avec leur statut de couleur,
+// paiement au guichet (bouton Payer) et rappel manuel à l'étudiant (bouton Rappeler).
 function Echeances({ user }) {
-  const { echeances, isLoading, error } = useEcheance()
+  const { echeances, isLoading, error, rappelerEcheance } = useEcheance()
   const { createPaiement } = usePaiement()
-  const { relancePaiement } = useNotifEvent()
-  const notifiedEcheances = useRef(new Set())
 
   const [selectedEcheance, setSelectedEcheance] = useState(null)
   const [paymentEcheance, setPaymentEcheance] = useState(null)
   const [actionError, setActionError] = useState('')
+  const [actionMessage, setActionMessage] = useState('')
+  const [rappelEnCours, setRappelEnCours] = useState(null)
 
   // Filtres
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('Tous')
 
-  useEffect(() => {
-    echeances
-      .filter((echeance) => echeance.a_relancer_bientot && echeance.id_utilisateur_etudiant && echeance.email_etudiant && !notifiedEcheances.current.has(echeance.id_echeance))
-      .forEach((echeance) => {
-        notifiedEcheances.current.add(echeance.id_echeance)
-        relancePaiement({
-          idDestinataire: echeance.id_utilisateur_etudiant,
-          email: echeance.email_etudiant,
-          contenuHtml: `<p>Le paiement de ${echeance.etudiant_prenom || ''} ${echeance.etudiant_nom || ''} pour la formation ${echeance.formation_nom || ''} est à relancer bientôt.</p>`,
-        }).catch(() => {})
-      })
-  }, [echeances, user, relancePaiement])
+  // L'Accueil est prévenu automatiquement à J-2 (notification « doit être rappelé ») ;
+  // c'est lui qui décide d'envoyer le rappel à l'étudiant avec ce bouton.
+  async function handleRappel(echeance) {
+    const nom = `${echeance.etudiant_prenom} ${echeance.etudiant_nom}`
+    if (!window.confirm(`Envoyer un rappel de paiement à ${nom} (notification + e-mail) ?`)) return
 
+    setActionError('')
+    setActionMessage('')
+    setRappelEnCours(echeance.id_echeance)
+    try {
+      const result = await rappelerEcheance(echeance.id_echeance)
+      setActionMessage(`${nom} : ${result.message}`)
+    } catch (requestError) {
+      setActionError(requestError.message)
+    } finally {
+      setRappelEnCours(null)
+    }
+  }
+
+  // Paiement saisi par le personnel ; l'erreur est relancée pour s'afficher dans la fenêtre
   async function handlePayment(payload) {
     try {
       setActionError('')
@@ -68,11 +82,8 @@ function Echeances({ user }) {
         studentName.includes(searchLower) ||
         formation.includes(searchLower)
 
-      const displayStatus = echeance.a_relancer_bientot
-        ? 'A relancer bientôt'
-        : echeance.statut_paiement
       const matchesStatus =
-        statusFilter === 'Tous' || displayStatus === statusFilter
+        statusFilter === 'Tous' || LIBELLE_STATUT(echeance.statut_paiement) === statusFilter
 
       return matchesSearch && matchesStatus
     })
@@ -120,15 +131,14 @@ function Echeances({ user }) {
       key: 'statut_paiement',
       header: 'Statut',
       render: (row) => (
-        <span
-          className={`student-status ${
-            row.statut_paiement === 'ROUGE'
-              ? 'inactif'
-              : 'actif'
-          }`}
-        >
-          {row.a_relancer_bientot ? 'A relancer bientôt' : row.statut_paiement}
-        </span>
+        <>
+          <span className={`student-status echeance-statut-${String(row.statut_paiement).toLowerCase()}`}>
+            {LIBELLE_STATUT(row.statut_paiement)}
+          </span>
+          {Number(row.montant_en_attente) > 0 && (
+            <small className="echeance-en-attente">Payé, à valider</small>
+          )}
+        </>
       ),
     },
 
@@ -146,14 +156,26 @@ function Echeances({ user }) {
             Détail
           </button>
 
-          {Number(row.reste_a_payer) > 0 && (
-            <button
-              type="button"
-              className="row-action"
-              onClick={() => setPaymentEcheance(row)}
-            >
-              Payer
-            </button>
+          {/* Payer / Rappeler seulement s'il reste à payer et qu'aucun paiement n'attend déjà validation */}
+          {Number(row.reste_a_payer) > 0 && Number(row.montant_en_attente) <= 0 && (
+            <>
+              <button
+                type="button"
+                className="row-action"
+                onClick={() => setPaymentEcheance(row)}
+              >
+                Payer
+              </button>
+              <button
+                type="button"
+                className={`row-action ${row.statut_paiement !== 'VERT' ? 'danger-action' : ''}`}
+                onClick={() => handleRappel(row)}
+                disabled={rappelEnCours === row.id_echeance}
+                title={row.date_dernier_rappel ? `Dernier rappel : ${formatDate(row.date_dernier_rappel)}` : 'Aucun rappel envoyé'}
+              >
+                {rappelEnCours === row.id_echeance ? 'Envoi...' : 'Rappeler'}
+              </button>
+            </>
           )}
 
         </div>
@@ -191,13 +213,7 @@ function Echeances({ user }) {
               label: 'Statut',
               value: statusFilter,
               onChange: setStatusFilter,
-              options: [
-                'Tous',
-                'VERT',
-                'ORANGE',
-                'ROUGE',
-                'A relancer bientôt',
-              ],
+              options: FILTRES_STATUT,
             },
           ]}
           onReset={resetFilters}
@@ -207,6 +223,7 @@ function Echeances({ user }) {
             {error || actionError}
           </p>
         )}
+        {actionMessage && <p className="success-message">{actionMessage}</p>}
         {isLoading ? (
           <p className="gestion-loading">
             Chargement...
@@ -267,6 +284,19 @@ function Echeances({ user }) {
               {Number(
                 selectedEcheance.reste_a_payer
               ).toLocaleString('fr-FR')} MGA
+            </p>
+
+            {Number(selectedEcheance.montant_en_attente) > 0 && (
+              <p>
+                <strong>Envoyé par l'étudiant, à valider :</strong>{' '}
+                {Number(selectedEcheance.montant_en_attente).toLocaleString('fr-FR')} MGA
+                {' '}(page Paiements)
+              </p>
+            )}
+
+            <p>
+              <strong>Dernier rappel :</strong>{' '}
+              {selectedEcheance.date_dernier_rappel ? formatDate(selectedEcheance.date_dernier_rappel) : 'Aucun'}
             </p>
 
           </div>

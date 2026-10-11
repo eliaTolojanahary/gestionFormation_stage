@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import InputReutilisable from '../form/InputReutilisable'
 import { useUser } from '../../hooks/useUser'
 import Modal from '../modal/Modal'
@@ -7,14 +6,14 @@ import './ProfileModal.css'
 import { getFileUrl } from '../../utils/files'
 import { useProfile } from './ProfileContext'
 import ImageLightbox from '../form/ImageLightBox'
+
+// Fenêtre "Mon profil" : modification du nom, prénom, e-mail, téléphone et de la photo.
+// Après enregistrement, l'utilisateur stocké localement est mis à jour (en-tête, menu...).
 function ProfileModal({ user, onClose, onUpdated }) {
-  const navigate = useNavigate()
   const { updateCurrentUser } = useProfile() || {}
   const { getUser, updateUser, isLoading: isUpdatingUser, error: userError } = useUser()
 
   const [profile, setProfile] = useState(user || {})
-  const [oldPassword, setOldPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
   const [file, setFile] = useState(null)
 
   const [message, setMessage] = useState('')
@@ -23,6 +22,8 @@ function ProfileModal({ user, onClose, onUpdated }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [previewImage, setPreviewImage] = useState(null)
+
+  // À l'ouverture : recharge le profil depuis le serveur pour afficher des données à jour
   useEffect(() => {
   const userId = user?.id || user?.id_utilisateur
   if (userId) {
@@ -55,21 +56,11 @@ function ProfileModal({ user, onClose, onUpdated }) {
     setFile(selectedFile)
   }
 
+  // Envoi en FormData (multipart) car la photo peut être jointe ; fermeture après 1 seconde
   async function handleSubmit(event) {
     event.preventDefault()
     setMessage('')
     setLocalError('')
-
-    if (oldPassword || newPassword) {
-      if (!oldPassword) {
-        setLocalError('Veuillez saisir votre ancien mot de passe.')
-        return
-      }
-      if (newPassword.length < 8) {
-        setLocalError('Le nouveau mot de passe doit contenir au moins 8 caractères.')
-        return
-      }
-    }
 
     setIsSubmitting(true)
 
@@ -84,12 +75,6 @@ function ProfileModal({ user, onClose, onUpdated }) {
         formData.append('id_role', profile.id_role)
       }
 
-      if (oldPassword) {
-        formData.append('ancien_mot_de_passe', oldPassword)
-      }
-      if (newPassword) {
-        formData.append('mot_de_passe', newPassword)
-      }
 
       if (file) {
         formData.append('photo', file)
@@ -163,6 +148,8 @@ function handlePhotoClick() {
               accept="image/*"
             />
           </div>
+          {displayedError && <p className="form-error">{displayedError}</p>}
+          {message && <p className="success-message">{message}</p>}
           <div className="profile-modal-actions">
             <button type="button" className="secondary-button" onClick={onClose}>
               Annuler

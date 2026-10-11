@@ -1,125 +1,62 @@
+// Controller des notifications : in-app (lues dans l'application) et e-mails.
 const notifService = require('../services/notifService');
+const { exigerChamps, notFound, badRequest } = require('../utils/errors');
 
-function getUserId(req) {
-  return req.user?.id_utilisateur || req.user?.id;
-}
-
+// Nom et e-mail de l'utilisateur connecté, affichés comme expéditeur des e-mails
 function getExpediteur(req) {
-  if (!req.user) return null;
   return {
     nom: `${req.user.prenom || ''} ${req.user.nom || ''}`.trim() || req.user.email,
     email: req.user.email,
   };
 }
 
+// GET /notifications : notifications de l'utilisateur connecté
 async function listerNotifications(req, res) {
-  try {
-    const id_utilisateur = getUserId(req);
-    const notifications = await notifService.listerNotifications(id_utilisateur);
-    
-    return res.status(200).json({
-      status: "success",
-      data: notifications,
-    });
-  } catch (error) {
-    console.error("Erreur listerNotifications :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const notifications = await notifService.listerNotifications(req.user.id);
+  res.json({ status: 'success', data: notifications });
 }
 
+// PUT /notifications/:id/lu (404 si la notification n'appartient pas à l'utilisateur)
 async function lireNotification(req, res) {
-  try {
-    const id_utilisateur = getUserId(req);
-    const { id } = req.params;
-
-    const ok = await notifService.marquerCommeLue(id, id_utilisateur);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Notification introuvable." });
-    }
-
-    return res.status(200).json({ status: "success", message: "Notification marquée comme lue." });
-  } catch (error) {
-    console.error("Erreur lireNotification :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const ok = await notifService.marquerCommeLue(req.params.id, req.user.id);
+  if (!ok) throw notFound('Notification introuvable.');
+  res.json({ status: 'success', message: 'Notification marquée comme lue.' });
 }
 
+// DELETE /notifications/:id
 async function retirerNotification(req, res) {
-  try {
-    const id_utilisateur = getUserId(req);
-    const { id } = req.params;
-
-    const ok = await notifService.supprimerNotification(id, id_utilisateur);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Notification introuvable." });
-    }
-
-    return res.status(200).json({ status: "success", message: "Notification supprimée." });
-  } catch (error) {
-    console.error("Erreur retirerNotification :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const ok = await notifService.supprimerNotification(req.params.id, req.user.id);
+  if (!ok) throw notFound('Notification introuvable.');
+  res.json({ status: 'success', message: 'Notification supprimée.' });
 }
 
+// POST /notifications/in-app (personnel)
 async function envoyerNotifInApp(req, res) {
-  try {
-    const { id_destinataire, message } = req.body;
-
-    if (!id_destinataire || !message) {
-      return res.status(400).json({ status: "error", message: "Champs requis manquants." });
-    }
-
-    await notifService.notifierInApp(id_destinataire, message);
-    return res.status(201).json({ status: "success", message: "Notification in-app envoyée." });
-  } catch (error) {
-    console.error("Erreur envoyerNotifInApp :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  exigerChamps(req.body, ['id_destinataire', 'message']);
+  await notifService.notifierInApp(req.body.id_destinataire, req.body.message);
+  res.status(201).json({ status: 'success', message: 'Notification in-app envoyée.' });
 }
 
+// POST /notifications/email (personnel)
 async function envoyerEmailController(req, res) {
-  try {
-    const { id_destinataire, email, sujet, contenuHtml } = req.body;
+  exigerChamps(req.body, ['email', 'sujet', 'contenuHtml']);
+  const { id_destinataire, email, sujet, contenuHtml } = req.body;
 
-    if (!email || !sujet || !contenuHtml) {
-      return res.status(400).json({ status: "error", message: "Champs requis manquants." });
-    }
-
-    const expediteur = getExpediteur(req);
-    await notifService.notifierEmail(id_destinataire, email, sujet, contenuHtml, expediteur);
-
-    return res.status(200).json({ status: "success", message: "E-mail envoyé avec succès." });
-  } catch (error) {
-    console.error("Erreur envoyerEmailController :", error);
-    return res.status(500).json({ status: "error", message: "Erreur lors de l'envoi de l'e-mail." });
-  }
+  await notifService.notifierEmail(id_destinataire, email, sujet, contenuHtml, getExpediteur(req));
+  res.json({ status: 'success', message: 'E-mail envoyé avec succès.' });
 }
 
+// POST /notifications/email/piece-jointe (personnel) : multipart avec le champ piece_jointe
 async function envoyerEmailPieceJointeController(req, res) {
-  try {
-    const { id_destinataire, email, sujet, contenuHtml } = req.body;
-    const file = req.file;
+  exigerChamps(req.body, ['email', 'sujet', 'contenuHtml']);
+  if (!req.file) throw badRequest('Pièce jointe manquante.');
+  const { id_destinataire, email, sujet, contenuHtml } = req.body;
 
-    if (!email || !sujet || !contenuHtml || !file) {
-      return res.status(400).json({ status: "error", message: "Fichier ou champs requis manquants." });
-    }
-
-    const expediteur = getExpediteur(req);
-    await notifService.notifierEmailAvecPieceJointe(
-      id_destinataire,
-      email,
-      sujet,
-      contenuHtml,
-      file.path,
-      file.originalname,
-      expediteur
-    );
-
-    return res.status(200).json({ status: "success", message: "E-mail avec pièce jointe envoyé." });
-  } catch (error) {
-    console.error("Erreur envoyerEmailPieceJointeController :", error);
-    return res.status(500).json({ status: "error", message: "Erreur lors de l'envoi de l'e-mail." });
-  }
+  await notifService.notifierEmailAvecPieceJointe(
+    id_destinataire, email, sujet, contenuHtml,
+    req.file.path, req.file.originalname, getExpediteur(req)
+  );
+  res.json({ status: 'success', message: 'E-mail avec pièce jointe envoyé.' });
 }
 
 module.exports = {

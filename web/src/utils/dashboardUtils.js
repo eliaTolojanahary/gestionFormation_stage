@@ -1,4 +1,6 @@
+// Fonctions d'affichage du tableau de bord (graphiques et statuts de paiement).
 
+// Libellé de l'axe du graphique selon la période : mois ("oct."), année, ou "jj/mm"
 export function formatLabel(isoDate, periode) {
   const date = new Date(isoDate)
 
@@ -16,6 +18,9 @@ export function formatLabel(isoDate, periode) {
   })
 }
 
+// Convertit les totaux en coordonnées {x, y} dans un SVG de 400×150 :
+// x réparti régulièrement, y proportionnel au total (le plus grand total touche le haut).
+// En SVG l'axe y descend, d'où le "chartHeight - ...".
 export function buildLineChartPoints(points) {
   const chartWidth = 400
   const chartHeight = 150
@@ -35,6 +40,7 @@ export function buildLineChartPoints(points) {
   })
 }
 
+// Ex. "08/10/2026"
 export function formatPaymentDate(date) {
   return new Date(date).toLocaleDateString('fr-FR', {
     day: '2-digit',
@@ -43,11 +49,12 @@ export function formatPaymentDate(date) {
   })
 }
 
+// Libellé et classe CSS du statut de couleur calculé par l'API (ROUGE / JAUNE / VERT)
 export function getPaymentStatus(status) {
   const statuses = {
     ROUGE: { label: 'En retard', className: 'late' },
-    ORANGE: { label: "Aujourd'hui", className: 'soon' },
-    VERT: { label: 'A jour', className: 'ok' },
+    JAUNE: { label: 'À rappeler', className: 'soon' },
+    VERT: { label: 'À jour', className: 'ok' },
   }
 
   return statuses[status] || { label: status, className: 'soon' }

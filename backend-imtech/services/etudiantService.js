@@ -1,47 +1,40 @@
+// Service des étudiants. Un étudiant = une ligne `utilisateur` (compte) + une ligne `etudiant` (dossier).
 const bcrypt = require('bcryptjs');
-const db = require('../config/db');
 const etudiantModel = require('../models/etudiantModel');
+const { avecTransaction } = require('../utils/transaction');
+const { notFound } = require('../utils/errors');
 
 async function listerEtudiants() {
   return await etudiantModel.getAllEtudiants();
 }
 
 async function recupererEtudiant(id) {
-  return await etudiantModel.getEtudiantById(id);
+  const etudiant = await etudiantModel.getEtudiantById(id);
+  if (!etudiant) throw notFound('Étudiant introuvable.');
+  return etudiant;
 }
 
 async function recupererFormationsEtudiant(id) {
   return await etudiantModel.getFormationsByEtudiant(id);
 }
 
-async function creerEtudiant({ nom, prenom, email, mot_de_passe, telephone, id_role, photo,photo_1, photo_2, certificat_residence, photocopie_cin }) {
-  const connection = await db.getConnection();
-  try {
-    await connection.beginTransaction();
-
-    const mot_de_passe_hash = await bcrypt.hash(mot_de_passe, 10);
-
-    const id_etudiant = await etudiantModel.insertUtilisateurEtEtudiant(connection, {
-      nom, prenom, email, mot_de_passe_hash, telephone, id_role, photo,
-      photo_1, photo_2, certificat_residence, photocopie_cin
-    });
-
-    await connection.commit();
-    return id_etudiant;
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
+// Crée le compte et le dossier dans une transaction : jamais l'un sans l'autre
+async function creerEtudiant({ mot_de_passe, ...donnees }) {
+  const mot_de_passe_hash = await bcrypt.hash(mot_de_passe, 10);
+  return await avecTransaction((connection) =>
+    etudiantModel.insertUtilisateurEtEtudiant(connection, { ...donnees, mot_de_passe_hash })
+  );
 }
 
+// Met à jour les deux tables (utilisateur + etudiant) dans une transaction
 async function modifierEtudiant(id, data) {
-  return await etudiantModel.updateEtudiant(id, data);
+  const ok = await avecTransaction((connection) => etudiantModel.updateEtudiant(connection, id, data));
+  if (!ok) throw notFound('Étudiant introuvable.');
 }
 
 async function supprimerEtudiant(id) {
-  return await etudiantModel.deleteEtudiant(id);
+  const ok = await etudiantModel.deleteEtudiant(id);
+  if (!ok) throw notFound('Étudiant introuvable.');
 }
 
 module.exports = {

@@ -1,33 +1,50 @@
+// Service des formations.
 const formationModel = require('../models/formationModel');
+const { ROLES } = require('../config/roles');
+const { badRequest, forbidden, notFound } = require('../utils/errors');
 
-async function listerFormations(idUtilisateur) {
-  return await formationModel.getAllFormations(idUtilisateur);
+// duree_jours sert à répartir les échéances : il doit être strictement positif s'il est fourni
+function verifierDuree(duree_jours) {
+  if (duree_jours !== undefined && !(Number(duree_jours) > 0)) {
+    throw badRequest('duree_jours doit être supérieur à 0.');
+  }
+}
+
+// Un formateur ne voit que ses propres formations
+async function listerFormations(auteur) {
+  const idFormateur = auteur?.role === ROLES.FORMATEUR ? auteur.id : undefined;
+  return await formationModel.getAllFormations(idFormateur);
 }
 
 async function recupererFormation(id) {
-  return await formationModel.getFormationById(id);
+  const formation = await formationModel.getFormationById(id);
+  if (!formation) throw notFound('Formation introuvable.');
+  return formation;
 }
 
-async function recupererEtudiantsFormation(id) {
+// Un formateur ne peut lister que les étudiants de SES formations
+async function recupererEtudiantsFormation(id, auteur) {
+  const formation = await recupererFormation(id);
+  if (auteur?.role === ROLES.FORMATEUR && Number(formation.id_utilisateur) !== Number(auteur.id)) {
+    throw forbidden("Cette formation ne vous est pas attribuée.");
+  }
   return await formationModel.getEtudiantsByFormation(id);
 }
 
-async function creerFormation({ nom, description, tarif, duree, duree_jours, id_utilisateur }) {
-  if (duree_jours <= 0) {
-    throw new Error('duree_jours doit être supérieur à 0.');
-  }
-  return await formationModel.insertFormation({ nom, description, tarif, duree, duree_jours, id_utilisateur });
+async function creerFormation({ nom, description, engagement_formateur, tarif, duree, duree_jours, id_utilisateur }) {
+  verifierDuree(duree_jours);
+  return await formationModel.insertFormation({ nom, description, engagement_formateur, tarif, duree, duree_jours, id_utilisateur });
 }
 
 async function modifierFormation(id, data) {
-  if (data.duree_jours !== undefined && data.duree_jours <= 0) {
-    throw new Error('duree_jours doit être supérieur à 0.');
-  }
-  return await formationModel.updateFormation(id, data);
+  verifierDuree(data.duree_jours);
+  const ok = await formationModel.updateFormation(id, data);
+  if (!ok) throw notFound('Formation introuvable.');
 }
 
 async function supprimerFormation(id) {
-  return await formationModel.deleteFormation(id);
+  const ok = await formationModel.deleteFormation(id);
+  if (!ok) throw notFound('Formation introuvable.');
 }
 
 module.exports = {

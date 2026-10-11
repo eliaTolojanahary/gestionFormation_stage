@@ -8,7 +8,17 @@ CREATE TABLE role (
     nom VARCHAR(50) NOT NULL,
     etat BOOLEAN DEFAULT TRUE
 );
-
+CREATE TABLE sessions (
+  id_session INT AUTO_INCREMENT PRIMARY KEY,
+  id_utilisateur INT NOT NULL,
+  token VARCHAR(255) NOT NULL,
+  user_agent VARCHAR(255),
+  ip VARCHAR(45),
+  cree_le DATETIME DEFAULT CURRENT_TIMESTAMP,
+  expire_le DATETIME,
+  actif TINYINT(1) DEFAULT 1,
+  FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
+);
 -- 2. tranche
 CREATE TABLE tranche (
     id_tranche INT AUTO_INCREMENT PRIMARY KEY,
@@ -70,6 +80,7 @@ CREATE TABLE formation (
     id_utilisateur INT NOT NULL,
     nom VARCHAR(150) NOT NULL,
     description TEXT,
+    engagement_formateur TEXT NULL, -- disponibilité promise par le formateur (vitrine)
     tarif DECIMAL(10,2) NOT NULL,
     duree VARCHAR(50),
     duree_jours INT NOT NULL DEFAULT 30,
@@ -85,7 +96,11 @@ CREATE TABLE inscription (
     id_formation INT NOT NULL,
     date_inscription DATE DEFAULT CURRENT_DATE,
     valide BOOLEAN DEFAULT TRUE,
+    origine ENUM('accueil', 'en_ligne') NOT NULL DEFAULT 'accueil', -- en_ligne = depuis la vitrine mobile
     etat BOOLEAN DEFAULT TRUE,
+    note_suggeree DECIMAL(4,2) NULL,      -- note système /10 : paiement + présence
+    nb_presences INT NULL,                -- jours de présence au dernier calcul
+    note_presentation DECIMAL(4,2) NULL,  -- note libre du formateur /10
     FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant),
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
     FOREIGN KEY (id_formation) REFERENCES formation(id_formation)
@@ -100,6 +115,7 @@ CREATE TABLE echeance (
     date_echeance DATE NOT NULL,
     genere_auto BOOLEAN DEFAULT TRUE,
     etat BOOLEAN DEFAULT TRUE,
+    date_dernier_rappel DATETIME NULL,
     FOREIGN KEY (id_inscription) REFERENCES inscription(id_inscription),
     FOREIGN KEY (id_tranche) REFERENCES tranche(id_tranche)
 );
@@ -111,6 +127,9 @@ CREATE TABLE support (
     id_utilisateur INT NOT NULL,
     titre VARCHAR(150) NOT NULL,
     fichier VARCHAR(255),
+    statut ENUM('programme', 'publie') NOT NULL DEFAULT 'publie', -- programme = brouillon invisible des étudiants
+    date_envoi_prevue DATETIME NULL,                               -- heure de publication automatique
+    annonce_envoyee BOOLEAN NOT NULL DEFAULT FALSE,                -- étudiants prévenus 1 h avant
     date_publication DATETIME DEFAULT CURRENT_TIMESTAMP,
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_formation) REFERENCES formation(id_formation),
@@ -121,6 +140,7 @@ CREATE TABLE support (
 CREATE TABLE commentaire (
     id_commentaire INT AUTO_INCREMENT PRIMARY KEY,
     id_support INT NOT NULL,
+    id_parent INT NULL, -- NULL = commentaire principal, sinon réponse à ce commentaire
     id_etudiant INT NULL,
     id_utilisateur INT NULL,
     contenu TEXT NOT NULL,
@@ -128,7 +148,8 @@ CREATE TABLE commentaire (
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_support) REFERENCES support(id_support) ON DELETE CASCADE,
     FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant),
-    CONSTRAINT fk_commentaire_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
+    CONSTRAINT fk_commentaire_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
+    CONSTRAINT fk_commentaire_parent FOREIGN KEY (id_parent) REFERENCES commentaire(id_commentaire) ON DELETE CASCADE
 );
 
 -- 13. commentaire_mention
@@ -161,6 +182,7 @@ CREATE TABLE paiement (
     montant DECIMAL(10,2) NOT NULL,
     date_paiement DATE DEFAULT CURRENT_DATE,
     reference_virement VARCHAR(100),
+    statut ENUM('en_attente', 'valide', 'refuse') NOT NULL DEFAULT 'valide',
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_echeance) REFERENCES echeance(id_echeance),
     FOREIGN KEY (id_mode_paiement) REFERENCES mode_paiement(id_mode_paiement)
@@ -206,6 +228,7 @@ CREATE TABLE assistance (
     objet VARCHAR(150),
     contenu TEXT NOT NULL,
     date_envoi DATETIME DEFAULT CURRENT_TIMESTAMP,
+    date_resolution DATETIME NULL,
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant),
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
@@ -218,6 +241,7 @@ CREATE TABLE notification_inapp (
     id_utilisateur INT NOT NULL,
     message TEXT NOT NULL,
     lu BOOLEAN DEFAULT FALSE,
+    etat BOOLEAN DEFAULT TRUE,
     date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
 );
@@ -242,7 +266,9 @@ CREATE TABLE reset_password (
     date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
 );
-
+ALTER TABLE notification_inapp
+ADD COLUMN etat TINYINT(1) NOT NULL DEFAULT 1
+AFTER lu;
 -- ============================================
 -- INDEX D'OPTIMISATION
 -- ============================================
@@ -251,6 +277,27 @@ CREATE INDEX idx_inscription_etudiant ON inscription(id_etudiant);
 CREATE INDEX idx_inscription_formation ON inscription(id_formation);
 CREATE INDEX idx_echeance_inscription ON echeance(id_inscription);
 CREATE INDEX idx_paiement_echeance ON paiement(id_echeance);
+CREATE INDEX idx_sessions_token ON sessions(token);
+CREATE INDEX idx_support_programme ON support(statut, date_envoi_prevue);
+
+-- Alertes automatiques déjà envoyées au personnel (évite les doublons)
+CREATE TABLE alerte_envoyee (
+    id_alerte INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(30) NOT NULL,
+    id_reference INT NOT NULL,
+    date_envoi DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_alerte UNIQUE (type, id_reference)
+);
+
+-- Présence : un jour où l'étudiant a utilisé l'application (rempli automatiquement)
+CREATE TABLE presence (
+    id_presence INT AUTO_INCREMENT PRIMARY KEY,
+    id_utilisateur INT NOT NULL,
+    jour DATE NOT NULL,
+    CONSTRAINT uq_presence UNIQUE (id_utilisateur, jour),
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
+);
 CREATE INDEX idx_commentaire_support ON commentaire(id_support);
+CREATE INDEX idx_commentaire_parent ON commentaire(id_parent);
 CREATE INDEX idx_notification_utilisateur ON notification_inapp(id_utilisateur, lu);
 CREATE INDEX idx_reaction_support ON reaction(id_support);

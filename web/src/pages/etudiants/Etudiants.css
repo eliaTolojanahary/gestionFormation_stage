@@ -256,6 +256,32 @@
   gap: 14px;
 }
 
+/* Fiche étudiant : colonnes fixes même si une autre feuille redéfinit .detail-layout
+   (WorkspacePages.css : 1fr 1.5fr, qui laisse une colonne s'élargir avec son contenu) */
+.etudiant-page .detail-layout {
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr);
+  align-items: start;
+}
+
+.etudiant-page .detail-main-column {
+  min-width: 0;
+}
+
+/* Description d'une formation : 2 lignes maximum, le reste au survol */
+.etudiant-page .formation-description-cell {
+  min-width: 180px;
+  max-width: 320px;
+  white-space: normal;
+}
+
+.formation-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
 @media (max-width: 900px) {
   .students-main,
   .etudiant-page {
@@ -271,7 +297,8 @@
   .students-filters select {
     width: 100%;
   }
-  .detail-layout {
+  .detail-layout,
+  .etudiant-page .detail-layout {
     grid-template-columns: 1fr;
   }
 }

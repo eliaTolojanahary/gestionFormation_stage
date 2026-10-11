@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des inscriptions : liste (chargée au montage), création, validation, suppression.
 export function useInscription() {
   const [inscriptions, setInscriptions] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -27,6 +28,7 @@ export function useInscription() {
     return data.data
   }
 
+  // Le serveur génère automatiquement l'échéancier
   function createInscription(form) {
     return apiRequest('/inscriptions', {
       method: 'POST',
@@ -34,6 +36,7 @@ export function useInscription() {
     })
   }
 
+  // Valide l'inscription en enregistrant le premier paiement (payment = mode + référence)
   async function validateInscription(id, payment) {
     const result = await apiRequest(`/inscriptions/${id}/valid`, {
       method: 'POST',

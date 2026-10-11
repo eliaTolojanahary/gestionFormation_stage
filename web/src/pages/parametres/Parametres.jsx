@@ -1,10 +1,13 @@
-import { useRef, useState } from 'react'
+import { useRef, useState,useEffect } from 'react'
 import Icon from '../../components/icon/Icon'
 import Header from '../../components/header/Header'
 import logoImtech from '../../assets/logoImtech.png'
 import './Parametres.css'
 import { useNavigate } from 'react-router-dom'
-import { useUser } from '../../hooks/useUser'
+import { useAuth } from '../../hooks/useAuth'
+import { formatDate } from '../../utils/time'
+
+// Couleurs proposées pour la couleur principale de l'interface
 const colorOptions = [
   { name: 'Bleu IMTECH', value: '#063a5c' },
   { name: 'Bleu azur', value: '#137c8b' },
@@ -15,23 +18,107 @@ const colorOptions = [
   { name: 'Rouge', value: '#d32f2f' },
 ]
 
+// Page Paramètres, deux onglets :
+//  - Apparence : thème, couleur, taille du texte, densité, menu réduit, logo
+//    (appliqués et sauvegardés par DashboardLayout via onSettingsChange) ;
+//  - Sécurité : changement de mot de passe, dernière connexion, sessions, déconnexion globale.
 function Parametres({ user, settings, onSettingsChange }) {
   const navigate = useNavigate()
   const inputRef = useRef(null)
+  const{logoutAll,getLastLogin,getSessions}=useAuth()
   const [activeTab, setActiveTab] = useState('apparence') // 'apparence' | 'securite'
   const [saved, setSaved] = useState(false)
-  
+  const{changePassword}=useAuth()
   const logo = settings.logo || logoImtech
 const [passwordForm, setPasswordForm] = useState({ current: '', newPass: '', confirm: '' })
   const [passwordMessage, setPasswordMessage] = useState('')  
   const [passwordError, setPasswordError] = useState('')       
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)  
+
+   const [sessions, setSessions] = useState([])
+  const [lastLogin, setLastLogin] = useState(null)
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false)
+  const [sessionsError, setSessionsError] = useState('')
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false)
+ // Sessions et dernière connexion chargées seulement à l'ouverture de l'onglet Sécurité
+ useEffect(() => {
+    if (activeTab !== 'securite') return
+
+    let cancelled = false
+
+    async function load() {
+      setIsLoadingSessions(true)
+      setSessionsError('')
+      try {
+        const [sessionsData, lastLoginData] = await Promise.all([
+          getSessions(),
+          getLastLogin(),
+        ])
+        if (cancelled) return
+        setSessions(sessionsData)
+        setLastLogin(lastLoginData)
+      } catch (err) {
+        if (!cancelled) {
+          setSessionsError(err.message || 'Impossible de charger les sessions.')
+        }
+      } finally {
+        if (!cancelled) setIsLoadingSessions(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+  // Modifie une préférence et affiche "Modifications enregistrées" pendant 1,8 s
   function changeSetting(key, value) {
     onSettingsChange({ ...settings, [key]: value })
     setSaved(true)
     window.setTimeout(() => setSaved(false), 1800)
   }
+async function handleLogoutAll() {
+    if (!window.confirm('Déconnecter toutes les autres sessions actives ?')) return
 
+    setIsLoggingOutAll(true)
+    setSessionsError('')
+    try {
+      await logoutAll()
+
+      // Recharger les sessions après la déconnexion globale
+      const [sessionsData, lastLoginData] = await Promise.all([
+        getSessions(),
+        getLastLogin(),
+      ])
+      setSessions(sessionsData)
+      setLastLogin(lastLoginData)
+    } catch (err) {
+      setSessionsError(err.message || 'Impossible de déconnecter les sessions.')
+    } finally {
+      setIsLoggingOutAll(false)
+    }
+  }
+ // Nom du navigateur lisible à partir du user-agent ("Edg" testé avant "Chrome",
+ // car le user-agent d'Edge contient aussi "Chrome")
+ function shortUserAgent(ua) {
+    if (!ua) return 'Appareil inconnu'
+    if (ua.includes('Edg')) return 'Edge'
+    if (ua.includes('Chrome')) return 'Chrome'
+    if (ua.includes('Firefox')) return 'Firefox'
+    if (ua.includes('Safari')) return 'Safari'
+    return ua.slice(0, 40)
+  }
+
+  // Système d'exploitation à partir du user-agent
+  function shortOS(ua) {
+    if (!ua) return ''
+    if (ua.includes('Windows')) return 'Windows'
+    if (ua.includes('Mac OS')) return 'macOS'
+    if (ua.includes('Android')) return 'Android'
+    if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS'
+    if (ua.includes('Linux')) return 'Linux'
+    return ''
+  }
+  // Le logo est converti en texte base64 (data URL) pour être gardé dans le localStorage
   function handleLogo(event) {
     const file = event.target.files?.[0]
     if (!file) return
@@ -40,11 +127,13 @@ const [passwordForm, setPasswordForm] = useState({ current: '', newPass: '', con
     reader.onload = () => changeSetting('logo', reader.result)
     reader.readAsDataURL(file)
   }
+
 async function handlePasswordSubmit(event) {
   event.preventDefault()
   setPasswordMessage('')
   setPasswordError('')
 
+  // Validations front
   if (!passwordForm.current) {
     setPasswordError('Veuillez saisir votre mot de passe actuel.')
     return
@@ -58,21 +147,11 @@ async function handlePasswordSubmit(event) {
     return
   }
 
-
-  if (passwordForm.current !== user.mot_de_passe) {
-    setPasswordError('Le mot de passe actuel est incorrect.')
-    return
-  }
-
   setIsUpdatingPassword(true)
 
   try {
-    const id = user?.id || user?.id_utilisateur
-    const formData = new FormData()
-  
-    formData.append('mot_de_passe', passwordForm.newPass)
 
-    await updateUser(id, formData)
+    await changePassword(passwordForm.current, passwordForm.newPass)
 
     setPasswordMessage('Mot de passe mis à jour avec succès.')
     setPasswordForm({ current: '', newPass: '', confirm: '' })
@@ -260,7 +339,7 @@ async function handlePasswordSubmit(event) {
             </section>
           )}
 
-          {activeTab === 'securite' && (
+ {activeTab === 'securite' && (
             <section className="workspace-panel settings-section">
               <div className="panel-heading">
                 <div>
@@ -276,74 +355,74 @@ async function handlePasswordSubmit(event) {
                   <strong>Changement de mot de passe</strong>
                   <small>Modifiez votre mot de passe régulièrement pour sécuriser votre compte.</small>
                 </div>
-                 {/* Messages */}
-  {passwordError && (
-    <div className="form-message error" role="alert" style={{ marginTop: '10px' }}>
-      {passwordError}
-    </div>
-  )}
-  {passwordMessage && (
-    <div className="form-message success" role="status" style={{ marginTop: '10px' }}>
-      {passwordMessage}
-    </div>
-  )}
 
- <form
-    className="settings-form"
-    style={{ marginTop: '12px' }}
-    onSubmit={handlePasswordSubmit}
-  >
-    <label>
-      Mot de passe actuel
-      <input
-        type="password"
-        value={passwordForm.current}
-        onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
-        autoComplete="current-password"
-        required
-      />
-    </label>
+                {passwordError && (
+                  <div className="form-message error" role="alert" style={{ marginTop: '10px' }}>
+                    {passwordError}
+                  </div>
+                )}
+                {passwordMessage && (
+                  <div className="form-message success" role="status" style={{ marginTop: '10px' }}>
+                    {passwordMessage}
+                  </div>
+                )}
 
-    <button
-      className="back-link"
-      type="button"
-      onClick={() => navigate('/forgot-password')}
-      style={{ justifySelf: 'end', alignSelf: 'end' }}
-    >
-      Mot de passe oublié ?
-    </button>
+                <form
+                  className="settings-form"
+                  style={{ marginTop: '12px' }}
+                  onSubmit={handlePasswordSubmit}
+                >
+                  <label>
+                    Mot de passe actuel
+                    <input
+                      type="password"
+                      value={passwordForm.current}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                      autoComplete="current-password"
+                      required
+                    />
+                  </label>
 
-    <label>
-      Nouveau mot de passe
-      <input
-        type="password"
-        value={passwordForm.newPass}
-        onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })}
-        autoComplete="new-password"
-        required
-      />
-    </label>
+                  <button
+                    className="back-link"
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
+                    style={{ justifySelf: 'end', alignSelf: 'end' }}
+                  >
+                    Mot de passe oublié ?
+                  </button>
 
-    <label style={{ gridColumn: 'span 2' }}>
-      Confirmer le nouveau mot de passe
-      <input
-        type="password"
-        value={passwordForm.confirm}
-        onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-        autoComplete="new-password"
-        required
-      />
-    </label>
+                  <label>
+                    Nouveau mot de passe
+                    <input
+                      type="password"
+                      value={passwordForm.newPass}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })}
+                      autoComplete="new-password"
+                      required
+                    />
+                  </label>
 
-    <button
-      className="primary-button"
-      type="submit"
-      disabled={isUpdatingPassword}
-      style={{ justifySelf: 'start' }}
-    >
-      {isUpdatingPassword ? 'Mise à jour…' : 'Mettre à jour le mot de passe'}
-    </button>
-  </form>
+                  <label style={{ gridColumn: 'span 2' }}>
+                    Confirmer le nouveau mot de passe
+                    <input
+                      type="password"
+                      value={passwordForm.confirm}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                      autoComplete="new-password"
+                      required
+                    />
+                  </label>
+
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={isUpdatingPassword}
+                    style={{ justifySelf: 'start' }}
+                  >
+                    {isUpdatingPassword ? 'Mise à jour…' : 'Mettre à jour le mot de passe'}
+                  </button>
+                </form>
               </div>
 
               {/* 2. Dernière connexion */}
@@ -352,8 +431,12 @@ async function handlePasswordSubmit(event) {
                   <strong>Dernière connexion</strong>
                   <small>Dernière activité enregistrée sur votre profil.</small>
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600 }}>
-                  Aujourd'hui à 14:32 (Paris, FR)
+                <span className="session-meta">
+                  {isLoadingSessions
+                    ? 'Chargement…'
+                    : lastLogin
+                      ? `${formatDate(lastLogin.cree_le)} • ${shortUserAgent(lastLogin.user_agent)} ${shortOS(lastLogin.user_agent)}`
+                      : 'Aucune donnée'}
                 </span>
               </div>
 
@@ -363,34 +446,59 @@ async function handlePasswordSubmit(event) {
                   <strong>Déconnexion globale</strong>
                   <small>Déconnectez votre compte de tous les autres appareils et navigateurs.</small>
                 </div>
-                <button className="secondary-button" type="button" onClick={() => alert('Toutes les autres sessions ont été fermées.')}>
-                  Se déconnecter partout
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={isLoggingOutAll}
+                  onClick={handleLogoutAll}
+                >
+                  {isLoggingOutAll ? 'Déconnexion…' : 'Se déconnecter partout'}
                 </button>
               </div>
 
-              {/* 5. Historique des connexions */}
+              {/* 4. Historique des connexions */}
               <div className="setting-line" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div>
                   <strong>Historique des connexions</strong>
                   <small>Aperçu des dernières sessions ouvertes sur votre compte.</small>
                 </div>
+
+                {sessionsError && (
+                  <div className="form-message error" role="alert" style={{ marginTop: '10px' }}>
+                    {sessionsError}
+                  </div>
+                )}
+
                 <div className="ticket-list" style={{ marginTop: '10px' }}>
-                  <div className="ticket-row" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
-                    <div>
-                      <strong>Chrome - Windows</strong>
-                      <small>192.168.1.45 • Actuel</small>
+                  {isLoadingSessions && (
+                    <div className="session-empty">Chargement des sessions…</div>
+                  )}
+
+                  {!isLoadingSessions && sessions.length === 0 && (
+                    <div className="session-empty">Aucune session enregistrée.</div>
+                  )}
+
+                  {!isLoadingSessions && sessions.map((s) => (
+                    <div
+                      key={s.id_session}
+                      className="ticket-row"
+                      style={{ gridTemplateColumns: '1fr 1fr auto' }}
+                    >
+                      <div>
+                        <strong>
+                          {shortUserAgent(s.user_agent)}
+                          {shortOS(s.user_agent) ? ` - ${shortOS(s.user_agent)}` : ''}
+                        </strong>
+                        <small>
+                          {s.ip || 'IP inconnue'} {s.est_courante ? '• Actuel' : ''}
+                        </small>
+                      </div>
+                      <small>{formatDate(s.cree_le)}</small>
+                      <span className={`status-pill ${s.actif ? 'resolu' : ''}`}>
+                        {s.actif ? 'Actif' : 'Expiré'}
+                      </span>
                     </div>
-                    <small>Aujourd'hui, 14:32</small>
-                    <span className="status-pill resolu">Actif</span>
-                  </div>
-                  <div className="ticket-row" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
-                    <div>
-                      <strong>Safari - iOS (iPhone)</strong>
-                      <small>82.120.23.11</small>
-                    </div>
-                    <small>Hier, 18:10</small>
-                    <span className="status-pill">Expiré</span>
-                  </div>
+                  ))}
                 </div>
               </div>
             </section>

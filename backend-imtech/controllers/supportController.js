@@ -1,92 +1,78 @@
-const supportService= require('../services/supportService');
+// Controller des supports de cours (fichiers déposés par le formateur pour une formation).
+const supportService = require('../services/supportService');
+const { exigerChamps, badRequest } = require('../utils/errors');
+
+// GET /formations/:id/supports
 async function listerSupportsFormationController(req, res) {
-  try {
-    const idFormation = req.params.id || req.params.id_formation;
-
-    if (!idFormation) {
-      return res.status(400).json({
-        status: "error",
-        message: "L'identifiant de la formation est requis."
-      });
-    }
-
-    const supports = await supportService.listerSupportsFormation(idFormation);
-
-    return res.json({ status: "success", data: supports });
-
-  } catch (error) {
-    console.error("Erreur listerSupportsFormationController :", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Erreur serveur."
-    });
-  }
+  const supports = await supportService.listerSupportsFormation(req.params.id);
+  res.json({ status: 'success', data: supports });
 }
 
+// GET /supports/:id
+async function detailSupportController(req, res) {
+  const support = await supportService.recupererSupport(req.params.id);
+  res.json({ status: 'success', data: support });
+}
+
+// POST /supports (Formateur) : multipart avec le fichier + id_formation, titre
+// et date_envoi_prevue (facultative : vide = envoi immédiat, sinon support programmé)
 async function creerSupportController(req, res) {
-  try {
-    const body = req.body || {};
-    const { id_formation, titre } = body;
-    const id_utilisateur = req.user?.id_utilisateur || req.user?.id || body.id_utilisateur;
+  exigerChamps(req.body, ['id_formation']);
+  const fichiers = req.files || (req.file ? [req.file] : []);
+  if (fichiers.length === 0) throw badRequest("Aucun fichier n'a été fourni.");
 
-    if (!id_formation) {
-      return res.status(400).json({
-        status: "error",
-        message: "id_formation est requis."
-      });
-    }
+  const { ids, programme } = await supportService.creerSupports(
+    {
+      id_formation: req.body.id_formation,
+      titre: req.body.titre,
+      date_envoi_prevue: req.body.date_envoi_prevue,
+      fichiers,
+    },
+    req.user
+  );
 
-    const files = req.files || (req.file ? [req.file] : []);
-
-    if (!files || files.length === 0) {
-      return res.status(400).json({
-        status: "error",
-        message: "Aucun fichier n'a été fourni."
-      });
-    }
-
-    // Construction des chemins, style "supports/xxx.png"
-    const supportsCrees = [];
-
-    for (const file of files) {
-      const cheminFichier = `supports/${file.filename}`;    // 👈 file, pas files[0]
-      const titreSupport = titre?.trim() || file.originalname;
-
-      const id_support = await supportService.creerSupport({
-        id_formation,
-        id_utilisateur,
-        titre: titreSupport,
-        fichier: cheminFichier,
-      });
-
-      supportsCrees.push(id_support);
-    }
-
-    return res.status(201).json({
-      status: "success",
-      message: `${supportsCrees.length} support(s) créé(s).`,
-      ids: supportsCrees
-    });
-
-  } catch (error) {
-    console.error("Erreur creerSupportController :", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Erreur serveur lors de la création du support."
-    });
-  }
+  res.status(201).json({
+    status: 'success',
+    message: programme ? `${ids.length} support(s) programmé(s).` : `${ids.length} support(s) créé(s).`,
+    ids,
+  });
 }
+
+// GET /supports/programmes (Formateur : les siens ; Super Admin : tous)
+async function listerSupportsProgrammesController(req, res) {
+  const supports = await supportService.listerSupportsProgrammes(req.user);
+  res.json({ status: 'success', data: supports });
+}
+
+// PUT /supports/:id (Formateur auteur ou Super Admin) : modifie un support programmé
+// (titre, date_envoi_prevue et / ou nouveau fichier) tant qu'il n'est pas envoyé
+async function modifierSupportProgrammeController(req, res) {
+  const support = await supportService.modifierSupportProgramme(
+    req.params.id,
+    { titre: req.body.titre, date_envoi_prevue: req.body.date_envoi_prevue, fichier: req.file },
+    req.user
+  );
+  res.json({ status: 'success', message: 'Support programmé modifié.', data: support });
+}
+
+// POST /supports/:id/envoyer : envoie tout de suite un support programmé
+async function envoyerSupportController(req, res) {
+  await supportService.envoyerMaintenant(req.params.id, req.user);
+  res.json({ status: 'success', message: 'Support envoyé.' });
+}
+
+// DELETE /supports/:id (Formateur ou Super Admin)
 async function deleteSupportController(req, res) {
-  try {
-    const ok = await supportService.supprimerSupport(req.params.id);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Support introuvable." });
-    }
-    return res.json({ status: "success", message: "Support supprimé." });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  await supportService.supprimerSupport(req.params.id, req.user);
+  res.json({ status: 'success', message: 'Support supprimé.' });
 }
 
-module.exports = { listerSupportsFormationController, creerSupportController, deleteSupportController };
+module.exports = {
+  listerSupportsFormationController,
+  detailSupportController,
+  creerSupportController,
+  listerSupportsProgrammesController,
+  modifierSupportProgrammeController,
+  envoyerSupportController,
+  deleteSupportController,
+};

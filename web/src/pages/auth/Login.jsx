@@ -4,6 +4,8 @@ import logoImtech from '../../assets/logoImtech.png'
 import Icon from '../../components/icon/Icon'
 import './Login.css'
 
+// Page de connexion. La connexion elle-même est faite par onLogin (useAuth, dans App) ;
+// cette page vérifie seulement que les champs sont remplis.
 function Login({ onLogin, isLoading, error }) {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -24,6 +26,7 @@ function Login({ onLogin, isLoading, error }) {
     onLogin(email, password, rememberMe)
   }
 
+  // Erreur de saisie en priorité, sinon erreur renvoyée par le serveur
   const displayedError = formError || error
 
   return (

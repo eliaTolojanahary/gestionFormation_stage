@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom'
 import './Modal.css'
 
+// Fenêtre modale réutilisable : eyebrow = petit sur-titre, actions = boutons du bas.
+// Un clic sur le fond (en dehors de la fenêtre) la ferme.
 function Modal({ eyebrow, title, titleId, onClose, children, actions }) {
   const modalContent = (
     <div 

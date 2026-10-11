@@ -1,0 +1,7 @@
+# Dependances
+node_modules/
+
+# Variables d'environnement (garder les .env.example)
+.env
+.env.*
+!.env.example

@@ -8,6 +8,7 @@ import { useEffect } from 'react'
  * @param {function} props.onClose - Fonction de fermeture
  */
 export default function ImageLightbox({ src, alt = 'Aperçu image', onClose }) {
+  // Fermeture avec la touche Échap
   useEffect(() => {
     if (!src) return
 

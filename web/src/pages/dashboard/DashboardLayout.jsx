@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import logoImtech from '../../assets/logoImtech.png'
 import Sidebar from '../../components/sidebar/Sidebar'
 import ProfileModal from '../../components/profile/ProfileModal'
@@ -26,18 +26,21 @@ import AccueilFormateur from '../formateur/AccueilFormateur'
 import { useNotification } from '../../hooks/useNotification'
 import '../WorkspacePages.css'
 
+// Vue affichée dans une section : 'list', 'detail', 'create' ou 'edit' (+ id de l'élément)
 const INITIAL_VIEW = { type: 'list', id: null }
 
+// Cadre commun de l'espace connecté : barre latérale + page courante (sous-routes /dashboard/...).
+// Gère aussi la fenêtre de profil, les préférences d'affichage et le compteur de notifications.
 function DashboardLayout(props) {
   const user = props.user
   const onLogout = props.onLogout
   const updateCurrentUser = props.updateCurrentUser
 
-  const navigate = useNavigate()
 
   const notificationData = useNotification()
   const notifications = notificationData.notifications
 
+  // Notifications non lues -> badge dans la barre latérale
   const unreadNotifications = []
   for (let i = 0; i < notifications.length; i++) {
     if (notifications[i].lu === false) {
@@ -47,11 +50,13 @@ function DashboardLayout(props) {
 
   const [currentUser, setCurrentUser] = useState(user)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  // Vue courante de chaque section (liste / détail / formulaire), sans changer d'URL
   const [studentView, setStudentView] = useState(INITIAL_VIEW)
   const [userView, setUserView] = useState(INITIAL_VIEW)
   const [formationView, setFormationView] = useState(INITIAL_VIEW)
   const [inscriptionView, setInscriptionView] = useState(INITIAL_VIEW)
 
+// Préférences d'affichage (page Paramètres), relues depuis le localStorage au démarrage
 const [settings, setSettings] = useState(function () {
   try {
     const savedTheme = localStorage.getItem('app_theme')
@@ -69,7 +74,7 @@ const [settings, setSettings] = useState(function () {
       density: savedDensity || 'confortable',
       collapsedSidebar: savedSidebar === 'true',
     }
-  } catch (err) {
+  } catch {
     return {
       theme: 'light',
       color: '#063a5c',
@@ -80,6 +85,8 @@ const [settings, setSettings] = useState(function () {
     }
   }
 })
+ // À chaque changement des préférences : application sur <html> (attributs data-* et
+ // variable CSS --accent utilisés par les feuilles de style) puis sauvegarde
  useEffect(function () {
   const root = document.documentElement
 
@@ -109,11 +116,12 @@ const [settings, setSettings] = useState(function () {
     if (settings.logo) {
       localStorage.setItem('app_logo', settings.logo)
     }
-  } catch (err) {
+  } catch {
     // Les préférences restent actives pendant la session si le stockage est indisponible.
   }
 }, [settings])
 
+  // Changent la vue d'une section, ex. openStudentView('detail', 12)
   function openStudentView(type, id) {
     if (id === undefined) {
       id = null
@@ -142,6 +150,7 @@ const [settings, setSettings] = useState(function () {
     setInscriptionView({ type: type, id: id })
   }
 
+  // Choisissent le composant à afficher selon la vue courante de la section
   function renderStudentPage() {
     const type = studentView.type
     const id = studentView.id
@@ -282,6 +291,7 @@ const [settings, setSettings] = useState(function () {
       />
 
       <Routes>
+        {/* Accueil : espace formateur pour un formateur, tableau de bord pour les autres */}
         <Route
           path="/"
           element={currentUser.role === 'Formateur'

@@ -20,3 +20,51 @@
   color: var(--text-muted);
   background: var(--surface);
 }
+
+/* Statut de validation d'un paiement */
+.paiement-statut {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.paiement-statut-en_attente {
+  color: #b77921;
+  background: rgba(183, 121, 33, 0.15);
+}
+
+.paiement-statut-valide {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.15);
+}
+
+.paiement-statut-refuse {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.12);
+}
+
+.row-action-valider {
+  color: #2e7d32;
+}
+
+.row-action-refuser {
+  color: #c62828;
+}
+
+.paiements-alerte {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(183, 121, 33, 0.35);
+  border-radius: 6px;
+  color: #8a5a16;
+  background: rgba(183, 121, 33, 0.1);
+  font: inherit;
+  font-size: 10px;
+  text-align: left;
+  cursor: pointer;
+}

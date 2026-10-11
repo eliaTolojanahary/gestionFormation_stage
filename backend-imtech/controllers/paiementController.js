@@ -1,71 +1,67 @@
+// Controller des paiements. Un paiement saisi par un étudiant est "en attente"
+// jusqu'à sa validation (ou son refus) par l'Accueil / le Super Admin.
 const paiementService = require('../services/paiementService');
+const { ROLES } = require('../config/roles');
+const { exigerChamps } = require('../utils/errors');
 
+// GET /paiements?statut=... : un étudiant ne reçoit que ses propres paiements
 async function listerPaiementsController(req, res) {
-  try {
-    const paiements = await paiementService.listerPaiements();
-    return res.json({ status: "success", data: paiements });
-  } catch (error) {
-    console.error("Erreur liste paiements :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const paiements = await paiementService.listerPaiements(req.user, { statut: req.query.statut });
+  res.json({ status: 'success', data: paiements });
 }
 
+// POST /paiements : paiement d'une échéance
 async function enregistrerPaiementController(req, res) {
-  try {
-    const { id_echeance, id_mode_paiement, montant, reference_virement } = req.body;
+  const estEtudiant = req.user.role === ROLES.ETUDIANT;
+  // Le montant d'un étudiant est imposé par le serveur, il n'est donc pas requis
+  exigerChamps(req.body, estEtudiant ? ['id_echeance', 'id_mode_paiement'] : ['id_echeance', 'id_mode_paiement', 'montant']);
 
-    if (!id_echeance || !id_mode_paiement || !montant) {
-      return res.status(400).json({
-        status: "error",
-        message: "id_echeance, id_mode_paiement et montant sont requis."
-      });
-    }
+  const id_paiement = await paiementService.enregistrerPaiement(req.body, req.user);
 
-    const id_paiement = await paiementService.enregistrerPaiement(
-      id_echeance, id_mode_paiement, montant, reference_virement
-    );
-
-    return res.status(201).json({
-      status: "success",
-      message: "Paiement enregistré.",
-      id_paiement
-    });
-
-  } catch (error) {
-    console.error("Erreur enregistrement paiement :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur lors du paiement." });
-  }
+  res.status(201).json({
+    status: 'success',
+    message: estEtudiant ? 'Paiement envoyé, en attente de validation.' : 'Paiement enregistré.',
+    id_paiement,
+  });
 }
 
-
+// GET /paiements/:id
 async function getPaiementByIdController(req, res) {
-  try {
-    const { id } = req.params;
-    const paiement = await paiementService.listerPaiementId(id);
-    if (!paiement) {
-      return res.status(404).json({ status: "error", message: "Paiement non trouvé." });
-    }
-    return res.json({ status: "success", data: paiement });
-  } catch (error) {
-    console.error("Erreur getPaiementById :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const paiement = await paiementService.recupererPaiement(req.params.id, req.user);
+  res.json({ status: 'success', data: paiement });
 }
 
-
+// PUT /paiements/:id (personnel)
 async function updatePaiementController(req, res) {
-  try {
-    const { id } = req.params;
-    const ok = await paiementService.modifierPaiement(id, req.body);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Paiement non trouvé." });
-    }
-    return res.json({ status: "success", message: "Paiement mis à jour." });
-  } catch (error) {
-    console.error("Erreur updatePaiement :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const { id_mode_paiement, montant, reference_virement } = req.body;
+  await paiementService.modifierPaiement(req.params.id, { id_mode_paiement, montant, reference_virement });
+  res.json({ status: 'success', message: 'Paiement mis à jour.' });
 }
 
+// PUT /paiements/:id/valider : le paiement en attente est compté dans les sommes payées
+async function validerPaiementController(req, res) {
+  const paiement = await paiementService.validerPaiement(req.params.id);
+  res.json({ status: 'success', message: 'Paiement validé.', data: paiement });
+}
 
-module.exports = { listerPaiementsController, enregistrerPaiementController, updatePaiementController, getPaiementByIdController };
+// PUT /paiements/:id/refuser
+async function refuserPaiementController(req, res) {
+  const paiement = await paiementService.refuserPaiement(req.params.id);
+  res.json({ status: 'success', message: 'Paiement refusé.', data: paiement });
+}
+
+// GET /etudiants/:id/dashboard-paiement : récapitulatif des paiements d'un étudiant
+async function dashboardPaiementEtudiantController(req, res) {
+  const data = await paiementService.dashboardPaiementEtudiant(req.params.id);
+  res.json({ status: 'success', data });
+}
+
+module.exports = {
+  listerPaiementsController,
+  enregistrerPaiementController,
+  updatePaiementController,
+  getPaiementByIdController,
+  validerPaiementController,
+  refuserPaiementController,
+  dashboardPaiementEtudiantController,
+};

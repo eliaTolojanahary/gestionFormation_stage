@@ -6,7 +6,7 @@ import { useEtudiant } from '../../hooks/useEtudiant'
 import { useFormation } from '../../hooks/useFormation'
 import { useInscription } from '../../hooks/useInscription'
 
-
+// Options de paiement : value = id_tranche en base = nombre de tranches de l'échéancier
 const TRANCHE_OPTIONS = [
   { value: '1', label: 'Paiement Comptant (1 tranche)' },
   { value: '2', label: 'Paiement en 2 Tranches' },
@@ -14,6 +14,8 @@ const TRANCHE_OPTIONS = [
   { value: '4', label: 'Paiement en 4 Tranches' },
 ]
 
+// Nouvelle inscription : choix de l'étudiant, de la formation et du nombre de tranches.
+// À l'enregistrement, l'API crée l'inscription et calcule l'échéancier.
 function InscriptionForm({ user, onBack, onSaved }) {
   const { etudiants } = useEtudiant()
   const { formations } = useFormation()

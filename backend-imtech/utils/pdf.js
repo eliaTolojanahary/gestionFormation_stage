@@ -1,3 +1,6 @@
+// Génération des documents PDF officiels (fiche d'inscription, facture, attestation) avec pdfkit.
+// Les fichiers sont écrits dans uploads/documents ; chaque fonction renvoie le chemin relatif
+// ("documents/xxx.pdf") à enregistrer en base.
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
@@ -5,6 +8,7 @@ const path = require('path');
 const DOSSIER_DOCUMENTS = path.join(__dirname, '..', 'uploads', 'documents');
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logoImtech.png'); 
 
+// Charte graphique IMTECH utilisée dans tous les PDF
 const COULEURS = {
   primaire: '#002E4F',
   succes: '#5A9032',
@@ -20,16 +24,32 @@ function assurerDossier() {
   }
 }
 
+// Relie le PDF à son fichier et renvoie une promesse résolue quand le fichier est entièrement écrit
+// (sans cela, un e-mail envoyé juste après pourrait joindre un fichier incomplet).
+function ecrireVers(doc, chemin) {
+  return new Promise((resolve, reject) => {
+    const flux = fs.createWriteStream(chemin);
+    flux.on('finish', resolve);
+    flux.on('error', reject);
+    doc.pipe(flux);
+  });
+}
+
+// A4 sans marge : toutes les positions sont données en coordonnées absolues (points)
 function creerDocument() {
   return new PDFDocument({ size: 'A4', margin: 0 });
 }
 
+// ─── Éléments graphiques réutilisables ──────
+
+// Logo IMTECH (ignoré si le fichier assets/logoImtech.png est absent)
 function dessinerLogo(doc, x, y, largeur) {
   if (fs.existsSync(LOGO_PATH)) {
     doc.image(LOGO_PATH, x, y, { width: largeur });
   }
 }
 
+// Bandeau bleu en haut de page : logo + "IMTECH INFO" à gauche, titre du document à droite
 function dessinerEntete(doc, titre) {
   doc.rect(0, 0, doc.page.width, 110).fill(COULEURS.primaire);
 
@@ -53,6 +73,7 @@ function dessinerEntete(doc, titre) {
   doc.rect(0, 110, doc.page.width, 4).fill(COULEURS.accent);
 }
 
+// Trait de séparation + texte centré en bas de page
 function dessinerPiedDePage(doc, texte) {
   const y = doc.page.height - 60;
   doc.moveTo(50, y).lineTo(doc.page.width - 50, y).strokeColor('#E2E8F0').lineWidth(1).stroke();
@@ -60,6 +81,7 @@ function dessinerPiedDePage(doc, texte) {
     .text(texte, 50, y + 10, { align: 'center', width: doc.page.width - 100 });
 }
 
+// Ligne "LIBELLÉ    valeur" (affiche "-" si la valeur est absente)
 function ligneInfo(doc, x, y, label, valeur, largeurLabel = 140) {
   doc.font('Helvetica-Bold').fontSize(10).fillColor(COULEURS.gris)
     .text(label.toUpperCase(), x, y, { width: largeurLabel });
@@ -67,17 +89,21 @@ function ligneInfo(doc, x, y, label, valeur, largeurLabel = 140) {
     .text(valeur ?? '-', x + largeurLabel, y, { width: 300 });
 }
 
+// Cadre gris clair aux coins arrondis servant de fond à un bloc d'informations
 function encadre(doc, x, y, largeur, hauteur) {
   doc.roundedRect(x, y, largeur, hauteur, 6)
     .fillAndStroke(COULEURS.fond, '#E2E8F0');
 }
 
+// ─── Documents ──────────────────────────────
+
+// Fiche d'inscription : infos de l'étudiant + formation choisie et tarif
 
 async function genererFichePDF(donnees, nomFichier) {
   assurerDossier();
   const chemin = path.join(DOSSIER_DOCUMENTS, nomFichier);
   const doc = creerDocument();
-  doc.pipe(fs.createWriteStream(chemin));
+  const ecriture = ecrireVers(doc, chemin);
 
   dessinerEntete(doc, "FICHE D'INSCRIPTION");
 
@@ -104,15 +130,19 @@ async function genererFichePDF(donnees, nomFichier) {
   dessinerPiedDePage(doc, `IMTECH INFO — Fiche générée le ${formatDate(new Date())} — Document à usage administratif`);
 
   doc.end();
+  await ecriture;
   return `documents/${nomFichier}`;
 }
+
+// Facture d'un paiement : numéro, client, tableau (description / mode / montant),
+// total payé et reste à payer sur la formation
 async function genererFacturePDF(donnees, nomFichier) {
   assurerDossier();
 
   const chemin = path.join(DOSSIER_DOCUMENTS, nomFichier);
   const doc = creerDocument();
 
-  doc.pipe(fs.createWriteStream(chemin));
+  const ecriture = ecrireVers(doc, chemin);
 
   dessinerEntete(doc, 'FACTURE');
 
@@ -269,16 +299,20 @@ async function genererFacturePDF(donnees, nomFichier) {
   );
 
   doc.end();
+  await ecriture;
 
   return `documents/${nomFichier}`;
 }
 
+// Attestation de fin de formation : double cadre, nom de l'étudiant, formation, durée,
+// note éventuelle, et QR code menant à la page publique de vérification d'authenticité
 async function genererAttestationPDF(donnees, qrCodeBuffer, nomFichier) {
   assurerDossier();
   const chemin = path.join(DOSSIER_DOCUMENTS, nomFichier);
   const doc = creerDocument();
-  doc.pipe(fs.createWriteStream(chemin));
+  const ecriture = ecrireVers(doc, chemin);
 
+  // Double bordure (bleue puis jaune)
   doc.rect(20, 20, doc.page.width - 40, doc.page.height - 40)
     .lineWidth(2).stroke(COULEURS.primaire);
   doc.rect(28, 28, doc.page.width - 56, doc.page.height - 56)
@@ -312,6 +346,12 @@ async function genererAttestationPDF(donnees, qrCodeBuffer, nomFichier) {
     .text(`Durée : ${donnees.duree}`, 0, 375, { align: 'center' })
     .text(`Délivrée le ${formatDate(donnees.date_delivrance)}`, 0, 392, { align: 'center' });
 
+  if (donnees.note !== null && donnees.note !== undefined) {
+    doc.font('Helvetica-Bold').fontSize(14).fillColor(COULEURS.primaire)
+      .text(`Note obtenue : ${Number(donnees.note).toLocaleString('fr-FR')} / 20`, 0, 420, { align: 'center' });
+  }
+
+  // Bas de page : QR code à gauche, zone cachet/signature à droite
   const qrY = doc.page.height - 190;
   doc.image(qrCodeBuffer, 80, qrY, { width: 90 });
   doc.font('Helvetica').fontSize(8).fillColor(COULEURS.gris)
@@ -325,15 +365,20 @@ async function genererAttestationPDF(donnees, qrCodeBuffer, nomFichier) {
     .text('Cachet et signature', doc.page.width - 220, qrY + 65, { width: 140, align: 'center' });
 
   doc.end();
+  await ecriture;
   return `documents/${nomFichier}`;
 }
 
+// ─── Formatage ──────────────────────────────
+
+// Ex. "08 octobre 2026"
 function formatDate(date) {
   if (!date) return '-';
   const d = new Date(date);
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
+// Ex. 150000 -> "150 000"
 function formatMontant(montant) {
   return Number(montant || 0).toLocaleString('fr-FR');
 }

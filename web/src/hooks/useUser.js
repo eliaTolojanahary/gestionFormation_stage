@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des comptes utilisateurs (page Utilisateurs, Super Admin). Liste chargée au montage.
 export function useUser() {
   const [users, setUsers] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -27,13 +28,14 @@ export function useUser() {
     return response.data
   }
 
+  // Recherche locale (sans appel API) dans nom, prénom, e-mail et téléphone
   function searchUsers(searchTerm) {
     const normalizedSearch = searchTerm.trim().toLowerCase()
     return users.filter((user) => [user.nom, user.prenom, user.email, user.telephone].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch))
   }
 
+  // userData est un FormData (la photo peut être jointe)
   function createUser(userData) {
-   // console.log(userData)
     return apiRequest('/utilisateurs', { method: 'POST', body: userData })
   }
 

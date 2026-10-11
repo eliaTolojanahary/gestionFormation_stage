@@ -2,8 +2,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Icon from '../icon/Icon'
 import './Sidebar.css'
 
+// Menu latéral : [icône, libellé, chemin]. Les entrées affichées dépendent du rôle (voir Sidebar).
 const navigationItems = [
-  ['grid', 'Tableau de bord', '/dashboard'],
+  ['book', 'Espace formateur', '/dashboard/formateur'],
+  ['chart', 'Tableau de bord', '/dashboard'],
   ['users', 'Etudiants', '/dashboard/etudiants'],
   ['users', 'Utilisateurs', '/dashboard/utilisateurs'],
   ['book', 'Formations', '/dashboard/formations'],
@@ -11,13 +13,15 @@ const navigationItems = [
   ['wallet', 'Paiements', '/dashboard/paiements'],
   ['calendar', 'Échéances', '/dashboard/echeances'],
   ['book', 'Documents', '/dashboard/documents'],
-  ['chart', 'Rapports', '/dashboard/rapports'],
   ['bell', 'Notifications', '/dashboard/notifications'],
   ['users', 'Assistance', '/dashboard/assistance'],
   ['gear', 'Parametres', '/dashboard/parametres'],
-  ['book', 'Espace formateur', '/dashboard/formateur'],
+  
 ]
 
+// Barre latérale : logo, menu filtré selon le rôle, badge du nombre de notifications,
+// profil et bouton de déconnexion.
+// Note : ce filtrage ne fait que masquer des liens ; la vraie protection est faite par l'API.
 function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -29,10 +33,11 @@ function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
     allowedItems = navigationItems
   } else if (user?.role === 'Accueil') {
     allowedItems = navigationItems.filter(([, label]) =>
-      ['Tableau de bord', 'Paiements', 'Échéances', 'Assistance', 'Notifications', 'Formations', 'Rapports', 'Documents', 'Inscriptions', 'Etudiants'].includes(label)
+      ['Tableau de bord', 'Paiements', 'Échéances', 'Assistance', 'Notifications', 'Formations', 'Rapports', 'Documents', 'Inscriptions', 'Etudiants','Parametres'].includes(label)
     )
   } else if (user?.role === 'Formateur') {
-    allowedItems = navigationItems.filter(([, label]) => ['Espace formateur', 'Assistance'].includes(label))
+    // L'assistance traite les demandes des étudiants : réservée à l'Accueil et au Super Admin
+    allowedItems = navigationItems.filter(([, label]) => ['Espace formateur', 'Formations', 'Etudiants', 'Parametres'].includes(label))
   }
 
   return (
@@ -49,6 +54,7 @@ function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
       {user ? (
         <nav className="main-nav" aria-label="Navigation principale">
           {allowedItems.map(([icon, label, path]) => {
+            // Lien actif si l'URL correspond (ou une sous-page, ex. /dashboard/etudiants/12)
             const isActive = location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path))
             return (
               <button

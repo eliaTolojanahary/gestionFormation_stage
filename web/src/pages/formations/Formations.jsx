@@ -5,18 +5,30 @@ import { useFormation } from '../../hooks/useFormation'
 import SearchFilterBar from '../../components/form/Filter'
 import './Formations.css'
 
-
+// Liste des formations avec recherche et filtre par statut.
+// Un formateur ne voit que ses formations ; seul le Super Admin peut créer / modifier / supprimer.
 function Formations({ user, onCreate, onDetail, onEdit }) {
   const { formations, isLoading, error, deleteFormation } = useFormation()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('Tous')
   const [actionError, setActionError] = useState('')
+
+  const userId = user?.id_utilisateur || user?.id
+  const isFormateur = user?.role === 'Formateur'
   const canManage = user?.role === 'Super Admin'
+
+  // Formations visibles (l'API filtre déjà pour un formateur ; ce filtre est une sécurité en plus)
+  const ownFormations = useMemo(() => {
+    if (!isFormateur) return formations
+    return formations.filter(
+      (formation) => Number(formation.id_utilisateur) === Number(userId)
+    )
+  }, [formations, isFormateur, userId])
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 
-    return formations.filter((formation) => {
+    return ownFormations.filter((formation) => {
       const fullText = `${formation.nom} ${formation.description || ''}`.toLowerCase()
       const matchesSearch = fullText.includes(normalizedSearch)
       const matchesStatus =
@@ -26,7 +38,7 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
 
       return matchesSearch && matchesStatus
     })
-  }, [formations, search, status])
+  }, [ownFormations, search, status])
 
   function handleReset() {
     setSearch('')
@@ -46,19 +58,52 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
   const columns = [
     { key: 'nom', header: 'Formation' },
     { key: 'description', header: 'Description' },
-    { key: 'tarif', header: 'Tarif', render: (row) => `${Number(row.tarif || 0).toLocaleString('fr-FR')} MGA` },
-    { key: 'duree_jours', header: 'Durée', render: (row) => `${row.duree_jours || 0} jours` },
-    { key: 'formateur', header: 'Formateur', render: (row) => `${row.prenom_formateur || ''} ${row.nom_formateur || ''}`.trim() || '-' },
+    {
+      key: 'tarif',
+      header: 'Tarif',
+      render: (row) => `${Number(row.tarif || 0).toLocaleString('fr-FR')} MGA`,
+    },
+    {
+      key: 'duree_jours',
+      header: 'Durée',
+      render: (row) => `${row.duree_jours || 0} jours`,
+    },
+    {
+      key: 'formateur',
+      header: 'Formateur',
+      render: (row) =>
+        `${row.prenom_formateur || ''} ${row.nom_formateur || ''}`.trim() || '-',
+    },
     {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
         <div className="table-actions">
-          <button type="button" className="row-action" onClick={() => onDetail(row.id_formation)}>Détail</button>
+          {/* ✅ Callback au lieu de navigate() */}
+          <button
+            type="button"
+            className="row-action"
+            onClick={() => onDetail && onDetail(row.id_formation)}
+          >
+            Détail
+          </button>
+
           {canManage && (
             <>
-              <button type="button" className="row-action" onClick={() => onEdit(row.id_formation)}>Modifier</button>
-              <button type="button" className="row-action danger-action" onClick={() => handleDelete(row)}>Supprimer</button>
+              <button
+                type="button"
+                className="row-action"
+                onClick={() => onEdit && onEdit(row.id_formation)}
+              >
+                Modifier
+              </button>
+              <button
+                type="button"
+                className="row-action danger-action"
+                onClick={() => handleDelete(row)}
+              >
+                Supprimer
+              </button>
             </>
           )}
         </div>
@@ -72,11 +117,21 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
 
       <div className="gestion-heading">
         <div>
-          <h1>Formations</h1>
-          <p>{formations.length} formations enregistrées</p>
+          <h1>{isFormateur ? 'Mes formations' : 'Formations'}</h1>
+          <p>
+            {isFormateur
+              ? `${ownFormations.length} formation(s) qui vous est/sont attribuée(s)`
+              : `${formations.length} formations enregistrées`}
+          </p>
         </div>
+
         {canManage && (
-          <button type="button" className="primary-button" onClick={onCreate}>
+          <button
+            type="button"
+            className="primary-button"
+            /* ✅ Callback au lieu de navigate() */
+            onClick={() => onCreate && onCreate()}
+          >
             + Nouvelle formation
           </button>
         )}
@@ -108,7 +163,11 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
             columns={columns}
             rows={filtered}
             rowKey="id_formation"
-            emptyMessage="Aucune formation trouvée."
+            emptyMessage={
+              isFormateur
+                ? 'Aucune formation ne vous est attribuée.'
+                : 'Aucune formation trouvée.'
+            }
             wrapperClassName="gestion-table-wrap"
             className="gestion-table"
           />

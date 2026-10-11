@@ -1,0 +1,91 @@
+/* ==========================================================================
+   Classement et notes d'attestation sur 20 (espace formateur)
+   ========================================================================== */
+
+.classement-panel .panel-heading {
+  gap: 12px;
+}
+
+.classement-panel .panel-heading p {
+  max-width: 560px;
+}
+
+.classement-panel select {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-main);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+}
+
+.classement-table td {
+  vertical-align: middle;
+}
+
+.classement-table strong,
+.classement-table small {
+  display: block;
+}
+
+.classement-table small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.classement-rang {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.classement-criteres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.classement-critere {
+  padding: 3px 7px;
+  border-radius: 10px;
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.1);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.classement-critere.atteint {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.12);
+}
+
+.classement-note-suggeree {
+  color: var(--heading);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.classement-saisie {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.classement-saisie input {
+  width: 64px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-main);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+}
+
+.classement-erreur {
+  color: #c62828;
+}

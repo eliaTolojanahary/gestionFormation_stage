@@ -1,79 +1,45 @@
+// Controller des formations.
 const formationService = require('../services/formationService');
+const { exigerChamps } = require('../utils/errors');
 
+// GET /formations : la liste dépend du rôle (req.user transmis au service)
 async function listerFormations(req, res) {
-  try {
-    const idUtilisateur = req.user?.role === 'Formateur' ? (req.user.id_utilisateur || req.user.id) : undefined;
-    const formations = await formationService.listerFormations(idUtilisateur);
-    return res.json({ status: "success", data: formations });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const formations = await formationService.listerFormations(req.user);
+  res.json({ status: 'success', data: formations });
 }
 
+// GET /formations/:id
 async function detailFormation(req, res) {
-  try {
-    const formation = await formationService.recupererFormation(req.params.id);
-    if (!formation) {
-      return res.status(404).json({ status: "error", message: "Formation introuvable." });
-    }
-    return res.json({ status: "success", data: formation });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const formation = await formationService.recupererFormation(req.params.id);
+  res.json({ status: 'success', data: formation });
 }
 
+// GET /formations/:id/etudiants : étudiants inscrits à la formation
 async function etudiantsFormation(req, res) {
-  try {
-    const etudiants = await formationService.recupererEtudiantsFormation(req.params.id);
-    return res.json({ status: "success", data: etudiants });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const etudiants = await formationService.recupererEtudiantsFormation(req.params.id, req.user);
+  res.json({ status: 'success', data: etudiants });
 }
 
+// POST /formations (Super Admin) : id_utilisateur = formateur responsable
 async function creerFormationController(req, res) {
-  try {
-    const { nom, description, tarif, duree, duree_jours, id_utilisateur } = req.body;
+  exigerChamps(req.body, ['nom', 'tarif', 'duree_jours', 'id_utilisateur']);
+  const { nom, description, engagement_formateur, tarif, duree, duree_jours, id_utilisateur } = req.body;
 
-    if (!nom || !tarif || !duree_jours || !id_utilisateur) {
-      return res.status(400).json({ status: "error", message: "nom, tarif, duree_jours et id_utilisateur sont requis." });
-    }
-
-    const id_formation = await formationService.creerFormation({ nom, description, tarif, duree, duree_jours, id_utilisateur });
-    return res.status(201).json({ status: "success", message: "Formation créée.", id_formation });
-  } catch (error) {
-    console.error(error);
-    return res.status(400).json({ status: "error", message: error.message || "Erreur lors de la création." });
-  }
+  const id_formation = await formationService.creerFormation({ nom, description, engagement_formateur, tarif, duree, duree_jours, id_utilisateur });
+  res.status(201).json({ status: 'success', message: 'Formation créée.', id_formation });
 }
 
+// PUT /formations/:id (Super Admin)
 async function updateFormationController(req, res) {
-  try {
-    const ok = await formationService.modifierFormation(req.params.id, req.body);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Formation introuvable." });
-    }
-    return res.json({ status: "success", message: "Formation mise à jour." });
-  } catch (error) {
-    console.error(error);
-    return res.status(400).json({ status: "error", message: error.message || "Erreur lors de la mise à jour." });
-  }
+  const { nom, description, engagement_formateur, tarif, duree, duree_jours, id_utilisateur } = req.body;
+  await formationService.modifierFormation(req.params.id, { nom, description, engagement_formateur, tarif, duree, duree_jours, id_utilisateur });
+  res.json({ status: 'success', message: 'Formation mise à jour.' });
 }
 
+// DELETE /formations/:id (Super Admin) : suppression logique
 async function deleteFormationController(req, res) {
-  try {
-    const ok = await formationService.supprimerFormation(req.params.id);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Formation introuvable." });
-    }
-    return res.json({ status: "success", message: "Formation désactivée." });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  await formationService.supprimerFormation(req.params.id);
+  res.json({ status: 'success', message: 'Formation désactivée.' });
 }
 
 module.exports = { listerFormations, detailFormation, etudiantsFormation, creerFormationController, updateFormationController, deleteFormationController };

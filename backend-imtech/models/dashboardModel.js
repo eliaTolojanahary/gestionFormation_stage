@@ -1,33 +1,40 @@
+// Model du tableau de bord : requêtes statistiques (montants, formations, inscriptions).
 const db = require('../config/db');
+const { PAIEMENT_VALIDE, PAIEMENT_ACTIF } = require('./paiementModel');
 
+// Indicateurs en une seule requête :
+//  - montant_encaisse    : somme des paiements validés
+//  - reste_a_encaisser   : total des échéances - montant encaissé
+//  - paiements_en_retard : échéances dépassées dont le montant envoyé (validé + en attente) est insuffisant
 async function getKPI() {
   const sql = `
    SELECT 
-  (SELECT IFNULL(SUM(montant), 0) FROM paiement WHERE etat = true) AS montant_encaisse,
+  (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p WHERE ${PAIEMENT_VALIDE()}) AS montant_encaisse,
   
   (SELECT COUNT(*) FROM formation WHERE etat = true) AS nombre_formations,
   
   (SELECT COUNT(*) FROM formation WHERE etat = true) AS formations_actives,
   
   (SELECT IFNULL(SUM(montant_prevu), 0) FROM echeance WHERE etat = true) 
-  - (SELECT IFNULL(SUM(montant), 0) FROM paiement WHERE etat = true) AS reste_a_encaisser,
+  - (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p WHERE ${PAIEMENT_VALIDE()}) AS reste_a_encaisser,
   
   (SELECT COUNT(DISTINCT e.id_echeance)
    FROM echeance e
-   LEFT JOIN paiement p ON e.id_echeance = p.id_echeance
    WHERE e.etat = true
-     AND CURDATE() > e.date_echeance
-     AND IFNULL(p.montant, 0) < e.montant_prevu) AS paiements_en_retard
+     AND NOW() > e.date_echeance
+     AND (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p
+          WHERE p.id_echeance = e.id_echeance AND ${PAIEMENT_ACTIF()}) < e.montant_prevu) AS paiements_en_retard
   `;
   const [rows] = await db.query(sql);
   return rows[0];
 }
 
+// Montants encaissés par jour depuis `dateDebut`
 async function getEvolutionParJour(dateDebut) {
   const sql = `
     SELECT DATE(date_paiement) AS periode, SUM(montant) AS total
-    FROM paiement
-    WHERE etat = true AND date_paiement >= ?
+    FROM paiement p
+    WHERE ${PAIEMENT_VALIDE()} AND date_paiement >= ?
     GROUP BY periode
     ORDER BY periode ASC
   `;
@@ -35,11 +42,12 @@ async function getEvolutionParJour(dateDebut) {
   return rows;
 }
 
+// Montants encaissés regroupés selon `formatDate` (ex. '%Y-%m' = par mois)
 async function getEvolution(formatDate) {
   const sql = `
     SELECT DATE_FORMAT(date_paiement, ?) AS periode, SUM(montant) AS total
-    FROM paiement
-    WHERE etat = true
+    FROM paiement p
+    WHERE ${PAIEMENT_VALIDE()}
     GROUP BY periode
     ORDER BY periode ASC
   `;
@@ -47,6 +55,7 @@ async function getEvolution(formatDate) {
   return rows;
 }
 
+// Lignes de l'export CSV
 async function getDonneesInscriptions() {
   const sql = `
     SELECT i.id_inscription, u.nom, u.prenom, f.nom AS formation, 
@@ -62,6 +71,7 @@ async function getDonneesInscriptions() {
 }
 
       
+// Nombre d'inscriptions par mois (format 'AAAA-MM')
 async function getDonneesInscriptionsParMois() {
   const sql = `
   SELECT DATE_FORMAT(date_inscription, '%Y-%m') AS periode,
@@ -74,6 +84,8 @@ async function getDonneesInscriptionsParMois() {
   const [rows] = await db.query(sql);
   return rows;
 }
+
+// 5 formations les plus suivies (LEFT JOIN : une formation sans inscrit compte 0)
 async function getTopInscriptions() {
   const sql = `
     SELECT f.id_formation,

@@ -1,0 +1,52 @@
+/* ==========================================================================
+   Supports programmés (espace formateur)
+   ========================================================================== */
+
+.programme-liste {
+  display: grid;
+  gap: 8px;
+}
+
+.programme-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.programme-ligne strong,
+.programme-ligne small {
+  display: block;
+}
+
+.programme-ligne small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.programme-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.programme-edition {
+  display: grid;
+  justify-content: stretch;
+}
+
+.programme-edition input {
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-main);
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+}

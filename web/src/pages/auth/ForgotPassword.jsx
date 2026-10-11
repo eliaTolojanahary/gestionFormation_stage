@@ -5,6 +5,10 @@ import Icon from '../../components/icon/Icon'
 import { useAuth } from '../../hooks/useAuth'
 import './Login.css'
 
+// Mot de passe oublié en 3 étapes :
+//  1. saisie de l'e-mail -> le serveur envoie un code ;
+//  2. saisie du code + nouveau mot de passe (8 caractères minimum, confirmé) ;
+//  3. confirmation, retour à la connexion.
 function ForgotPassword() {
   const navigate = useNavigate()
   const { forgotPassword, resetPassword, error } = useAuth()
@@ -18,6 +22,7 @@ function ForgotPassword() {
   const [message, setMessage] = useState('')
   const [formError, setFormError] = useState('')
 
+  // Étape 1 : demande du code
   async function handleSendEmail(event) {
     event.preventDefault()
     setFormError('')
@@ -37,6 +42,7 @@ function ForgotPassword() {
     }
   }
 
+  // Étape 2 : vérifications locales puis réinitialisation
   async function handleReset(event) {
     event.preventDefault()
     setFormError('')

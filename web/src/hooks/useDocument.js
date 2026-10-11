@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des documents : génération des PDF (fiche, facture, attestation),
+// documents administratifs et supports de cours.
 export function useDocument() {
   const [fiche, setFiche] = useState(null)
   const [factures, setFactures] = useState(null)
@@ -9,6 +11,7 @@ export function useDocument() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Génère la fiche d'inscription PDF ; la réponse contient le chemin du fichier
   async function getFiche(id_inscription) {
     setIsLoading(true)
     setError('')
@@ -24,6 +27,7 @@ export function useDocument() {
     }
   }
 
+  // Génère la facture d'un paiement validé
   async function getFacture(id_paiement) {
     setIsLoading(true)
     setError('')
@@ -38,8 +42,9 @@ export function useDocument() {
       setIsLoading(false)
     }
   }
+
+  // Supprime un document administratif ou un support selon son type, puis le retire de la liste
   async function deleteDoc(id, type) {
-    console.log(id)
     const path = type === 'Administratif' ? `/documents/${id}` : `/supports/${id}`
     const result = await apiRequest(path, { method: 'DELETE' })
 
@@ -47,6 +52,21 @@ export function useDocument() {
     return result
   }
 
+  // Génère l'attestation (avec la note) et l'envoie à l'étudiant : notification in-app + e-mail avec le PDF
+  async function envoyerAttestation(id_inscription) {
+    setIsLoading(true)
+    setError('')
+    try {
+      return await apiRequest(`/attestations/${id_inscription}/envoyer`, { method: 'POST' })
+    } catch (requestError) {
+      setError(requestError.message || "Impossible d'envoyer l'attestation.")
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Génère l'attestation sans l'envoyer
   async function getAttestation(id_inscription) {
     setIsLoading(true)
     setError('')
@@ -77,6 +97,7 @@ export function useDocument() {
     }
   }
 
+  // formData contient un ou plusieurs fichiers dans le champ "fichiers"
   async function uploadDocuments(formData) {
     setIsLoading(true)
     setError('')
@@ -93,6 +114,7 @@ export function useDocument() {
     }
   }
 
+  // Supports de cours d'une formation
   async function getSupports(idFormation) {
     try {
       const result = await apiRequest(`/formations/${idFormation}/supports`)
@@ -121,7 +143,7 @@ export function useDocument() {
 
   return {
     fiche, factures, attestations, documents, isLoading, error,
-    getFiche, getFacture, getAttestation,
+    getFiche, getFacture, getAttestation, envoyerAttestation,
     getDocuments, uploadDocuments, deleteDoc,
     getSupports, uploadSupport,
   }

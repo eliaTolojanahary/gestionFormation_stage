@@ -11,7 +11,7 @@
   background: rgba(211, 47, 47, 0.12);
 }
 
-.echeance-statut-orange {
+.echeance-statut-jaune {
   color: #b77921;
   background: rgba(183, 121, 33, 0.12);
 }
@@ -19,4 +19,12 @@
 .echeance-statut-vert {
   color: #2e7d32;
   background: rgba(46, 125, 50, 0.12);
+}
+
+/* Paiement envoyé par l'étudiant depuis le mobile, en attente de validation */
+.echeance-en-attente {
+  display: block;
+  margin-top: 3px;
+  color: #b77921;
+  font-size: 8px;
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des échéances : liste complète (chargée au montage), échéancier d'une inscription,
+// modification et rappels.
 export function useEcheance() {
   const [echeances, setEcheances] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -33,7 +35,18 @@ export function useEcheance() {
     return result
   }
 
+  // Bouton « Rappeler » : le serveur envoie une notification in-app + un e-mail à l'étudiant
+  async function rappelerEcheance(id) {
+    const result = await apiRequest(`/echeances/${id}/rappeler`, { method: 'POST' })
+    // Mise à jour locale de la date du dernier rappel, sans recharger toute la liste
+    const maintenant = new Date().toISOString()
+    setEcheances((liste) =>
+      liste.map((e) => (e.id_echeance === id ? { ...e, date_dernier_rappel: maintenant } : e))
+    )
+    return result
+  }
+
   useEffect(() => { getEcheances() }, [])
 
-  return { echeances, isLoading, error, getEcheances, getEcheancesByInscription, updateEcheance }
+  return { echeances, isLoading, error, getEcheances, getEcheancesByInscription, updateEcheance, rappelerEcheance }
 }

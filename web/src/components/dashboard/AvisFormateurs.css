@@ -1,0 +1,159 @@
+/* ==========================================================================
+   Avis des étudiants sur les formateurs (tableau de bord)
+   ========================================================================== */
+
+.avis-card {
+  margin-top: 14px;
+}
+
+.avis-heading {
+  margin-bottom: 4px;
+}
+
+/* La barre de filtres prend toute la largeur de la carte, comme dans un gestion-panel */
+.avis-card .search-filter-bar {
+  flex-wrap: wrap;
+  margin: 0 -15px;
+}
+
+.avis-card .search-filter-bar label:nth-of-type(3) .filter-option {
+  width: 185px;
+}
+
+.avis-table {
+  min-width: 720px;
+}
+
+.avis-table td {
+  height: 46px;
+  vertical-align: middle;
+}
+
+.avis-rang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: var(--accent-soft);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.avis-formateur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avis-formateur div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.avis-formateur strong {
+  color: var(--heading);
+  font-weight: 600;
+}
+
+.avis-formateur span {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+/* Pastilles de réactions */
+.avis-reactions {
+  display: flex;
+  gap: 4px;
+}
+
+.avis-pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 34px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text-main);
+  background: var(--surface);
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.avis-pastille-negative {
+  color: #c62828;
+  border-color: rgba(198, 40, 40, 0.25);
+  background: rgba(198, 40, 40, 0.06);
+}
+
+/* Taux de réactions positives */
+.avis-taux {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.avis-taux-barre {
+  width: 70px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--accent-soft);
+}
+
+.avis-taux-barre span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.avis-taux-haut {
+  background: #2e7d32;
+}
+
+.avis-taux-moyen {
+  background: #b77921;
+}
+
+.avis-taux-bas {
+  background: #c62828;
+}
+
+.avis-taux strong {
+  min-width: 30px;
+  color: var(--heading);
+  font-weight: 700;
+}
+
+.avis-vide {
+  color: var(--text-muted);
+}
+
+/* Badge de l'avis (mêmes couleurs que les statuts de paiement) */
+.avis-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.avis-competent {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.15);
+}
+
+.avis-non-competent {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.12);
+}
+
+.avis-neutre {
+  color: var(--text-muted);
+  background: var(--accent-soft);
+}

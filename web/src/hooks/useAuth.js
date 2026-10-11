@@ -1,43 +1,28 @@
 import { useState } from 'react'
-import { apiRequest } from '../utils/api'
+import { apiRequest, clearSession, readStoredToken, readStoredUser, storeSession, storeUser } from '../utils/api'
 
+export { readStoredToken, readStoredUser }
 
-export function readStoredUser() {
-  const storedUser =
-    localStorage.getItem('auth_user') || sessionStorage.getItem('auth_user')
-  return storedUser ? JSON.parse(storedUser) : null
-}
-
-export function readStoredToken() {
-  return (
-    localStorage.getItem('auth_token') ||
-    sessionStorage.getItem('auth_token') ||
-    null
-  )
-}
-
+// Hook d'authentification : utilisateur connecté, connexion / déconnexion, mots de passe et sessions.
+// Comme les autres hooks du dossier, il expose des états (isLoading, error) et des fonctions
+// qui appellent l'API via apiRequest.
 export function useAuth() {
+  // Au chargement de la page, on reprend l'utilisateur déjà stocké (session existante)
   const [user, setUser] = useState(readStoredUser)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Connexion : stocke token + utilisateur ; renvoie l'utilisateur, ou null en cas d'échec (voir `error`)
   async function login(email, password, rememberMe) {
     setError('')
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_URL_BASE}/auth/login`, {
+      const data = await apiRequest('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), mot_de_passe: password }),
       })
-      const data = await response.json()
-
-      if (!response.ok) throw new Error(data.message || 'Identifiants incorrects.')
-
-      const storage = rememberMe ? localStorage : sessionStorage
-      if (data.token) storage.setItem('auth_token', data.token)
-      if (data.user) storage.setItem('auth_user', JSON.stringify(data.user))
+      storeSession(data, rememberMe)
       setUser(data.user)
       return data.user
     } catch (requestError) {
@@ -48,14 +33,20 @@ export function useAuth() {
     }
   }
 
-  function logout() {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_user')
-    sessionStorage.removeItem('auth_token')
-    sessionStorage.removeItem('auth_user')
+  // Déconnexion : désactive la session côté serveur puis efface les données locales
+  async function logout() {
+    try {
+      if (readStoredToken()) {
+        await apiRequest('/auth/logout', { method: 'POST' })
+      }
+    } catch {
+      // Même si le serveur ne répond pas, on déconnecte localement
+    }
+    clearSession()
     setUser(null)
   }
 
+  // Demande l'envoi d'un code de réinitialisation par e-mail
   async function forgotPassword(email) {
     setError('')
     try {
@@ -69,6 +60,7 @@ export function useAuth() {
     }
   }
 
+  // Nouveau mot de passe à partir du code reçu par e-mail
   async function resetPassword(token, nouveauMotDePasse) {
     setError('')
     try {
@@ -81,6 +73,9 @@ export function useAuth() {
       return null
     }
   }
+
+  // Fusionne les infos modifiées (profil) dans l'utilisateur courant. L'API peut renvoyer
+  // id_utilisateur / role_nom au lieu de id / role : on normalise.
   function updateCurrentUser(updatedUser) {
     const nextUser = {
       ...user,
@@ -88,12 +83,15 @@ export function useAuth() {
       id: updatedUser?.id || updatedUser?.id_utilisateur || user?.id,
       role: updatedUser?.role || updatedUser?.role_nom || user?.role,
     }
-    const storage = localStorage.getItem('auth_user') ? localStorage : sessionStorage
-    storage.setItem('auth_user', JSON.stringify(nextUser))
+    storeUser(nextUser)
     setUser(nextUser)
     return nextUser
   }
-async function changePassword(ancienMotDePasse, nouveauMotDePasse) {
+
+  // Les fonctions suivantes relancent l'erreur (throw) : c'est la page qui l'affiche
+
+  // Changement de mot de passe (les autres appareils sont déconnectés par le serveur)
+  async function changePassword(ancienMotDePasse, nouveauMotDePasse) {
     setError('')
     try {
       return await apiRequest('/auth/change-password', {
@@ -108,5 +106,44 @@ async function changePassword(ancienMotDePasse, nouveauMotDePasse) {
       throw requestError
     }
   }
-  return { user, isLoading, error, login, logout, forgotPassword, resetPassword, changePassword, updateCurrentUser }
+
+  // Appareils connectés au compte
+  async function getSessions() {
+    setError('')
+    try {
+      const data = await apiRequest('/auth/sessions', { method: 'GET' })
+      return data.sessions || []
+    } catch (requestError) {
+      setError(requestError.message || 'Impossible de récupérer les sessions.')
+      throw requestError
+    }
+  }
+
+  async function getLastLogin() {
+    setError('')
+    try {
+      const data = await apiRequest('/auth/last-login', { method: 'GET' })
+      return data.lastLogin || null
+    } catch (requestError) {
+      setError(requestError.message || 'Impossible de récupérer la dernière connexion.')
+      throw requestError
+    }
+  }
+
+  // Déconnecte tous les autres appareils
+  async function logoutAll() {
+    setError('')
+    try {
+      return await apiRequest('/auth/logout-all', { method: 'PUT' })
+    } catch (requestError) {
+      setError(requestError.message || 'Impossible de déconnecter les sessions.')
+      throw requestError
+    }
+  }
+
+  return {
+    user, isLoading, error,
+    login, logout, forgotPassword, resetPassword, changePassword, updateCurrentUser,
+    logoutAll, getLastLogin, getSessions,
+  }
 }

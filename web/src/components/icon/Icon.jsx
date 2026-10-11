@@ -1,4 +1,6 @@
 
+// Icônes SVG de l'application, ex. <Icon name="bell" />.
+// Chaque icône est un tracé SVG (attribut d) ; nom inconnu -> icône "grid".
 function Icon({ name }) {
   const paths = {
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
@@ -24,6 +26,7 @@ function Icon({ name }) {
     moon: 'M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z',
     check: 'm5 12 4 4L19 6',
     cash: 'M3 6h18v12H3zM7 12h.01M17 12h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+    trash: 'M3 6h18M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1M19 6l-1 13.5a2 2 0 0 1-2 1.9H8a2 2 0 0 1-2-1.9L5 6M10 11v5.5M14 11v5.5',
   }
   return <svg className="icon" viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name] || paths.grid} /></svg>
 }

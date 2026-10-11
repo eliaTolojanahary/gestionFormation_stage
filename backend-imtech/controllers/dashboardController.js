@@ -1,54 +1,37 @@
+// Controller du tableau de bord (statistiques pour l'Accueil et le Super Admin).
 const dashboardService = require('../services/dashboardService');
 
+// GET /dashboard/kpi : indicateurs clés
 async function kpi(req, res) {
-  try {
-    const data = await dashboardService.recupererKPI();
-    return res.json({ status: "success", data });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const data = await dashboardService.recupererKPI();
+  res.json({ status: 'success', data });
 }
 
+// GET /dashboard/inscriptionParMois
 async function getDonneesInscriptionsParMois(req, res) {
-  try {
-    const data = await dashboardService.getDonneesInscriptionsParMois();
-    return res.json({ status: "success", data });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const data = await dashboardService.getDonneesInscriptionsParMois();
+  res.json({ status: 'success', data });
 }
+
+// GET /dashboard/topInscription : formations les plus demandées
 async function getTopInscriptions(req, res) {
-  try {
-    const data = await dashboardService.getTopInscriptions();
-    return res.json({ status: "success", data });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const data = await dashboardService.getTopInscriptions();
+  res.json({ status: 'success', data });
 }
+
+// GET /dashboard/evolution?periode=... (défaut : mensuelle)
 async function evolution(req, res) {
-  try {
-    const periode = req.query.periode || 'mensuelle';
-    const data = await dashboardService.recupererEvolution(periode);
-    return res.json({ status: "success", periode, data });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const periode = req.query.periode || 'mensuelle';
+  const data = await dashboardService.recupererEvolution(periode);
+  res.json({ status: 'success', periode, data });
 }
 
+// GET /dashboard/export-csv : téléchargement du fichier export_inscriptions.csv
 async function exportCSV(req, res) {
-  try {
-    const csv = await dashboardService.genererExportCSV();
-    res.header('Content-Type', 'text/csv');
-    res.attachment('export_inscriptions.csv');
-    return res.send(csv);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const csv = await dashboardService.genererExportCSV();
+  res.header('Content-Type', 'text/csv');
+  res.attachment('export_inscriptions.csv');
+  res.send(csv);
 }
 
-module.exports = { getTopInscriptions,kpi, evolution, exportCSV,getDonneesInscriptionsParMois };
+module.exports = { getTopInscriptions, kpi, evolution, exportCSV, getDonneesInscriptionsParMois };

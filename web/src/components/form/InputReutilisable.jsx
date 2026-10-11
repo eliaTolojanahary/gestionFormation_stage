@@ -1,4 +1,7 @@
 import "./InputReutilisable.css"
+
+// Champ de formulaire générique avec libellé. `as` choisit le type : 'input', 'select',
+// 'textarea' ou 'file'. Pour 'file', onChange reçoit (name, fichier) au lieu de l'événement.
 function InputReutilisable({
   label,
   name,
@@ -14,6 +17,7 @@ function InputReutilisable({
   currentPath,
   accept = 'image/*,.pdf',
 }) {
+  // Attributs communs à input / select / textarea
   const commonProps = {
     id: name,
     name,
@@ -48,6 +52,7 @@ function InputReutilisable({
             accept={accept}
             onChange={(event) => onChange(name, event.target.files?.[0] || null)}
           />
+          {/* Nom du nouveau fichier choisi, sinon chemin du fichier déjà enregistré */}
           <small>{file?.name || currentPath || 'Aucun fichier sélectionné'}</small>
         </>
       )}

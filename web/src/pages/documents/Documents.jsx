@@ -6,19 +6,17 @@ import { useDocument } from '../../hooks/useDocument'
 import { useFormation } from '../../hooks/useFormation'
 import { getFileUrl } from '../../utils/files'
 import './Documents.css'
+import { formatDate } from '../../utils/time'
 
-
+// Extension en majuscules (ex. "PDF"), tirée du nom du document ou du fichier
 function getExtension(document) {
   const fileName = document.nom_document || document.fichier || ''
   const extension = fileName.split('.').pop()?.toUpperCase()
   return extension || 'Autre'
 }
 
-function formatDate(value) {
-  if (!value) return 'Date inconnue'
-  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value))
-}
-
+// Page Documents : regroupe les documents administratifs et les supports de cours de toutes
+// les formations, avec recherche, filtres, ajout de fichiers et suppression (Super Admin).
 function Documents({ user }) {
   const { documents, isLoading, error, getDocuments, getSupports, uploadDocuments, uploadSupport, deleteDoc } = useDocument()
   const { formations, getFormations } = useFormation()
@@ -28,9 +26,11 @@ function Documents({ user }) {
   const [extensionFilter, setExtensionFilter] = useState('Tous')
   const [supportFormation, setSupportFormation] = useState('')
   const [supportTitle, setSupportTitle] = useState('')
+  // Références vers les <input type="file"> cachés, ouverts par les boutons d'ajout
   const supportInputRef = useRef(null)
   const inputRef = useRef(null)
 
+  // Au chargement : supports de chaque formation (en parallèle) + documents administratifs
   useEffect(() => {
     async function loadDocuments() {
       const loadedFormations = await getFormations()
@@ -45,6 +45,7 @@ function Documents({ user }) {
 
   const extensions = ['Tous', 'PNG', 'PDF', 'DOCX']
 
+  // Liste unique : les supports sont convertis au même format que les documents administratifs
   const allDocuments = useMemo(() => [
     ...documents.map((document) => ({ ...document, type_document: 'Administratif' })),
     ...supports.map((support) => ({
@@ -68,7 +69,7 @@ function Documents({ user }) {
     return matchesQuery && matchesType && matchesExtension
   }), [allDocuments, query, typeFilter, extensionFilter])
 
-  
+  // Ajout d'un ou plusieurs documents administratifs
   async function handleUpload(event) {
     const files = Array.from(event.target.files || [])
     if (!files.length) return
@@ -81,7 +82,8 @@ function Documents({ user }) {
     event.target.value = ''
   }
 
-
+  // Ajout d'un support de cours dans la formation choisie (rien n'est envoyé sans formation).
+  // Côté API, seul un formateur peut déposer un support.
   async function handleSupportUpload(event) {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -156,7 +158,7 @@ function Documents({ user }) {
           ref={supportInputRef}
           className="visually-hidden"
           type="file"
-          accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*"
+          accept=".pdf,image/png,image/jpeg,image/webp,image/gif"
           onChange={handleSupportUpload}
         />
       </div>

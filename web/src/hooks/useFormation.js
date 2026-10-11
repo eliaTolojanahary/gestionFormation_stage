@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des formations : liste (chargée au montage ; un formateur ne reçoit que les siennes),
+// détail, étudiants inscrits, CRUD.
 export function useFormation() {
   const [formations, setFormations] = useState([])
   const [isLoading, setIsLoading] = useState(false)

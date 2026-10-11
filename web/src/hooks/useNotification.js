@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des notifications : liste de l'utilisateur connecté (chargée au montage)
+// et envoi de notifications in-app / e-mails par le personnel.
 export function useNotification() {
   const [notifications, setNotifications] = useState([])
   const [isLoading, setIsLoading] = useState(false)

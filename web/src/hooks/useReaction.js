@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook des réactions sur un support. Après chaque ajout / retrait, la liste à jour est rechargée et renvoyée.
 export function useReaction() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -10,13 +11,14 @@ export function useReaction() {
     return result.data || []
   }
 
-  async function react(supportId, reactionId) {
+  // Ajoute ou remplace la réaction de l'utilisateur (typeReaction = 'like', 'coeur', 'utile', 'dislike')
+  async function react(supportId, typeReaction) {
     setIsLoading(true)
     setError('')
     try {
       await apiRequest(`/supports/${supportId}/reactions`, {
         method: 'POST',
-        body: JSON.stringify({ id_type_reaction: reactionId }),
+        body: JSON.stringify({ type_reaction: typeReaction }),
       })
       return getReactions(supportId)
     } catch (requestError) {

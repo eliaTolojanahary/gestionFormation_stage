@@ -2,6 +2,9 @@
 import './Header.css'
 import { useProfile } from '../profile/ProfileContext'
 import Avatar from '../avatar/Avatar'
+
+// Barre du haut : fil d'Ariane (page courante) et bouton du profil.
+// onProfile vient des props ou, à défaut, du ProfileContext.
 function Header({ user, activeItem = 'Tableau de bord', onProfile }) {
   const profile = useProfile()
   const openProfile = onProfile || profile?.onProfile

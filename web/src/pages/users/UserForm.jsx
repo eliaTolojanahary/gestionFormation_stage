@@ -6,6 +6,7 @@ import { useUser } from '../../hooks/useUser'
 import './Users.css'
 
 const EMPTY_FORM = { nom: '', prenom: '', email: '', mot_de_passe: '', telephone: '', id_role: '', photo: '' }
+// value = id_role en base
 const ROLE_OPTIONS = [
   { value: '1', label: 'Super Admin' },
   { value: '2', label: 'Accueil' },
@@ -13,6 +14,8 @@ const ROLE_OPTIONS = [
   { value: '4', label: 'Étudiant' },
 ]
 
+// Formulaire de création / modification d'un compte (mode modification si userId est fourni).
+// En modification, le mot de passe est facultatif : laissé vide, il n'est pas changé.
 function UserForm({ user, userId, onBack, onSaved }) {
   const isEdit = Boolean(userId)
   const { getUser, createUser, updateUser } = useUser()
@@ -45,6 +48,7 @@ function UserForm({ user, userId, onBack, onSaved }) {
     setFile(selectedFile)
   }
 
+  // Envoi en FormData (photo facultative) ; le mot de passe n'est envoyé que s'il est rempli
   async function handleSubmit(event) {
   event.preventDefault()
   setError('')
@@ -65,11 +69,6 @@ function UserForm({ user, userId, onBack, onSaved }) {
 
     if (file) {
       formData.append('photo', file)
-    }
-
-    // Affichage de toutes les paires clé/valeur du FormData dans la console
-    for (let [key, value] of formData.entries()) {
-      console.log(key, value)
     }
 
     await (isEdit ? updateUser(userId, formData) : createUser(formData))

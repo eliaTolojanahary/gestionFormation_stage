@@ -1,52 +1,31 @@
+// Controller des commentaires sur les supports de cours.
 const commentaireService = require('../services/commentaireService');
 
+// GET /supports/:id/commentaires : commentaires principaux, chacun avec `reponses` et `nb_reponses`
 async function listerCommentaires(req, res) {
-  try {
-    const commentaires = await commentaireService.listerCommentaires(req.params.id);
-    return res.json({ status: "success", data: commentaires });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const commentaires = await commentaireService.listerCommentairesParSupport(req.params.id);
+  res.json({ status: 'success', data: commentaires });
 }
 
+// POST /commentaires : `mentions` = id_etudiant des étudiants mentionnés (@) dans le commentaire,
+// `id_parent` (facultatif) = commentaire auquel on répond
 async function creerCommentaireController(req, res) {
-  try {
-    const { id_support, contenu, mentions } = req.body;
-    if (!id_support || !contenu) {
-      return res.status(400).json({ status: "error", message: "id_support et contenu sont requis." });
-    }
-
-    const id_etudiant = req.user.role === 'Étudiant'
-      ? await commentaireService.recupererIdEtudiant(req.user.id)
-      : null;
-    const id_utilisateur = req.user.role === 'Formateur' || req.user.role === 'Super Admin'
-      ? (req.user.id_utilisateur || req.user.id)
-      : null;
-
-    if (!id_etudiant && !id_utilisateur) {
-      return res.status(403).json({ status: "error", message: "Utilisateur non autorisé à commenter." });
-    }
-
-    const id_commentaire = await commentaireService.creerCommentaire({ id_support, id_etudiant, id_utilisateur, contenu, mentions });
-    return res.status(201).json({ status: "success", message: "Commentaire ajouté.", id_commentaire });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const { id_support, id_parent, contenu, mentions } = req.body;
+  const commentaire = await commentaireService.creerCommentaire(
+    { idSupport: id_support, idParent: id_parent, contenu, mentions },
+    req.user
+  );
+  res.status(201).json({ status: 'success', message: 'Commentaire ajouté.', commentaire });
 }
 
-async function deleteCommentaireControler(req, res) {
-  try {
-    const ok = await commentaireService.supprimerCommentaire(req.params.id);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "Commentaire introuvable." });
-    }
-    return res.json({ status: "success", message: "Commentaire supprimé." });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+// DELETE /commentaires/:id
+async function deleteCommentaireController(req, res) {
+  await commentaireService.supprimerCommentaire(req.params.id, req.user);
+  res.json({ status: 'success', message: 'Commentaire supprimé.' });
 }
 
-module.exports = { listerCommentaires, creerCommentaireController, deleteCommentaireControler };
+module.exports = {
+  listerCommentaires,
+  creerCommentaireController,
+  deleteCommentaireController,
+};

@@ -5,6 +5,7 @@ import InputReutilisable from '../../components/form/InputReutilisable'
 import { useEtudiant } from '../../hooks/useEtudiant'
 import './Etudiants.css'
 
+// Valeurs initiales du formulaire (création)
 const EMPTY_FORM = {
   nom: '',
   prenom: '',
@@ -18,6 +19,8 @@ const EMPTY_FORM = {
   photocopie_cin: ''
 }
 
+// Formulaire de création / modification d'un étudiant (mode modification si studentId est fourni).
+// Le mot de passe n'est demandé qu'à la création.
 function EtudiantForm({ user, studentId, onBack, onSaved }) {
   const isEdit = Boolean(studentId)
   const { getEtudiant, createEtudiant, updateEtudiant } = useEtudiant()
@@ -28,6 +31,7 @@ function EtudiantForm({ user, studentId, onBack, onSaved }) {
   const [error, setError] = useState('')
   const [files, setFiles] = useState({})
 
+  // En modification : pré-remplit le formulaire avec les données actuelles
   useEffect(() => {
     if (!isEdit) return
 
@@ -51,10 +55,13 @@ function EtudiantForm({ user, studentId, onBack, onSaved }) {
     setForm((current) => ({ ...current, [name]: value }))
   }
 
+  // Fichiers choisis, rangés par nom de champ (photo, photo_1, photocopie_cin...)
   function handleFileChange(name, file) {
     setFiles((current) => ({ ...current, [name]: file }))
   }
 
+// Envoi en FormData : champs texte + seulement les fichiers nouvellement choisis.
+// (id_role est envoyé mais l'API impose de toute façon le rôle Étudiant.)
 async function handleSubmit(event) {
   event.preventDefault()
   setError('')
@@ -62,7 +69,6 @@ async function handleSubmit(event) {
 
   try {
     const formData = new FormData()
-    console.log(formData)
    
     formData.append('nom', form.nom)
     formData.append('prenom', form.prenom)

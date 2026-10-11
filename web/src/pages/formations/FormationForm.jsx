@@ -5,9 +5,12 @@ import InputReutilisable from '../../components/form/InputReutilisable'
 import { useFormation } from '../../hooks/useFormation'
 import { useUser } from '../../hooks/useUser'
 
+// id_utilisateur = formateur responsable de la formation
+// engagement_formateur = disponibilité promise par le formateur, affichée dans la vitrine mobile
+const EMPTY_FORM = { nom: '', description: '', engagement_formateur: '', tarif: '', duree: '', duree_jours: '', id_utilisateur: '' }
 
-const EMPTY_FORM = { nom: '', description: '', tarif: '', duree: '', duree_jours: '', id_utilisateur: '' }
-
+// Formulaire de création / modification d'une formation (mode modification si formationId est fourni).
+// La durée est saisie en mois ; duree_jours (utilisé pour l'échéancier) est calculé automatiquement.
 function FormationForm({ user, formationId, onBack, onSaved }) {
   const isEdit = Boolean(formationId)
   const { getFormation, createFormation, updateFormation } = useFormation()
@@ -68,6 +71,7 @@ function FormationForm({ user, formationId, onBack, onSaved }) {
     )
   }
 
+  // Liste déroulante des formateurs (le formateur n'est plus modifiable une fois la formation créée)
   const formateurOptions = users
     .filter((item) => item.role_nom === 'Formateur')
     .map((item) => ({ 
@@ -136,6 +140,14 @@ function FormationForm({ user, formationId, onBack, onSaved }) {
               as="textarea" 
               value={form.description} 
               onChange={handleChange} 
+            />
+            <InputReutilisable
+              label="Engagement du formateur (vitrine)"
+              name="engagement_formateur"
+              as="textarea"
+              value={form.engagement_formateur || ''}
+              onChange={handleChange}
+              placeholder="Ex. Disponible du lundi au vendredi de 8 h à 17 h, réponse aux questions sous 24 h."
             />
           </div>
         </Informations>

@@ -1,10 +1,12 @@
 import { useCallback, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
+// Hook du profil de l'utilisateur connecté (lecture et modification).
 export function useProfil() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Profil de base (/auth/profil) complété par la fiche utilisateur complète (/utilisateurs/:id)
   const getProfil = useCallback(async () => {
     setIsLoading(true)
     setError('')

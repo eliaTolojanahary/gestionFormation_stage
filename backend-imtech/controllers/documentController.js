@@ -1,148 +1,79 @@
-
+// Controller des documents : PDF générés (fiche, facture, attestation) et
+// documents administratifs uploadés.
 const documentService = require('../services/documentService');
+const { badRequest } = require('../utils/errors');
 
+// POST /fiche/:id_inscription/generer : fiche d'inscription PDF
 async function genererFiche(req, res) {
-  try {
-    const { id_inscription } = req.params;
-    const cheminRelatif = await documentService.creerFiche(id_inscription);
-
-    if (!cheminRelatif) {
-      return res.status(404).json({ status: "error", message: "Inscription introuvable." });
-    }
-    return res.json({ status: "success", message: "Fiche générée.", fichier: cheminRelatif });
-  } catch (error) {
-    console.error("Erreur genererFiche :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const cheminRelatif = await documentService.creerFiche(req.params.id_inscription);
+  res.json({ status: 'success', message: 'Fiche générée.', fichier: cheminRelatif });
 }
 
+// POST /factures/:id_paiement/generer : facture PDF d'un paiement
 async function genererFacture(req, res) {
-  try {
-    const { id_paiement } = req.params;
-    const resultat = await documentService.creerFacture(id_paiement);
-
-    if (!resultat) {
-      return res.status(404).json({ status: "error", message: "Paiement introuvable." });
-    }
-    return res.json({
-      status: "success", message: "Facture générée.",
-      fichier: resultat.cheminRelatif, numero_facture: resultat.numeroFacture
-    });
-  } catch (error) {
-    console.error("Erreur genererFacture :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const resultat = await documentService.creerFacture(req.params.id_paiement);
+  res.json({
+    status: 'success', message: 'Facture générée.',
+    fichier: resultat.cheminRelatif, numero_facture: resultat.numeroFacture,
+  });
 }
 
+// POST /attestations/:id_inscription/generer : attestation PDF avec QR code de vérification
 async function genererAttestation(req, res) {
-  try {
-    const { id_inscription } = req.params;
-    const resultat = await documentService.creerAttestation(id_inscription);
-
-    if (!resultat) {
-      return res.status(404).json({ status: "error", message: "Inscription introuvable." });
-    }
-    return res.json({
-      status: "success", message: "Attestation générée.",
-      fichier: resultat.cheminRelatif, uuid_verification: resultat.uuid
-    });
-  } catch (error) {
-    console.error("Erreur genererAttestation :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const resultat = await documentService.creerAttestation(req.params.id_inscription);
+  res.json({
+    status: 'success', message: 'Attestation générée.',
+    fichier: resultat.cheminRelatif, uuid_verification: resultat.uuid,
+  });
 }
 
+// POST /attestations/:id_inscription/envoyer : génère l'attestation puis l'envoie à l'étudiant
+async function envoyerAttestationController(req, res) {
+  const resultat = await documentService.envoyerAttestation(req.params.id_inscription);
+  res.json({
+    status: 'success',
+    message: resultat.emailEnvoye
+      ? "Attestation générée et envoyée à l'étudiant (notification et e-mail)."
+      : "Attestation générée et notification envoyée, mais l'e-mail n'a pas pu partir.",
+    emailEnvoye: resultat.emailEnvoye,
+    fichier: resultat.cheminRelatif, uuid_verification: resultat.uuid,
+  });
+}
+
+// GET /verification/:uuid (public) : page ouverte en scannant le QR code de l'attestation
 async function verifierDocumentController(req, res) {
-  try {
-    const { uuid } = req.params;
-    const rows = await documentService.verifierAuthenticite(uuid);
-
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ status: "error", message: "Document non reconnu." });
-    }
-
-    return res.json({
-      status: "success",
-      message: "Document authentique",
-      formation: rows[0].formation_nom,
-      date_delivrance: rows[0].date_delivrance
-    });
-  } catch (error) {
-    console.error("Erreur verifierDocument :", error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  const attestation = await documentService.verifierAuthenticite(req.params.uuid);
+  res.json({
+    status: 'success',
+    message: 'Document authentique',
+    formation: attestation.formation_nom,
+    date_delivrance: attestation.date_delivrance,
+  });
 }
+
+// POST /documents : upload d'un ou plusieurs documents administratifs (10 max)
 async function creerDocument(req, res) {
-  try {
-    const id_utilisateur = req.user?.id_utilisateur || req.user?.id || req.body?.id_utilisateur;
+  const fichiers = req.files || (req.file ? [req.file] : []);
+  if (fichiers.length === 0) throw badRequest("Aucun fichier n'a été fourni.");
 
-    const files = req.files || (req.file ? [req.file] : []);
-
-    if (!files || files.length === 0) {
-      return res.status(400).json({
-        status: "error",
-        message: "Aucun fichier n'a été fourni."
-      });
-    }
-
-    // Construction des chemins, style "etudiants/xxx.png"
-    const documentsCrees = [];
-
-    for (const file of files) {
-      const cheminFichier = `documents/${file.filename}`;   // 👈 file, pas files[0]
-
-      const id_document = await documentService.creerDocument(
-        id_utilisateur,
-        file.originalname,
-        cheminFichier             // chemin relatif
-      );
-
-      documentsCrees.push(id_document);
-    }
-
-    return res.status(201).json({
-      status: "success",
-      message: `${documentsCrees.length} document(s) créé(s).`,
-      ids: documentsCrees
-    });
-
-  } catch (error) {
-    console.error("Erreur creerDocument :", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Erreur serveur lors de la création du document."
-    });
+  const ids = [];
+  for (const fichier of fichiers) {
+    ids.push(await documentService.creerDocument(req.user.id, fichier.originalname, `documents/${fichier.filename}`));
   }
+
+  res.status(201).json({ status: 'success', message: `${ids.length} document(s) créé(s).`, ids });
 }
+
+// GET /documents
 async function obtenirDocuments(req, res) {
-  try {
-    const documents = await documentService.obtenirDocuments();
-
-    return res.json({
-      status: "success",
-      documents
-    });
-
-  } catch (error) {
-    console.error("Erreur obtenirDocuments :", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Erreur serveur."
-    });
-  }
+  const documents = await documentService.obtenirDocuments();
+  res.json({ status: 'success', documents });
 }
 
+// DELETE /documents/:id (Super Admin)
 async function supprimerDocumentController(req, res) {
-  try {
-    const ok = await documentService.supprimerDocument(req.params.id);
-    if (!ok) {
-      return res.status(404).json({ status: "error", message: "doc introuvable." });
-    }
-    return res.json({ status: "success", message: "doc désactivé." });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ status: "error", message: "Erreur serveur." });
-  }
+  await documentService.supprimerDocument(req.params.id);
+  res.json({ status: 'success', message: 'Document supprimé.' });
 }
 
-module.exports = { genererFiche, genererFacture, genererAttestation, creerDocument,obtenirDocuments,verifierDocumentController,supprimerDocumentController };
+module.exports = { genererFiche, genererFacture, genererAttestation, envoyerAttestationController, creerDocument, obtenirDocuments, verifierDocumentController, supprimerDocumentController };
