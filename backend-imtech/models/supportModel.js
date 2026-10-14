@@ -24,7 +24,7 @@ async function getSupportsByFormation(id_formation) {
 async function getSupportById(id_support) {
   const sql = `
     SELECT s.id_support, s.titre, s.contenu, s.fichier, s.date_publication, s.id_utilisateur,
-           f.id_formation, f.nom AS nom_formation,
+           f.id_formation, f.nom AS nom_formation, f.id_utilisateur AS id_formateur,
            u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo AS prof_photo
     FROM support s
     JOIN utilisateur u ON s.id_utilisateur = u.id_utilisateur

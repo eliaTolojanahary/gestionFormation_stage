@@ -218,6 +218,11 @@ creer coms:
   "contenu": "Merci pour le cours !",
   "mentions": []
 }
+// mentions = id_etudiant ; réservé au formateur de la formation et au Super Admin,
+// uniquement des étudiants inscrits à la formation du support.
+// Étudiant avec mentions -> 403 ; étudiant non inscrit -> 400.
+// Commentaire principal d'un étudiant -> le formateur de la formation est notifié.
+// id_parent (facultatif) = commentaire auquel on répond -> son auteur est notifié.
 
 creer inscriptions:
 {

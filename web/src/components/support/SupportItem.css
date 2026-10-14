@@ -403,6 +403,45 @@
   cursor: not-allowed;
 }
 
+/* Champ avec mention « @ » : la liste des étudiants s'ouvre sous le champ */
+.champ-mention {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.mention-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+}
+
+.mention-suggestions li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.mention-suggestions li.actif,
+.mention-suggestions li:hover {
+  background: var(--accent-soft);
+}
+
 .comment-submit {
   padding: 8px 4px;
   border: 0;

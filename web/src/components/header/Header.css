@@ -89,3 +89,48 @@
 .profile-box:hover {
   background: var(--accent-soft);
 }
+/* Cloche des notifications : badge rouge en haut à droite (« 9+ » au-delà de 9) */
+.topbar-cloche {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text-main);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.topbar-cloche:hover,
+.topbar-cloche:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: 0;
+}
+
+.topbar-cloche svg {
+  width: 15px;
+  height: 15px;
+}
+
+.cloche-badge {
+  position: absolute;
+  top: -6px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 2px solid var(--page-bg);
+  border-radius: 999px;
+  color: #fff;
+  background: #e65c5c;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+}

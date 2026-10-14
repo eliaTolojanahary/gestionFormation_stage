@@ -101,18 +101,6 @@
   stroke-width: 1.5;
 }
 
-.nav-item b {
-  display: grid;
-  place-items: center;
-  width: 15px;
-  height: 15px;
-  margin-left: auto;
-  border-radius: 50%;
-  color: #fff;
-  background: #ed5359;
-  font-size: var(--fs-xs);
-}
-
 /* Scrollbar personnalisée */
 .main-nav::-webkit-scrollbar { width: 5px; }
 .main-nav::-webkit-scrollbar-track {
@@ -272,10 +260,6 @@
 }
 :root[data-sidebar='collapsed'] .nav-item .label,
 :root[data-sidebar='collapsed'] .nav-item > span:not(.icon),
-:root[data-sidebar='collapsed'] .nav-item b {
-  display: none;
-}
-
 /* Profil : avatar seul */
 :root[data-sidebar='collapsed'] .profile-box {
   justify-content: center;

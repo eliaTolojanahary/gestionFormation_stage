@@ -2,6 +2,7 @@
 // réponses) et mentions d'étudiants.
 const commentaireModel = require('../models/commentaireModel')
 const supportModel = require('../models/supportModel')
+const formationModel = require('../models/formationModel')
 const notifService = require('./notifService')
 const { ROLES } = require('../config/roles')
 const { avecTransaction } = require('../utils/transaction')
@@ -46,6 +47,27 @@ async function trouverParent(idParent, idSupport) {
   return { ...parent, id_principal: parent.id_parent || parent.id_commentaire }
 }
 
+// Seul le formateur de la formation (ou le Super Admin) mentionne, et uniquement des étudiants
+// inscrits à cette formation. Un étudiant ne mentionne pas : il répond au commentaire visé.
+// Renvoie les id_etudiant mentionnés, sans doublon.
+async function verifierMentions(mentions, auteur, support) {
+  if (!Array.isArray(mentions) || mentions.length === 0) return []
+  if (auteur.role === ROLES.ETUDIANT) {
+    throw forbidden('Un étudiant ne peut pas mentionner : répondez directement au commentaire.')
+  }
+  if (auteur.role === ROLES.FORMATEUR && Number(support.id_formateur) !== Number(auteur.id)) {
+    throw forbidden('Vous ne pouvez mentionner que les étudiants de vos formations.')
+  }
+
+  const ids = [...new Set(mentions.map(Number))].filter((id) => id > 0)
+  const inscrits = await formationModel.getEtudiantsByFormation(support.id_formation)
+  const idsInscrits = new Set(inscrits.map((e) => Number(e.id_etudiant)))
+  if (ids.some((id) => !idsInscrits.has(id))) {
+    throw badRequest('Seuls les étudiants inscrits à cette formation peuvent être mentionnés.')
+  }
+  return ids
+}
+
 // `auteur` = utilisateur connecté (req.user : id, role, id_etudiant)
 // `idParent` (facultatif) = commentaire auquel on répond
 async function creerCommentaire({ idSupport, idParent, contenu, mentions }, auteur) {
@@ -63,10 +85,7 @@ async function creerCommentaire({ idSupport, idParent, contenu, mentions }, aute
     if (!idEtudiant) throw forbidden('Profil étudiant introuvable.')
   }
 
-  // Mentions sans doublon, en excluant l'auteur lui-même
-  const mentionsUniques = Array.isArray(mentions)
-    ? [...new Set(mentions.map(Number))].filter((id) => id && id !== Number(idEtudiant))
-    : []
+  const mentionsUniques = await verifierMentions(mentions, auteur, support)
 
   // Commentaire + mentions enregistrés ensemble (transaction)
   const idCommentaire = await avecTransaction(async (connection) => {
@@ -97,12 +116,24 @@ async function creerCommentaire({ idSupport, idParent, contenu, mentions }, aute
     }
   }
 
-  // Prévient l'auteur du commentaire auquel on répond (sauf s'il se répond à lui-même)
-  if (parent && parent.id_utilisateur_auteur && Number(parent.id_utilisateur_auteur) !== Number(auteur.id)) {
+  // Prévient l'auteur du commentaire auquel on répond (sauf s'il se répond à lui-même,
+  // ou s'il vient déjà d'être notifié par une mention)
+  const dejaMentionne = parent?.id_etudiant && mentionsUniques.includes(Number(parent.id_etudiant))
+  if (parent && parent.id_utilisateur_auteur && Number(parent.id_utilisateur_auteur) !== Number(auteur.id) && !dejaMentionne) {
     try {
       await notifService.notifierReponse({ idDestinataire: parent.id_utilisateur_auteur, idSupport, auteur: { idUtilisateur: auteur.id } })
     } catch (notifError) {
       console.warn('Notification de réponse échouée:', notifError.message)
+    }
+  }
+
+  // Nouveau commentaire principal d'un étudiant : le formateur de la formation est prévenu
+  // (l'étudiant n'a donc pas besoin de le mentionner)
+  if (!parent && idEtudiant && support.id_formateur) {
+    try {
+      await notifService.notifierCommentaireFormateur({ idDestinataire: support.id_formateur, idSupport, auteur: { idUtilisateur: auteur.id } })
+    } catch (notifError) {
+      console.warn('Notification du formateur échouée:', notifError.message)
     }
   }
 

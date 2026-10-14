@@ -1,18 +1,17 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import Icon from '../icon/Icon'
-import { menuDuRole } from '../../utils/navigation'
+import { menuLateral } from '../../utils/navigation'
 import './Sidebar.css'
 
-// Barre latérale : logo, menu filtré selon le rôle, badge du nombre de notifications,
+// Barre latérale : logo, menu filtré selon le rôle (Notifications s'ouvre par la cloche du header),
 // profil et bouton de déconnexion.
 // Note : ce filtrage ne fait que masquer des liens ; la vraie protection est faite par l'API.
-function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
+function Sidebar({ user, onLogout, logo }) {
   const navigate = useNavigate()
   const location = useLocation()
 
   // Entrées autorisées pour le rôle (utils/navigation.js, partagé avec les routes)
-  const allowedItems = user ? menuDuRole(user.role) : []
-  const notifCount = Number.isFinite(Number(nbNotifs)) ? Number(nbNotifs) : 0
+  const allowedItems = user ? menuLateral(user.role) : []
 
   return (
     <aside className="sidebar">
@@ -39,7 +38,6 @@ function Sidebar({ user, onLogout, logo, nbNotifs = 0 }) {
               >
                 <Icon name={icon} />
                 <span>{label}</span>
-                {label === 'Notifications' && <b>{notifCount}</b>}
               </button>
             )
           })}

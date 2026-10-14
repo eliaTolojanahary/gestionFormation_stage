@@ -3,6 +3,7 @@ import { formatDate } from '../../utils/time'
 import Icon from '../../components/icon/Icon'
 import Header from '../../components/header/Header'
 import { useNotification } from '../../hooks/useNotification'
+import { useProfile } from '../../components/profile/ProfileContext'
 
 import './Notifications.css'
 
@@ -104,6 +105,8 @@ function Notifications({ user }) {
   } = useNotification()
 
   const [filter, setFilter] = useState('Toutes')
+  // Met à jour le badge de la cloche (DashboardLayout) après une lecture / suppression
+  const rafraichirCloche = useProfile()?.rafraichirNotifs || (() => {})
 
   const unreadNotifications = notifications.filter(
     (notification) => !notification.lu
@@ -121,10 +124,17 @@ function Notifications({ user }) {
           lireNotification(notification.id_notification)
       )
     )
+    rafraichirCloche()
   }
 
   async function markRead(id) {
     await lireNotification(id)
+    rafraichirCloche()
+  }
+
+  async function supprimer(id) {
+    await deleteNotification(id)
+    rafraichirCloche()
   }
 
   return (
@@ -241,9 +251,7 @@ function Notifications({ user }) {
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation()
-                    deleteNotification(
-                      notification.id_notification
-                    )
+                    supprimer(notification.id_notification)
                   }}
                 >
                   Supprimer

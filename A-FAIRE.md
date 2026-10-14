@@ -66,16 +66,16 @@ Puis répéter le **parcours ⭐** en entier, chronomètre en main (≈ 20 min).
 
 ---
 
-## 4. Transformer l'application mobile en APK (Android) — pas encore fait
+## 4. Transformer l'application mobile en APK (Android) — configuration faite le 13/10, build à lancer (flux §2.4)
 
 ### 4.1 Préparer le projet
-- [ ] **`app.json`** : vrai nom et identifiant Android (aujourd'hui `"name": "mobile"`)
+- [x] **`app.json`** : vrai nom et identifiant Android (aujourd'hui `"name": "mobile"`)
   ```json
   "name": "IMTECH INFO",
   "android": { "package": "mg.imtech.app", ... }
   ```
   (optionnel : icône et splash aux couleurs d'IMTECH)
-- [ ] **Autoriser le HTTP** (sinon une app compilée refuse `http://192.168...`) :
+- [x] **Autoriser le HTTP** (sinon une app compilée refuse `http://192.168...`) :
   ```bash
   cd mobile
   npx expo install expo-build-properties
@@ -84,7 +84,7 @@ Puis répéter le **parcours ⭐** en entier, chronomètre en main (≈ 20 min).
   ```json
   ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }]
   ```
-- [ ] **`eas.json`** (n'existe pas encore) avec l'adresse de l'API : dans un APK, `__DEV__` vaut
+- [x] **`eas.json`** (créé) avec l'adresse de l'API : dans un APK, `__DEV__` vaut
   `false` et le `.env` n'est pas envoyé à EAS (ignoré par git).
   ```json
   {
@@ -104,7 +104,6 @@ Puis répéter le **parcours ⭐** en entier, chronomètre en main (≈ 20 min).
 npm install -g eas-cli
 eas login                 # compte gratuit sur expo.dev
 cd mobile
-eas build:configure       # crée eas.json (y ajouter le profil "preview" ci-dessus)
 eas build -p android --profile preview
 ```
 - 10 à 30 min ; à la fin, lien + QR code pour installer l'APK (autoriser les sources inconnues).

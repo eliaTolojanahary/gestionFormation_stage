@@ -1,21 +1,22 @@
 # IMTECH INFO — Plateforme de gestion de formation
-## Document de référence : architecture, flux et évolutions
+## Document de référence : architecture et flux
 
-> Ce document est le **support de référence** du projet : il décrit le fonctionnement de
-> l'application (qui fait quoi, comment les données circulent, règles métier, sécurité) et
-> l'historique des évolutions apportées pendant la revue de code (section 12).
-> Il sert de base pour le mémoire de stage et la soutenance.
+> Ce document raconte comment fonctionne l'application : qui fait quoi, par où passent les
+> données, quelles règles s'appliquent et comment tout cela est protégé. C'est la base sur
+> laquelle s'appuient le mémoire de stage et la soutenance.
 >
-> - Liste exhaustive des routes de l'API : voir [`backend-imtech/api.md`](backend-imtech/api.md)
-> - Scénarios de test pour la recette et la soutenance : voir [`SCENARIOS-TESTS.md`](SCENARIOS-TESTS.md)
-> - Aide-mémoire React / Node / MySQL du projet (démarrage, ajout d'une fonctionnalité, requêtes, dépannage) : voir [`CHEAT-SHEET.md`](CHEAT-SHEET.md) ; syntaxe générale : [`cheat-sheets/`](cheat-sheets/) (Node, React, MySQL)
+> D'autres documents le complètent :
+> - la liste complète des routes de l'API : [`backend-imtech/api.md`](backend-imtech/api.md) ;
+> - les scénarios de test pour la recette et la soutenance : [`SCENARIOS-TESTS.md`](SCENARIOS-TESTS.md) ;
+> - l'aide-mémoire React / Node / MySQL propre au projet (démarrer, ajouter une fonctionnalité, écrire une requête, dépanner) : [`CHEAT-SHEET.md`](CHEAT-SHEET.md), et pour la syntaxe générale, [`cheat-sheets/`](cheat-sheets/).
 >
-> **Lecture conseillée pour le mémoire** : section 6 (chaque écran, de l'action jusqu'aux tables :
-> *page → action → fonctions métier → base de données*), puis section 7 pour les règles métier.
+> **Par où commencer ?** Pour le mémoire, le plus parlant est la section 6 : elle reprend chaque
+> écran et suit une action jusqu'aux tables de la base (*page → action → fonctions métier → base
+> de données*). La section 7 explique ensuite le pourquoi des règles.
 >
-> Les schémas sont écrits en **Mermaid** : ils s'affichent directement dans VS Code
-> (extension *Markdown Preview Mermaid Support*) ou sur GitHub, et peuvent être exportés
-> en image pour le mémoire via <https://mermaid.live>.
+> Les schémas sont écrits en **Mermaid**. Ils s'affichent directement dans VS Code (extension
+> *Markdown Preview Mermaid Support*) ou sur GitHub, et on peut les exporter en image pour le
+> mémoire depuis <https://mermaid.live>.
 
 ---
 
@@ -32,22 +33,22 @@
 9. [Gestion des erreurs](#9-gestion-des-erreurs)
 10. [Qualité et tests](#10-qualité-et-tests)
 11. [Organisation du code](#11-organisation-du-code)
-12. [Évolutions apportées pendant la revue](#12-évolutions-apportées-pendant-la-revue)
-13. [Limites et perspectives](#13-limites-et-perspectives)
-14. [Glossaire](#14-glossaire)
+12. [Limites et perspectives](#12-limites-et-perspectives)
+13. [Glossaire](#13-glossaire)
+
 ---
 
 ## 1. Présentation générale
 
-IMTECH INFO est un centre de formation. La plateforme numérise l'ensemble du parcours
-d'un apprenant :
+IMTECH INFO est un centre de formation. La plateforme suit tout le parcours des apprenants, du
+premier rendez-vous à l'accueil jusqu'à l'attestation de fin de formation :
 
 ```
 Création du dossier étudiant → Inscription à une formation → Échéancier de paiement
 → Paiements → Documents officiels (fiche, facture, attestation) → Suivi des cours (supports)
 ```
 
-Elle se compose de **trois applications** qui partagent une même API :
+Concrètement, il y a **trois applications**, qui parlent toutes à la même API :
 
 | Application | Public | Usage principal |
 |---|---|---|
@@ -104,17 +105,19 @@ flowchart LR
 
 ### 2.3 Communication client ↔ serveur
 
-Toutes les requêtes passent par une **seule fonction** côté client (`apiRequest`, présente
-dans `web/src/utils/api.js` et `mobile/src/utils/api.ts`) qui :
+Côté client, aucun écran n'appelle le serveur directement : tout passe par **une seule
+fonction**, `apiRequest` (dans `web/src/utils/api.js` et `mobile/src/utils/api.ts`). L'intérêt
+est de régler une bonne fois pour toutes ce qui se répète à chaque appel. Cette fonction :
 
-1. ajoute automatiquement le token (`Authorization: Bearer <token>`) ;
-2. envoie du JSON, ou un `FormData` pour les fichiers ;
-3. lit la réponse, même si elle n'est pas du JSON ;
-4. **si le serveur répond 401** (session expirée ou révoquée) : efface la session locale et
-   renvoie l'utilisateur à l'écran de connexion ;
-5. transforme toute réponse d'erreur en exception avec le message du serveur.
+1. ajoute le token tout seul (`Authorization: Bearer <token>`) ;
+2. envoie du JSON, ou un `FormData` quand il y a des fichiers ;
+3. lit la réponse, même quand ce n'est pas du JSON ;
+4. **si le serveur répond 401** (session expirée ou révoquée), efface la session locale et
+   ramène l'utilisateur à l'écran de connexion ;
+5. transforme toute erreur en exception qui porte le message du serveur, pour que l'écran
+   n'ait plus qu'à l'afficher.
 
-Format commun des réponses de l'API :
+De son côté, l'API répond toujours sous la même forme :
 
 ```json
 { "status": "success", "data": { } }
@@ -127,7 +130,9 @@ Format commun des réponses de l'API :
 
 ### 3.1 Les couches
 
-Le backend suit une architecture **en couches**, chaque couche ayant une seule responsabilité :
+Le backend est rangé **en couches**. L'idée est simple : chaque couche a un seul travail, et
+quand on cherche où se trouve une règle ou une requête, on sait tout de suite dans quel dossier
+regarder.
 
 ```mermaid
 flowchart TB
@@ -155,7 +160,8 @@ flowchart TB
 
 ### 3.2 Cycle de vie d'une requête
 
-Exemple : un étudiant consulte son tableau de paiement.
+Prenons un cas concret : un étudiant ouvre l'écran qui résume ses paiements. Voici tout ce qui
+se passe entre le moment où il touche l'écran et celui où les chiffres s'affichent.
 
 ```mermaid
 sequenceDiagram
@@ -186,9 +192,9 @@ sequenceDiagram
     C-->>App: 200 { status: "success", data }
 ```
 
-Si une étape échoue (token absent, session révoquée, mauvais étudiant, erreur SQL), l'étape
-**lève une erreur** et le gestionnaire unique de `app.js` renvoie la réponse adaptée
-(voir [§9](#8-gestion-des-erreurs)).
+Si quelque chose cloche en route (pas de token, session révoquée, mauvais étudiant, erreur
+SQL), l'étape concernée **lève une erreur** et s'arrête là. C'est le gestionnaire unique de
+`app.js` qui se charge de renvoyer la bonne réponse (voir [§9](#9-gestion-des-erreurs)).
 
 ---
 
@@ -234,17 +240,20 @@ Si une étape échoue (token absent, session révoquée, mauvais étudiant, erre
 | Être marqué présent (automatique) | — | — | — | ✅ |
 | Recherche globale | tout sauf supports | sans comptes utilisateurs | ses formations, étudiants, supports | ses formations et supports (mobile) |
 
-Les droits sont appliqués **côté serveur** (les menus du web et du mobile ne font que masquer
-ce qui est interdit ; ils ne protègent rien). Deux niveaux de contrôle :
+Un point important : ces droits sont vérifiés **par le serveur**. Les menus du web et du mobile
+cachent ce qu'un rôle n'a pas le droit de faire, mais cacher un bouton ne protège rien ; quelqu'un
+d'un peu curieux peut toujours appeler l'API à la main. Le serveur contrôle donc deux choses :
 
-1. **Le rôle** (`checkRole`) : « un étudiant n'a pas accès à cette route ».
-2. **Le propriétaire** (`exigerEtudiantProprietaire`, `exigerSoiOuAdmin`, contrôles dans les
-   services) : « un étudiant a accès à cette route, mais **seulement pour ses propres données** ».
+1. **Le rôle** (`checkRole`) : « un étudiant n'a rien à faire sur cette route ».
+2. **Le propriétaire** (`exigerEtudiantProprietaire`, `exigerSoiOuAdmin`, et des contrôles dans
+   les services) : « un étudiant peut utiliser cette route, mais **uniquement pour ses propres
+   données** ».
 
-Côté web, chaque rôle n'ouvre que les pages de **son menu**, même en tapant l'adresse
-(`utils/navigation.js` : `NAVIGATION` liste les pages et leurs rôles, `peutOuvrir(role, page)`) :
-un Accueil qui tape `/dashboard/utilisateurs`, ou un formateur `/dashboard/paiements`, revient au
-tableau de bord. C'est du confort d'utilisation : la vraie protection reste le contrôle du serveur.
+Sur le web, chaque rôle n'ouvre que les pages de **son menu**, même s'il tape l'adresse à la main
+(`utils/navigation.js` : `NAVIGATION` liste les pages et leurs rôles, `peutOuvrir(role, page)`).
+Un Accueil qui tape `/dashboard/utilisateurs`, ou un formateur qui tape `/dashboard/paiements`,
+est simplement ramené au tableau de bord. Ce n'est pas là que se joue la sécurité : c'est surtout
+pour éviter de tomber sur une page vide ou pleine d'erreurs. La vraie barrière reste le serveur.
 
 ---
 
@@ -321,7 +330,7 @@ erDiagram
 | Convention | Signification |
 |---|---|
 | `etat` (booléen) | **Suppression logique** : une ligne « supprimée » passe à `etat = false` mais reste en base (historique, intégrité des paiements et factures) |
-| `paiement.statut` | **Cycle de validation** d'un paiement (ajouté pendant la revue, voir [§7.6](#66-paiement-dune-échéance-par-létudiant-mobile--validation-par-laccueil)) |
+| `paiement.statut` | **Cycle de validation** d'un paiement (voir [§7.6](#76-paiement-dune-échéance-par-létudiant-mobile--validation-par-laccueil)) |
 | `sessions.actif` | Une connexion ; passer à `0` déconnecte réellement l'appareil |
 | `alerte_envoyee` | Mémorise les alertes automatiques déjà envoyées à l'Accueil (une seule fois chacune) |
 | Montants | `DECIMAL(10,2)` en Ariary (MGA) |
@@ -336,10 +345,10 @@ erDiagram
 | `backend-imtech/alter2.sql` | Toutes les évolutions du schéma (blocs 001 à 007, puis les suivantes à la fin), à appliquer sur une base existante |
 | `backend-imtech/reinit.sql` | Vide **toutes** les tables et remet les compteurs à 1 (structure conservée) |
 
-`alter2.sql` est le **seul** fichier d'évolution du schéma (l'ancien dossier `migrations/` y a été
-regroupé). Chaque évolution est un bloc numéroté (001, 002...) exécuté une seule fois ; une nouvelle
-évolution s'ajoute à la fin, et seul ce nouveau bloc est exécuté sur une base existante. `base.sql`
-est mis à jour en même temps pour les nouvelles installations.
+Toutes les modifications du schéma vivent dans **un seul fichier**, `alter2.sql`. Chaque évolution y forme un bloc
+numéroté (001, 002...) qu'on n'exécute qu'une fois. Quand le schéma change, on ajoute un nouveau
+bloc à la fin et on ne lance que celui-là sur une base existante. En parallèle, `base.sql` est mis
+à jour pour qu'une installation neuve parte directement du bon schéma.
 
 #### Remettre la base en état de démonstration
 
@@ -350,13 +359,15 @@ mysql -u root -p < donneesTest.sql     # recharge les données de démonstration
 node scripts/fichiersDemo.js           # photos, pièces du dossier, supports (relançable)
 ```
 
-`reinit.sql` coupe les contrôles de clés étrangères le temps du vidage (`SET FOREIGN_KEY_CHECKS = 0`),
-l'ordre des tables n'a donc pas d'importance. Toute nouvelle table doit y être ajoutée.
+Pendant le vidage, `reinit.sql` désactive les contrôles de clés étrangères
+(`SET FOREIGN_KEY_CHECKS = 0`), ce qui évite d'avoir à vider les tables dans un ordre précis. Il faut
+seulement penser à y ajouter chaque nouvelle table.
 
-Les dates de `donneesTest.sql` sont **relatives au jour d'exécution** (`CURDATE()`, `NOW()`) : les
-retards, les échéances proches et la formation terminée restent réalistes quel que soit le jour du
-chargement. Les échéances sont calculées en SQL avec la même formule que
-`echeanceService.calculerEcheancier` (tranche n à J + n × durée / nb, la dernière absorbe l'arrondi).
+Les dates de `donneesTest.sql` sont calculées **à partir du jour où on charge les données**
+(`CURDATE()`, `NOW()`). Ainsi, que la démonstration ait lieu aujourd'hui ou dans un mois, il y aura
+toujours des retards, des échéances proches et une formation qui vient de se terminer. Les échéances
+y sont calculées avec la même formule que `echeanceService.calculerEcheancier` (tranche n à
+J + n × durée / nb, la dernière absorbant l'arrondi).
 
 | Comptes (mot de passe `admin123`) | Rôle |
 |---|---|
@@ -365,8 +376,8 @@ chargement. Les échéances sont calculées en SQL avec la même formule que
 | `tiana.randrianarisoa@imtech.test`, `voahangy.rakotomalala@imtech.test`, `hery.rajaonarison@imtech.test`, `lalaina.razafindrabe@imtech.test` | Formateurs |
 | `prenom.nom@imtech.test` (Andry Rakotoarisoa, Miora Randriamampionona, Toky Ravelojaona…) | 12 étudiants |
 
-Les adresses en `.test` (domaine réservé, RFC 2606) garantissent qu'aucun e-mail de test ne part
-chez une vraie personne.
+Les adresses se terminent en `.test`, un domaine réservé (RFC 2606) qui n'existe pas : comme ça,
+aucun e-mail de test ne risque d'atterrir dans la boîte d'une vraie personne.
 
 | Scénario de démonstration | Données |
 |---|---|
@@ -385,9 +396,10 @@ chez une vraie personne.
 
 **Page → action → fonctions métier → base de données.**
 
-Cette section décrit l'application **écran par écran**. Pour chaque action de l'utilisateur, on
-suit le chemin complet d'une requête, de l'interface jusqu'aux tables MySQL. Les règles métier
-détaillées (barèmes, cas particuliers, choix techniques) sont expliquées dans la section 7.
+Ici, on parcourt l'application **écran par écran**. Pour chaque bouton ou presque, on suit la
+requête de bout en bout : de l'interface jusqu'aux tables MySQL qu'elle lit ou modifie. Les règles
+elles-mêmes (barèmes, cas particuliers, raisons des choix techniques) sont expliquées plus en
+détail dans la section 7.
 
 ### 6.1 Comment lire les tableaux
 
@@ -409,7 +421,8 @@ Page (web / mobile)  →  Action  →  Route API  →  Fonctions métier  →  T
 - **Liste paginée** : `?page=&limite=` dans la route = le serveur ne renvoie qu'une page de
   20 lignes et le total (voir [§7.20](#720-pagination-côté-serveur)).
 
-Exemple complet — un étudiant paie une échéance depuis le mobile :
+Pour fixer les idées, voici le chemin complet quand un étudiant paie une échéance depuis son
+téléphone :
 
 ```
 Mobile « Paiements »  →  « Payer »  →  POST /paiements [SA, AC, ET]
@@ -426,9 +439,9 @@ Mobile « Paiements »  →  « Payer »  →  POST /paiements [SA, AC, ET]
 
 | Action | Route API | Fonctions métier | Tables |
 |---|---|---|---|
-| Se connecter | `POST /auth/login` [public, 5 échecs / 15 min par compte, 20 par IP] | `limiteRequetes` (échecs seulement) → `authService.authentifier` (bcrypt, JWT) → `userModel.findUserByEmail`, `etudiantModel.getIdEtudiantByUtilisateur`, `userModel.createSession` | L utilisateur, role, etudiant · É sessions |
-| Mot de passe oublié | `POST /auth/forgot-password` [public, 5 / h par IP] | `limiteRequetes` → `userService.demanderReinitialisation` → `userModel.insertResetToken` + e-mail (`utils/mailer`) | L utilisateur · É reset_password |
-| Nouveau mot de passe | `POST /auth/reset-password` [public, 10 échecs / 15 min par IP] | `limiteRequetes` (échecs seulement) → `userService.reinitialiserMotDePasse` → `findValidResetToken`, `updatePasswordHash`, `marquerTokenUtilise`, `deactivateAllSessions` | É reset_password, utilisateur, sessions |
+| Se connecter | `POST /auth/login` [public, essais limités : §7.1] | `limiteRequetes` (échecs seulement) → `authService.authentifier` (bcrypt, JWT) → `userModel.findUserByEmail`, `etudiantModel.getIdEtudiantByUtilisateur`, `userModel.createSession` | L utilisateur, role, etudiant · É sessions |
+| Mot de passe oublié | `POST /auth/forgot-password` [public, limité : §7.1] | `limiteRequetes` → `userService.demanderReinitialisation` → `userModel.insertResetToken` + e-mail (`utils/mailer`) | L utilisateur · É reset_password |
+| Nouveau mot de passe | `POST /auth/reset-password` [public, limité : §7.1] | `limiteRequetes` (échecs seulement) → `userService.reinitialiserMotDePasse` → `findValidResetToken`, `updatePasswordHash`, `marquerTokenUtilise`, `deactivateAllSessions` | É reset_password, utilisateur, sessions |
 | Se déconnecter | `POST /auth/logout` [connecté] | `authService.deconnecter` → `userModel.deactivateSession` | É sessions |
 | Vérification de session (toutes les minutes) | `GET /auth/profil` [connecté] | `authService.recupererProfil` → `userModel.findUserById` ; 401 → retour à la connexion | L sessions, utilisateur |
 
@@ -582,6 +595,9 @@ Mobile « Paiements »  →  « Payer »  →  POST /paiements [SA, AC, ET]
 
 ### 6.6 Traitements automatiques (sans page)
 
+Certaines choses se font sans que personne ne clique nulle part : le serveur s'en occupe seul,
+en arrière-plan.
+
 | Déclencheur | Fonctions métier | Tables |
 |---|---|---|
 | Chaque requête d'un étudiant | `authMiddleware.authentifier` → `presenceModel.marquerPresence` (un jour = une ligne) | É presence |
@@ -592,8 +608,8 @@ Mobile « Paiements »  →  « Payer »  →  POST /paiements [SA, AC, ET]
 
 ## 7. Règles métier détaillées
 
-Chaque flux indique : les acteurs, les étapes, les règles appliquées et, le cas échéant,
-**ce qui a changé** pendant la revue.
+Pour chaque fonctionnalité, on retrouve qui intervient, comment cela se déroule, quelles règles
+s'appliquent et pourquoi.
 
 ### 7.1 Connexion, session et déconnexion
 
@@ -637,29 +653,28 @@ sequenceDiagram
     API->>DB: UPDATE sessions SET actif = 0
 ```
 
-**Fonctions associées :**
-- *Paramètres → Sessions* : liste des appareils connectés (navigateur, IP, date) ; la session
-  courante est signalée, **les tokens ne sont jamais renvoyés**.
-- *Déconnecter les autres appareils* (`PUT /auth/logout-all`) : désactive toutes les sessions
-  sauf la courante. Les appareils déconnectés le voient **dans la minute** : le web et l'application
-  mobile vérifient la session (`GET /auth/profil`) toutes les minutes et au retour au premier plan ;
-  le 401 renvoie à l'écran de connexion (sur mobile, avec l'alerte « Session fermée »).
-  Deux onglets du même navigateur partagent la même session : ils ne comptent pas comme
-  « autres appareils ».
-- *Changer le mot de passe* : vérifie l'ancien, enregistre le nouveau (8 caractères min.)
-  et **déconnecte les autres appareils**.
+**Autour de la connexion :**
+- *Paramètres → Sessions* : l'utilisateur voit la liste de ses appareils connectés (navigateur,
+  IP, date), avec celui qu'il utilise en ce moment mis en évidence. **Les tokens, eux, ne sont
+  jamais renvoyés.**
+- *Déconnecter les autres appareils* (`PUT /auth/logout-all`) : toutes les sessions sont fermées
+  sauf celle en cours. Les appareils concernés s'en rendent compte **en moins d'une minute**, car
+  le web et le mobile revérifient la session (`GET /auth/profil`) chaque minute et à chaque retour
+  au premier plan. Le 401 les renvoie alors à l'écran de connexion (sur mobile, avec l'alerte
+  « Session fermée »). Deux onglets du même navigateur partagent une seule session, ils ne comptent
+  donc pas comme des « autres appareils ».
+- *Changer le mot de passe* : l'ancien est d'abord vérifié, le nouveau est enregistré (8 caractères
+  minimum) et **les autres appareils sont déconnectés**, au cas où le changement viendrait d'un
+  doute sur la sécurité du compte.
 
-> **Ce qui a changé.** Avant, le serveur vérifiait seulement la signature du JWT : un token
-> restait utilisable 24 h même après une déconnexion ou un « déconnecter les autres appareils ».
-> Désormais chaque requête vérifie la table `sessions`, la déconnexion est réelle, la durée de
-> la session est alignée sur celle du JWT, et `/auth/sessions` ne divulgue plus les tokens.
+Vérifier seulement la signature du JWT ne suffirait pas : un token resterait valable 24 h même
+après une déconnexion. C'est pourquoi chaque requête passe aussi par la table `sessions` : se
+déconnecter déconnecte vraiment, et la durée de la session suit celle du JWT.
 
 #### Limite des essais de connexion
 
-*Ajouté le 11/10/2026.*
-
-Objectif : empêcher d'essayer des mots de passe à l'infini (attaque par **force brute**) sans
-gêner un utilisateur qui se trompe une ou deux fois.
+Le but : empêcher quelqu'un d'essayer des mots de passe à l'infini (attaque par **force brute**),
+sans pour autant bloquer l'utilisateur qui se trompe une ou deux fois.
 
 | Route | Limite | Ce qui est compté | Regroupement |
 |---|---|---|---|
@@ -668,10 +683,14 @@ gêner un utilisateur qui se trompe une ou deux fois.
 | `POST /auth/forgot-password` | **5** demandes / heure | **Toutes** les demandes (chacune envoie un e-mail) | Adresse IP |
 | `POST /auth/reset-password` | **10** échecs / 15 min | Seulement les échecs (code invalide ou expiré) | Adresse IP |
 
-Au-delà : réponse **429** avec un message clair (« Trop de tentatives de connexion. Réessayez dans
-15 minutes. »), affiché tel quel par l'écran de connexion web et mobile. La limite par compte
-seule ne suffirait pas (l'attaquant change d'e-mail), la limite par IP seule bloquerait trop vite
-tout un bureau qui partage la même adresse : les deux sont combinées.
+Une fois la limite atteinte, le serveur répond **429** avec un message clair (« Trop de tentatives
+de connexion. Réessayez dans 15 minutes. »), que l'écran de connexion affiche tel quel, sur le web
+comme sur le mobile.
+
+Pourquoi deux limites ? Une limite par compte seule ne suffirait pas : l'attaquant n'aurait qu'à
+changer d'e-mail. Une limite par IP seule serait trop brutale : tout un bureau qui sort par la
+même adresse se retrouverait bloqué à cause d'une seule personne. En combinant les deux, on bloque
+l'attaque sans pénaliser les autres.
 
 ```
 Requête  →  limiteRequetes (IP)  →  limiteRequetes (IP + e-mail)  →  auth.login
@@ -686,12 +705,8 @@ Requête  →  limiteRequetes (IP)  →  limiteRequetes (IP + e-mail)  →  auth
   `res.on('finish')`).
 - Les compteurs sont **en mémoire** et nettoyés régulièrement (une adresse dont tous les essais
   ont expiré est oubliée : pas de fuite de mémoire). Ils repartent à zéro au redémarrage du
-  serveur (voir [§13](#13-limites-et-perspectives)).
+  serveur (voir [§12](#12-limites-et-perspectives)).
 - Déclarées dans `routes/routes.js` ; testées dans `tests/limiteConnexion.test.js`.
-
-> **Ce qui a changé.** Avant, `/auth/login`, `/auth/forgot-password` et `/auth/reset-password`
-> n'avaient aucune limite : un script pouvait tester des milliers de mots de passe sur un compte,
-> ou envoyer des centaines d'e-mails de réinitialisation.
 
 ### 7.2 Mot de passe oublié
 
@@ -717,21 +732,23 @@ sequenceDiagram
     API->>DB: toutes les sessions désactivées
 ```
 
-Les deux routes sont limitées (5 demandes / heure, 10 codes invalides / 15 min par adresse IP,
-réponse 429) : voir *Limite des essais de connexion* en [§7.1](#71-connexion-session-et-déconnexion).
+Le serveur répond la même chose que l'e-mail existe ou non : sinon, n'importe qui pourrait
+s'en servir pour savoir qui a un compte chez IMTECH. Les deux routes sont aussi limitées
+(réponse 429) : voir *Limite des essais de connexion* en [§7.1](#71-connexion-session-et-déconnexion).
 
 ### 7.3 Création d'un dossier étudiant (Accueil)
 
-1. L'Accueil remplit le formulaire : identité, e-mail, mot de passe initial, photo et pièces
-   justificatives (photos, certificat de résidence, copie de CIN).
-2. `POST /etudiants` (multipart) : `multer` enregistre les fichiers (types autorisés : images,
-   PDF, Office, texte ; taille limitée).
-3. Le service crée **dans une même transaction** le compte `utilisateur` et le profil `etudiant`.
-4. Le rôle **Étudiant** est imposé par le serveur.
-
-> **Ce qui a changé.** Le rôle était lu depuis le formulaire (`id_role`) : un compte Accueil
-> pouvait ainsi créer un Super Admin. La modification d'un dossier ne vide plus les champs
-> non envoyés.
+1. L'étudiant se présente à l'accueil. L'Accueil remplit le formulaire : identité, e-mail, mot
+   de passe de départ, photo et pièces justificatives (photos, certificat de résidence, copie de
+   CIN).
+2. Le formulaire part vers `POST /etudiants` (multipart) ; `multer` enregistre les fichiers
+   (images, PDF, Office ou texte, avec une taille maximale).
+3. Le service crée le compte `utilisateur` et le profil `etudiant` **dans une même transaction** :
+   soit les deux sont créés, soit aucun, jamais un compte sans dossier.
+4. Le rôle **Étudiant** est fixé par le serveur, quoi que contienne le formulaire : sinon, il
+   suffirait de modifier la requête pour qu'un compte Accueil crée un Super Admin.
+5. Modifier un dossier ne touche que les champs envoyés (`COALESCE`) : les autres gardent leur
+   valeur.
 
 ### 7.4 Inscription à une formation et génération de l'échéancier
 
@@ -753,13 +770,15 @@ sequenceDiagram
     Note over API,DB: En cas d'erreur à n'importe quelle étape : ROLLBACK,<br/>rien n'est enregistré
 ```
 
-**Règle de calcul de l'échéancier** (`services/echeanceService.js → calculerEcheancier`) :
+**Comment l'échéancier est calculé** (`services/echeanceService.js → calculerEcheancier`) :
 
-- montant d'une tranche = tarif ÷ nombre de tranches, arrondi au centime ;
-- la **dernière tranche absorbe l'écart d'arrondi** : la somme est toujours exactement égale au tarif ;
-- échéance n° *n* = date du jour + *n* × (durée de la formation en jours ÷ nombre de tranches).
+- chaque tranche vaut le tarif divisé par le nombre de tranches, arrondi au centime ;
+- la **dernière tranche récupère l'écart d'arrondi**, si bien que le total retombe toujours
+  exactement sur le tarif ;
+- l'échéance n° *n* tombe à la date du jour + *n* × (durée de la formation en jours ÷ nombre de
+  tranches).
 
-*Exemple :* formation à 100 000 MGA sur 90 jours en 3 tranches :
+*Exemple :* une formation à 100 000 MGA sur 90 jours, payée en 3 fois :
 
 | Tranche | Montant | Date |
 |---|---|---|
@@ -768,21 +787,25 @@ sequenceDiagram
 | 3 | 33 333,34 | J + 90 |
 | **Total** | **100 000,00** | |
 
-> **Ce qui a changé.** L'inscription était créée hors de la transaction de l'échéancier
-> (risque d'inscription sans échéances) et l'arrondi faisait perdre des centimes.
-> Le calcul est désormais une fonction pure, couverte par des tests automatisés.
+L'inscription et son échéancier sont enregistrés dans la **même transaction** : il ne peut pas
+exister d'inscription sans échéances. Le calcul est une fonction pure, vérifiée par des tests
+automatisés.
 
 ### 7.5 Validation de l'inscription et premier paiement
 
-1. L'Accueil clique sur *Valider* et choisit le mode de paiement (espèces, virement…).
-2. `POST /inscriptions/:id/valid` : dans **une transaction**, l'inscription passe à
-   `valide = true` **et** le paiement de la première échéance est enregistré (statut `valide`).
-3. Une inscription déjà validée est refusée (409) : impossible de payer deux fois la première échéance.
-4. Le web envoie la confirmation à l'étudiant (notification in-app + e-mail).
+1. L'étudiant paie sa première tranche ; l'Accueil clique sur *Valider* et indique le mode de
+   paiement (espèces, virement…).
+2. `POST /inscriptions/:id/valid` fait deux choses **dans une même transaction** : l'inscription
+   passe à `valide = true`, **et** le paiement de la première échéance est enregistré (statut
+   `valide`).
+3. Si l'inscription est déjà validée, la demande est refusée (409). Un double clic ne peut donc
+   pas faire payer deux fois la première échéance.
+4. L'étudiant reçoit sa confirmation (notification dans l'application + e-mail).
 
 ### 7.6 Paiement d'une échéance par l'étudiant (mobile) → validation par l'Accueil
 
-C'est le flux qui a le plus évolué pendant la revue.
+Un étudiant ne peut pas déclarer lui-même un paiement comme réglé : ce qu'il envoie depuis son
+téléphone reste « en attente » tant que l'Accueil n'a pas vérifié que l'argent est bien arrivé.
 
 ```mermaid
 sequenceDiagram
@@ -834,20 +857,20 @@ stateDiagram-v2
 | Statut créé | `en_attente` | `valide` |
 | Double paiement | Refusé si un paiement est déjà en attente | Refusé si l'échéance est soldée |
 
-**Seuls les paiements `valide`** sont pris en compte dans : le total payé et le solde de
-l'étudiant, la vue des échéances (Vert / Orange / Rouge), les indicateurs du tableau de bord
-et la génération des factures.
+Tant qu'un paiement n'est pas `valide`, il ne compte pas dans l'argent encaissé : ni dans le
+total payé et le solde de l'étudiant, ni dans les indicateurs du tableau de bord, ni pour émettre
+une facture. (Pour la couleur des échéances, en revanche, un paiement envoyé compte déjà : voir
+§7.7.)
 
-> **Ce qui a changé.** Avant, un étudiant pouvait enregistrer lui-même un paiement **déjà
-> validé**, avec **le montant de son choix**, et sur **n'importe quelle échéance** ; il pouvait
-> aussi lister les paiements de tous les étudiants. Ajout de la colonne `paiement.statut`, des
-> routes de validation/refus, de la section « En attente de validation » sur le mobile et des
-> boutons Valider / Refuser sur le web.
+Un étudiant ne voit que **ses propres** paiements. Sur le mobile, ses envois apparaissent dans
+une section « En attente de validation » ; sur le web, l'Accueil dispose des boutons Valider /
+Refuser.
 
 ### 7.7 Suivi des échéances et rappels de paiement
 
-La page *Échéances* calcule pour chaque échéance le montant payé (paiements validés), le reste
-et une couleur :
+La page *Échéances* sert à l'Accueil à repérer d'un coup d'œil qui est à jour et qui ne l'est
+pas. Pour chaque échéance, elle calcule ce qui a été payé (paiements validés), ce qui reste, et
+lui donne une couleur :
 
 | Couleur | Condition |
 |---|---|
@@ -855,8 +878,9 @@ et une couleur :
 | 🟡 JAUNE « À rappeler » | Non soldée, à J-2, J-1 ou le jour J → **le système notifie l'Accueil** |
 | 🔴 ROUGE « En retard » | Date dépassée et non soldée |
 
-Le rappel se fait **en deux temps** : le système prévient l'Accueil, puis l'Accueil décide d'envoyer
-le rappel à l'étudiant.
+Le rappel se fait **en deux temps** : le système prévient l'Accueil, et c'est l'Accueil qui décide
+d'envoyer ou non le rappel à l'étudiant. Une personne garde donc la main : elle sait peut-être déjà
+que l'étudiant passe payer demain.
 
 ```mermaid
 sequenceDiagram
@@ -876,19 +900,18 @@ sequenceDiagram
     Srv-->>A: « Rappel envoyé » (ou « l'e-mail n'a pas pu partir »)
 ```
 
-Un paiement **envoyé** par l'étudiant compte dès son envoi pour la couleur, les alertes et le critère
-« paie à temps » : l'étudiant n'est ni en retard, ni signalé, ni rappelé pendant que l'Accueil le
-valide (mention « Payé, à valider » sur la page Échéances). Les **montants encaissés** (totaux,
-reste à payer, tableau de bord, factures) ne comptent, eux, que les paiements **validés**.
+Un détail qui a son importance : dès qu'un étudiant **envoie** un paiement, celui-ci compte pour
+la couleur, les alertes et le critère « paie à temps ». Ce serait injuste de le signaler en retard,
+ou de lui envoyer un rappel, simplement parce que l'Accueil n'a pas encore eu le temps de valider.
+La page Échéances affiche alors « Payé, à valider ». Les **montants encaissés** (totaux, reste à
+payer, tableau de bord, factures) ne comptent, eux, que les paiements **validés**.
 
-Le bouton **« Rappeler »** est disponible sur toute échéance non soldée (mis en évidence en JAUNE
-et ROUGE) ; le bouton « Rappeler » du tableau de bord mène à la page Échéances.
+Le bouton **« Rappeler »** est présent sur toute échéance qui n'est pas soldée (et mis en avant
+sur les lignes JAUNE et ROUGE). Celui du tableau de bord mène directement à la page Échéances.
 
-> **Ce qui a changé.** Avant, la page Échéances envoyait **automatiquement** une relance à chaque
-> fois qu'un membre de l'Accueil l'ouvrait (l'étudiant pouvait recevoir plusieurs e-mails par jour),
-> et les statuts mélangeaient VERT / ORANGE (jour J seulement) / « À relancer bientôt » (J-2 seulement).
-> Désormais : 3 couleurs claires, une seule règle pour le statut et l'alerte (`ECHEANCE_PROCHE` dans
-> `models/echeanceModel.js`), alerte unique à l'Accueil, puis envoi volontaire avec « Rappeler ».
+La couleur et l'alerte reposent sur une seule règle partagée (`ECHEANCE_PROCHE` dans
+`models/echeanceModel.js`). Ouvrir la page n'envoie rien : un rappel ne part que lorsque quelqu'un
+clique sur « Rappeler ».
 
 ### 7.8 Documents officiels
 
@@ -902,17 +925,19 @@ flowchart LR
     FA -->|web| ENV["Envoi à l'étudiant :<br/>e-mail avec pièce jointe + notification"]
 ```
 
-- Les PDF sont générés par `pdfkit` et enregistrés dans `uploads/documents/`.
-- L'attestation contient un **identifiant unique (UUID)** et un QR code ; n'importe qui (un
-  employeur par exemple) peut vérifier son authenticité sans compte.
-- Une facture ne peut être émise que pour un paiement **validé**.
+- Les PDF sont produits par `pdfkit` et rangés dans `uploads/documents/`.
+- Chaque attestation porte un **identifiant unique (UUID)** et un QR code. Un employeur, par
+  exemple, peut le scanner pour vérifier que le document est authentique, sans avoir besoin de
+  compte.
+- On ne peut faire une facture que pour un paiement **validé** : pas de facture pour de l'argent
+  qui n'est pas encore arrivé.
 - **Attestation de fin de formation** : quand la formation est terminée (date d'inscription + durée
-  en jours), le système prévient l'Accueil « Étudiant A a fini sa formation, envoyez-lui son
-  attestation ». L'Accueil clique sur **« Attestation »** (page Inscriptions) : la note est
+  en jours), le système prévient l'Accueil : « Étudiant A a fini sa formation, envoyez-lui son
+  attestation ». L'Accueil clique alors sur **« Attestation »** (page Inscriptions). La note est
   recalculée, le PDF est généré avec la ligne « Note obtenue : X / 20 », puis envoyé à l'étudiant
-  (notification in-app + e-mail avec le PDF en pièce jointe).
-- Les PDF sont maintenant écrits **entièrement** avant d'être renvoyés ou envoyés par e-mail
-  (correction d'un risque de pièce jointe incomplète).
+  (notification dans l'application + e-mail avec le PDF en pièce jointe).
+- Les PDF sont écrits **jusqu'au bout** avant d'être renvoyés ou joints à un e-mail, pour
+  qu'aucune pièce jointe ne parte incomplète.
 
 ### 7.9 Supports de cours, commentaires, mentions et réactions
 
@@ -929,22 +954,45 @@ sequenceDiagram
     API->>DB: INSERT support (statut publie)
     API->>DB: notification « Le support X a été envoyé… » aux inscrits
     E->>API: GET /formations/:id/supports
-    E->>API: POST /commentaires { contenu, mentions[], id_parent? }
+    E->>API: POST /commentaires { contenu, id_parent? } (jamais de mentions)
+    API->>DB: notification « X a commenté le support… » au formateur (commentaire principal)
+    F->>API: GET /formations/:id/etudiants (liste du « @ »)
+    F->>API: POST /commentaires { contenu, mentions[], id_parent? }
+    API->>API: auteur = formateur de la formation ? mentionnés inscrits à la formation ?
     API->>DB: BEGIN, commentaire + mentions, COMMIT
     API->>DB: notification « X vous a mentionné… » aux étudiants mentionnés
     E->>API: POST /supports/:id/reactions { type_reaction }
     Note over API,DB: une seule réaction par utilisateur et par support<br/>(contrainte UNIQUE, remplacée si elle change)
 ```
 
-**Modération :** le Super Admin peut supprimer tout commentaire, un formateur ceux des
-supports de ses formations, un étudiant uniquement les siens.
+**Qui peut mentionner.** La mention sert à interpeller un étudiant précis ; c'est
+donc le rôle du formateur, pas celui des étudiants :
 
-> **Ce qui a changé.** Un formateur pouvait publier dans n'importe quelle formation et
-> supprimer les supports des autres. Les notifications de mention ne partaient jamais (bug) :
-> elles fonctionnent et sont envoyées après l'enregistrement définitif du commentaire.
+| Auteur | Mention `@` | Comment il interpelle quelqu'un | Qui est notifié |
+|---|---|---|---|
+| Formateur de la formation, Super Admin | oui, **uniquement** les étudiants inscrits à la formation du support | `@` ouvre la liste des inscrits (web) | les étudiants mentionnés |
+| Étudiant | **non** (403 si l'API reçoit des mentions) | il **répond** au commentaire visé | l'auteur du commentaire auquel il répond |
+| Étudiant, commentaire principal | — | rien à faire | le **formateur de la formation**, automatiquement |
 
-L'envoi d'un support peut aussi être **programmé** : voir [6.15](#615-envoi-programmé-des-supports).
-Fil de discussion (réponses), réaction 👎 et avis sur les formateurs : voir [6.16](#616-fil-de-discussion-réaction--je-naime-pas--et-avis-sur-les-formateurs).
+- `commentaire_mention` ne contient que `id_etudiant_mentionne` : c'est suffisant puisqu'on ne
+  mentionne que des étudiants. L'étudiant n'a jamais besoin de mentionner le formateur, qui est
+  prévenu de chaque nouveau commentaire principal sous ses supports (`notifierCommentaireFormateur`).
+- Contrôles serveur (`commentaireService.verifierMentions`) : étudiant → 403 ; formateur d'une autre
+  formation → 403 ; étudiant non inscrit à la formation → 400. Les applications n'ouvrent la liste
+  `@` que pour le formateur du support et le Super Admin (même règle).
+- Côté web, le texte garde « @Prénom Nom » ; au moment d'envoyer, seuls les étudiants dont le nom
+  figure encore dans le texte sont envoyés dans `mentions` (effacer le nom retire la mention).
+- Si l'auteur du commentaire auquel on répond est aussi mentionné, il reçoit une seule
+  notification (la mention), pas deux.
+
+**Modération :** le Super Admin peut supprimer n'importe quel commentaire ; un formateur, ceux
+qui sont postés sous les supports de ses formations ; un étudiant, seulement les siens.
+
+Un formateur ne publie que dans **ses** formations et ne supprime que **ses** supports. Les
+notifications de mention ne partent qu'une fois le commentaire réellement enregistré.
+
+Un support peut aussi être **programmé** pour partir plus tard : voir [§7.15](#715-envoi-programmé-des-supports).
+Pour les réponses en fil de discussion, la réaction 👎 et l'avis sur les formateurs, voir [§7.16](#716-fil-de-discussion-réaction--je-naime-pas--et-avis-sur-les-formateurs).
 
 ### 7.10 Notifications
 
@@ -953,20 +1001,29 @@ Fil de discussion (réponses), réaction 👎 et avis sur les formateurs : voir 
 | Inscription confirmée | in-app + e-mail | — | Accueil valide l'inscription |
 | Paiement envoyé depuis le mobile | — | in-app « Étudiant A a payé X MGA… à valider » | automatique |
 | Paiement validé / refusé | in-app | — | Accueil valide / refuse |
-| Échéance passée au JAUNE (J-2) | — | in-app « Étudiant A doit être rappelé » | automatique (toutes les heures) |
+| Échéance passée au JAUNE (J-2, J-1 ou J) | — | in-app « Étudiant A doit être rappelé » | automatique (toutes les heures) |
 | Rappel de paiement | in-app + e-mail | — | bouton « Rappeler » |
 | Facture | in-app + e-mail (PDF) | — | Accueil génère la facture |
 | Formation terminée | — | in-app « Étudiant A a fini sa formation, envoyez-lui son attestation » | automatique |
 | Attestation | in-app + e-mail (PDF avec la note) | — | bouton « Attestation » |
-| Mention dans un commentaire | in-app | — | automatique |
+| Mention dans un commentaire (par le formateur) | in-app | — | automatique |
+| Réponse à son commentaire | in-app | in-app (formateur) | automatique |
+| Nouveau commentaire principal d'un étudiant | — | in-app « X a commenté le support… » au **formateur** de la formation | automatique |
 | Nouvelle demande d'assistance | — | in-app « Étudiant A a envoyé une demande d'assistance » | automatique |
 | Demande d'assistance résolue | in-app | — | bouton « Résoudre » |
 
-- Les notifications « personnel » sont envoyées à **tous** les comptes Accueil et Super Admin actifs.
-- Si l'e-mail ne peut pas partir, la notification in-app est quand même envoyée et l'interface le signale.
-- Chaque utilisateur ne voit, ne marque comme lues et ne supprime **que ses propres** notifications.
-- Le web et le mobile déduisent la catégorie (Paiement, Attestation, Assistance…) du texte du message
-  pour choisir l'icône et la couleur.
+- Les notifications destinées au personnel arrivent chez **tous** les comptes Accueil et Super
+  Admin actifs : la première personne disponible peut s'en occuper.
+- Si l'e-mail n'arrive pas à partir, la notification dans l'application est envoyée quand même,
+  et l'écran prévient que l'e-mail a échoué.
+- Chacun ne voit, ne marque comme lues et ne supprime **que ses propres** notifications.
+- **Cloche avec compteur.** Web : cloche dans la barre du haut, seul accès à la page
+  Notifications (aussi trouvable par la recherche Ctrl+K) ; mobile : onglet Notifications. Le
+  nombre de non lues est affiché, **« 9+ »** au-delà de 9, et rien quand tout est lu. Il se met à
+  jour au changement de page / d'onglet, toutes les minutes, au retour dans l'application et dès
+  qu'une notification est lue ou supprimée.
+- Le web et le mobile devinent la catégorie (Paiement, Attestation, Assistance…) à partir du texte
+  du message, pour choisir l'icône et la couleur.
 
 ### 7.11 Tableau de bord (Super Admin, Accueil)
 
@@ -980,6 +1037,10 @@ Fil de discussion (réponses), réaction 👎 et avis sur les formateurs : voir 
 | Export CSV | Export des inscriptions |
 
 ### 7.12 Assistance
+
+Quand un étudiant a un souci (un paiement qui n'apparaît pas, un support qui ne s'ouvre pas…), il
+peut écrire à l'Accueil directement depuis l'application, sans devoir se déplacer ni chercher un
+numéro de téléphone.
 
 ```mermaid
 sequenceDiagram
@@ -999,29 +1060,32 @@ sequenceDiagram
     E->>API: GET /assistances (Mes demandes : statut à jour)
 ```
 
-- Sur le mobile : menu ⋮ → **Assistance** : formulaire + liste « Mes demandes » avec leur statut.
-- Sur le web : page **Assistance** (Accueil, Super Admin) : liste, détail, bouton **Résoudre**.
-- Une demande déjà résolue ne peut pas l'être à nouveau (409).
+- Sur le mobile : menu ⋮ → **Assistance**, avec le formulaire et la liste « Mes demandes » qui
+  montre où en est chacune.
+- Sur le web : page **Assistance** (Accueil, Super Admin), avec la liste, le détail et le bouton
+  **Résoudre**.
+- Une demande déjà résolue ne peut pas l'être une seconde fois (409).
 
 ### 7.13 Présence, classement et note d'attestation
 
-Objectif : noter l'étudiant **sur 20** à la fin de sa formation. La moitié de la note est
-calculée par le système à partir de deux critères objectifs (**paiement** et **présence**),
-l'autre moitié est donnée librement par le formateur (**présentation**).
-
-> Évolution (10/10/2026) : l'ancien barème (commentaires, réactions, paiement → 14 à 19) est
-> remplacé par celui-ci. Les commentaires et réactions ne comptent plus dans la note.
+À la fin de sa formation, chaque étudiant reçoit une note **sur 20**, inscrite sur son
+attestation. Elle se partage en deux moitiés : l'une est calculée par le système à partir de
+deux critères qu'on peut mesurer objectivement (**paiement** et **présence**), l'autre est laissée
+à l'appréciation du formateur (**présentation**), parce que certaines choses ne se calculent pas.
+Les commentaires et les réactions ne comptent pas : un étudiant qui commente beaucoup n'est pas
+forcément celui qui travaille le plus.
 
 #### a) Présence automatique
 
-Il n'y a pas d'appel à faire : **un étudiant qui utilise l'application un jour est présent ce
-jour-là**. À chaque requête authentifiée d'un étudiant, le serveur enregistre une ligne
-`(étudiant, jour)` dans la table `presence` (une seule par jour : contrainte `UNIQUE`).
+Pas d'appel à faire en début de cours : **un étudiant qui utilise l'application un jour est
+considéré présent ce jour-là**. À chaque requête d'un étudiant connecté, le serveur enregistre une
+ligne `(étudiant, jour)` dans la table `presence`, une seule par jour grâce à une contrainte
+`UNIQUE`.
 
-Pourquoi une table `presence` plutôt que la table `sessions` ? Une session n'est créée qu'à la
-**connexion** et reste valable 24 h : un étudiant qui se connecte lundi à 18 h et rouvre
-l'application mardi matin ne crée pas de nouvelle session, il ne serait donc pas compté présent
-mardi. L'historique des sessions a été repris dans `presence` lors de la migration.
+On aurait pu se servir de la table `sessions`, mais elle ne convient pas. Une session n'est créée
+qu'au moment de la **connexion** et dure 24 h. Un étudiant qui se connecte lundi à 18 h puis rouvre
+l'application mardi matin ne crée pas de nouvelle session : il n'aurait pas été compté présent le
+mardi. D'où une table dédiée.
 
 ```mermaid
 sequenceDiagram
@@ -1037,12 +1101,12 @@ sequenceDiagram
 
 #### b) Jours de cours
 
-La formation commence à la **date d'inscription** et dure `duree_jours` jours. Seuls les jours
-**du lundi au vendredi** comptent (week-ends retirés), aussi bien pour les jours de cours que
-pour les présences.
+La formation démarre à la **date d'inscription** et dure `duree_jours` jours. On ne compte que
+les jours **du lundi au vendredi**, aussi bien pour les jours de cours que pour les présences : un
+étudiant ne va pas perdre des points parce qu'il ne s'est pas connecté un dimanche.
 
-Les week-ends sont comptés **sur les vraies dates** et non par une estimation : 3 mois ne font pas
-exactement 4 semaines × 3 = 12 semaines, mais environ 12,9 semaines.
+Les week-ends sont comptés **sur le vrai calendrier**, pas estimés. Trois mois, ce n'est pas
+exactement 3 × 4 = 12 semaines, mais plutôt 12,9 : l'approximation finirait par fausser le calcul.
 
 | Exemple : formation de 90 jours commençant un lundi | Jours |
 |---|:-:|
@@ -1068,11 +1132,12 @@ jours de week-end dans 90 jours.)
 | **Présentation** | libre, donnée par le formateur | **/10** |
 | = **Note d'attestation** | note système + présentation | **/20** |
 
-Si le formateur saisit plus de 10, le système refuse : *« Vous devez attribuer une note de 10 au
-maximum : les 10 autres points sont calculés par le système (paiement et présence). »*
+Si le formateur tape une note au-dessus de 10, le système la refuse en expliquant pourquoi :
+*« Vous devez attribuer une note de 10 au maximum : les 10 autres points sont calculés par le
+système (paiement et présence). »*
 
-**Classement :** par note système, puis par nombre de présences. Des étudiants à égalité
-partagent le même rang.
+**Classement :** les étudiants sont rangés par note système, puis par nombre de jours de
+présence. Deux étudiants à égalité partagent le même rang.
 
 ```mermaid
 flowchart LR
@@ -1084,20 +1149,21 @@ flowchart LR
     N --> A
 ```
 
-- La note système est recalculée à chaque consultation et juste avant la génération d'une
-  attestation ; elle est **enregistrée en base**.
-- L'attestation **ne peut pas être générée** tant que le formateur n'a pas noté la présentation
-  (erreur 409 avec un message clair).
-- Dans l'Espace formateur, le tableau affiche pour chaque étudiant : rang, jours présents / jours
-  de cours, points de paiement et de présence, note système, saisie de la présentation
-  (bouton **Effacer** pour la retirer) et note finale sur 20.
-- Un formateur ne voit et ne note que les étudiants **de ses formations**.
+- La note système est recalculée chaque fois qu'on affiche le classement, et une dernière fois
+  juste avant de générer l'attestation. Elle est **enregistrée en base**.
+- Tant que le formateur n'a pas noté la présentation, l'attestation **ne peut pas être générée**
+  (erreur 409, avec un message qui explique ce qui manque).
+- Dans l'Espace formateur, le tableau montre pour chaque étudiant son rang, ses jours de présence
+  sur le nombre de jours de cours, ses points de paiement et de présence, sa note système, la case
+  pour saisir la présentation (avec un bouton **Effacer**) et sa note finale sur 20.
+- Un formateur ne voit et ne note que les étudiants **de ses propres formations**.
 
 ### 7.14 Consultation sécurisée des documents
 
-Objectif : les documents d'IMTECH (supports de cours, documents administratifs, pièces des
-étudiants) ne doivent être lisibles **que par les personnes autorisées**, et une fuite hors
-d'IMTECH doit être **difficile et traçable**.
+Les supports de cours sont le travail des formateurs, et les pièces des étudiants (copies de CIN,
+certificats) sont des données personnelles. Il fallait donc deux choses : que ces documents ne
+soient lisibles **que par les personnes autorisées**, et que si l'un d'eux sort quand même
+d'IMTECH, la fuite soit **difficile et qu'on puisse en retrouver l'origine**.
 
 ```mermaid
 sequenceDiagram
@@ -1117,11 +1183,12 @@ sequenceDiagram
     API-->>U: PDF / image filigrané (Cache-Control: no-store)
 ```
 
-**1. Accès protégé.** Les fichiers ne sont plus servis en statique : `middlewares/fichierMiddleware.js`
-garde les mêmes URL (`/api/supports/...`, `/api/documents/...`) mais exige d'être connecté.
-Le token peut être passé dans l'URL (`?token=...`), car un lien, une image ou une WebView ne
-peuvent pas envoyer l'en-tête `Authorization`. Les fonctions `getFileUrl` / `fileUrl` (web et
-mobile) l'ajoutent automatiquement. Un lien copié ne marche plus après la déconnexion.
+**1. Accès protégé.** Les fichiers ne sont pas servis « en statique », c'est-à-dire à qui
+connaît l'adresse. `middlewares/fichierMiddleware.js` répond aux URL des fichiers
+(`/api/supports/...`, `/api/documents/...`) mais demande d'être connecté. Le token peut être placé dans l'URL
+(`?token=...`), parce qu'un simple lien, une balise image ou une WebView ne savent pas envoyer
+l'en-tête `Authorization`. Les fonctions `getFileUrl` / `fileUrl` (web et mobile) s'en chargent
+toutes seules. Conséquence pratique : un lien copié cesse de fonctionner dès qu'on se déconnecte.
 
 | Dossier | Qui peut ouvrir le fichier | Filigrane |
 |---|---|:-:|
@@ -1130,18 +1197,20 @@ mobile) l'ajoutent automatiquement. Un lien copié ne marche plus après la déc
 | `etudiants/` (CIN, certificats, photos) | Super Admin, Accueil ; l'étudiant pour **ses propres** pièces | Oui |
 | `utilisateurs/` (photos de profil) | Tout utilisateur connecté | Non |
 
-**2. Filigrane dynamique** (`utils/filigrane.js`). Au moment où le fichier est envoyé, le serveur
-écrit en diagonale, sur toute la page, le nom, l'e-mail de la personne qui consulte et la date.
-Le fichier sur le disque n'est jamais modifié. Si une capture ou une photo circule hors
-d'IMTECH, on sait d'où elle vient. C'est la seule protection qui fonctionne aussi contre une
-photo de l'écran prise avec un autre téléphone.
+**2. Filigrane dynamique** (`utils/filigrane.js`). Au moment d'envoyer le fichier, le serveur
+écrit en diagonale, sur toute la page, le nom et l'e-mail de la personne qui le consulte, ainsi
+que la date. Le fichier stocké sur le disque, lui, n'est jamais modifié. Si une capture ou une
+photo circule un jour hors d'IMTECH, on saura de quel compte elle vient. C'est d'ailleurs la seule
+protection qui tienne face à quelqu'un qui photographie l'écran avec un autre téléphone.
 
-**3. Formats des supports.** Un support doit être un **PDF ou une image** (PNG, JPEG, WEBP, GIF) :
-ce sont les formats que l'on sait filigraner et afficher dans le lecteur sécurisé. Un autre
-format est refusé à l'upload (400).
+**3. Formats des supports.** Un fichier de support doit être un **PDF ou une image** (PNG, JPEG,
+WEBP, GIF), les formats qu'on sait filigraner et afficher dans le lecteur sécurisé, ou un **audio /
+vidéo**, accepté sans filigrane (voir [§7.18](#718-supports-mis-en-forme--texte-riche-audio-vidéo-et-liens)).
+Un autre format est refusé dès l'envoi (400).
 
-**4. Lecteur sécurisé sur le mobile** (`app/lecteur.tsx`). Le support s'ouvre **dans l'application**
-(WebView) et non plus dans le navigateur externe, qui permettait de le télécharger :
+**4. Lecteur sécurisé sur le mobile** (`app/lecteur.tsx`). Le support s'ouvre **dans
+l'application** (WebView), et pas dans le navigateur du téléphone, d'où il serait trop facile de
+le télécharger :
 - PDF affiché page par page avec pdf.js, image affichée directement ;
 - le fond autour du document suit le thème clair / sombre de l'application (couleur passée à la page HTML du lecteur) ;
 - pas de téléchargement, pas d'appui long « Enregistrer l'image », pas de navigation vers une autre page ;
@@ -1151,20 +1220,15 @@ format est refusé à l'upload (400).
 - dans la version navigateur de l'app mobile (Expo web, utilisée pour le développement), la WebView
   n'existe pas : le lecteur passe par une `<iframe>`, et les captures ne peuvent pas y être bloquées.
 
-**Pas de consultation hors ligne** pour l'instant : elle demanderait de stocker le fichier sur
-le téléphone (chiffré, dans un lecteur natif), ce qui est prévu en perspective ([§13](#12-limites-et-perspectives)).
-
-> **Ce qui a changé.** Avant, `express.static` servait tous les fichiers uploadés **sans
-> authentification** : il suffisait de connaître l'URL d'une copie de CIN ou d'un support pour
-> la télécharger, même sans compte. Sur le mobile, les supports s'ouvraient dans le navigateur,
-> d'où l'étudiant pouvait les enregistrer et les partager.
+**Pas de lecture hors ligne** pour l'instant. Il faudrait pour cela garder le fichier sur le
+téléphone (chiffré, et lu par un lecteur natif) ; c'est noté dans les perspectives
+([§12](#12-limites-et-perspectives)).
 
 ### 7.15 Envoi programmé des supports
 
-Objectif : le formateur prépare un support à l'avance et choisit l'heure à laquelle il sera
-envoyé. Les étudiants sont **prévenus une heure avant** pour se préparer.
-
-*Ajouté le 10/10/2026.*
+Un formateur n'a pas toujours le temps de publier son support pile au début du cours. Il peut
+donc le préparer à l'avance et choisir l'heure à laquelle il partira. Les étudiants, eux, sont
+**prévenus une heure avant**, pour avoir le temps de s'organiser.
 
 **Cycle de vie d'un support**
 
@@ -1179,14 +1243,15 @@ stateDiagram-v2
     Publie --> [*]
 ```
 
-- **Programmé** (`support.statut = 'programme'`) = **brouillon** : invisible pour les étudiants
-  (liste, détail, fichier, commentaires, réactions). Le formateur le voit dans le panneau
-  « Supports programmés » de son espace et peut le **modifier** (titre, heure, fichier),
-  l'**envoyer maintenant** ou le **supprimer**.
-- **Publié** (`'publie'`) : visible par les étudiants inscrits ; il ne peut plus être modifié (409).
+- Un support **programmé** (`support.statut = 'programme'`) est en fait un **brouillon** : les
+  étudiants n'en voient rien (ni dans la liste, ni le détail, ni le fichier, ni les commentaires,
+  ni les réactions). Le formateur le retrouve dans la page « Supports programmés », où il peut le
+  **modifier** (titre, heure, fichier), l'**envoyer tout de suite** ou le **supprimer**.
+- Un support **publié** (`'publie'`) est visible par les étudiants inscrits. À partir de là, on ne
+  peut plus le modifier (409) : ce serait déroutant pour ceux qui l'ont déjà lu.
 
-**Planificateur.** Au démarrage du serveur puis **chaque minute**, `supportProgrammeService`
-vérifie les supports programmés :
+**Le planificateur.** Au démarrage du serveur, puis **toutes les minutes**,
+`supportProgrammeService` passe en revue les supports programmés :
 
 ```mermaid
 sequenceDiagram
@@ -1210,21 +1275,21 @@ sequenceDiagram
 | Même message | Envoi immédiat ou « Envoyer maintenant » | Étudiants inscrits |
 
 - **Pas de doublon** : l'annonce et l'envoi sont « réservés » par un `UPDATE ... WHERE` qui ne
-  réussit qu'une seule fois, même si deux vérifications se chevauchent.
-- **Heure modifiée** après l'annonce : l'annonce repart avec la nouvelle heure.
-- L'heure saisie dans le navigateur est convertie en **ISO (UTC)** avant l'envoi : le serveur
-  reçoit l'instant exact, quel que soit son fuseau.
-- Si le serveur était arrêté à l'heure prévue, le support part à la **première vérification**
-  après le redémarrage.
+  peut réussir qu'une fois. Même si deux vérifications tombent en même temps, les étudiants ne
+  reçoivent pas deux fois le même message.
+- **Heure changée après l'annonce** : une nouvelle annonce part avec la bonne heure.
+- L'heure choisie dans le navigateur est convertie en **ISO (UTC)** avant d'être envoyée, pour que
+  le serveur reçoive l'instant exact, quel que soit son fuseau horaire.
+- Si le serveur était éteint à l'heure prévue, le support part à la **première vérification**
+  après son redémarrage : il n'est pas perdu.
 
 ### 7.16 Fil de discussion, réaction « Je n'aime pas » et avis sur les formateurs
 
-*Ajouté le 10/10/2026.*
-
 #### a) Commentaires en fil de discussion
 
-Les commentaires d'un support s'affichent **comme sur les réseaux sociaux** : un commentaire
-principal, et en dessous un lien « **Voir les N réponses** » qui déplie les réponses liées.
+Les commentaires d'un support s'affichent **comme sur les réseaux sociaux**, ce qui évite aux
+étudiants d'avoir à apprendre un fonctionnement nouveau : un commentaire principal, et juste en
+dessous un lien « **Voir les N réponses** » qui déplie la conversation.
 
 - `commentaire.id_parent` : `NULL` pour un commentaire principal, sinon l'id du commentaire
   principal auquel il répond.
@@ -1255,15 +1320,17 @@ sequenceDiagram
 
 #### b) Réaction « Je n'aime pas » (👎)
 
-Quatrième type de réaction (`type_reaction.nom = 'dislike'`), à côté de 👍 J'aime, ❤️ J'adore
-et 💡 Utile. Les applications envoient désormais le **nom** du type (`{ type_reaction: 'dislike' }`)
-plutôt que son id, qui pouvait varier d'une base à l'autre. On ne peut réagir qu'à un support
-**publié**.
+C'est le quatrième type de réaction (`type_reaction.nom = 'dislike'`), à côté de 👍 J'aime,
+❤️ J'adore et 💡 Utile : il permet aux étudiants de dire quand un support ne les a pas aidés. Les
+applications envoient le **nom** du type (`{ type_reaction: 'dislike' }`) plutôt que son id, qui
+peut changer d'une base à l'autre. On ne peut réagir qu'à un support **publié**.
 
 #### c) Avis des étudiants sur les formateurs (back-office)
 
-Sur le **tableau de bord** (Super Admin, Accueil), le panneau « Avis des étudiants sur les
-formateurs » liste chaque formateur avec les réactions reçues sur ses supports publiés.
+Ces réactions servent à quelque chose : sur le **tableau de bord** (Super Admin, Accueil), le
+panneau « Avis des étudiants sur les formateurs » reprend chaque formateur avec les réactions
+reçues sur ses supports publiés. La direction a ainsi un premier retour des étudiants, sans
+questionnaire à faire remplir.
 
 | Indicateur | Calcul |
 |---|---|
@@ -1292,17 +1359,16 @@ Présentation (même tableau que la page Paiements, composants communs `Tableau`
 
 ### 7.17 Vitrine publique et inscription en ligne
 
-*Ajouté le 10/10/2026.*
-
-Objectif : une personne **non inscrite** qui ouvre l'application mobile découvre l'offre
-d'IMTECH INFO (comme la page d'accueil de Wattpad) et peut s'inscrire seule, à une ou plusieurs
-formations. L'inscription suit **la même méthode que l'Accueil** : compte, inscription +
-échéancier, premier paiement, puis **validation par l'Accueil**.
+Une personne **non inscrite** qui télécharge l'application découvre l'offre d'IMTECH INFO dès
+l'ouverture (un peu comme la page d'accueil de Wattpad) et peut
+s'inscrire elle-même, à une ou plusieurs formations. L'inscription suit **exactement le même
+chemin qu'à l'accueil** : compte, inscription + échéancier, premier paiement, puis **validation
+par l'Accueil**.
 
 #### a) La vitrine (`app/decouvrir.tsx`, sans connexion)
 
-C'est le premier écran de l'application quand personne n'est connecté (lien « Se connecter »
-en haut ; l'écran de connexion renvoie aussi vers la vitrine).
+C'est le premier écran qu'on voit quand personne n'est connecté (avec un lien « Se connecter » en
+haut ; l'écran de connexion permet aussi de revenir à la vitrine).
 
 | Bloc | Contenu | Source |
 |---|---|---|
@@ -1313,7 +1379,8 @@ en haut ; l'écran de connexion renvoie aussi vers la vitrine).
 | Notre engagement | Disponibilité, supports dans l'app, attestation vérifiable, paiement en tranches | texte fixe |
 | Nous contacter | Facebook, e-mail, WhatsApp (ouverts dans l'application correspondante) | `.env` : `IMTECH_FACEBOOK_URL`, `IMTECH_EMAIL`, `IMTECH_WHATSAPP`... |
 
-Aucune donnée personnelle d'étudiant n'est exposée (seulement le nombre d'inscrits).
+Cette page étant publique, elle n'affiche aucune donnée personnelle d'étudiant : on y voit
+seulement le nombre d'inscrits.
 
 #### b) L'inscription en ligne (une ou plusieurs formations)
 
@@ -1338,41 +1405,42 @@ sequenceDiagram
     API->>DB: inscription validée + paiement déclaré validé (pas de second paiement)
 ```
 
-- **Même fonction que l'Accueil** : `inscriptionService.creerInscriptionDans` (inscription +
-  échéancier) est appelée en boucle, une fois par formation, dans une seule transaction.
-- **Chaque inscription est validée séparément** par l'Accueil (bouton « Valider » habituel).
-  À la validation, le paiement déclaré est validé (mode et référence corrigeables) au lieu
-  d'enregistrer un second paiement.
-- **Compte créé tout de suite** : l'étudiant peut se connecter (e-mail pré-rempli) ; ses
-  formations affichent « En attente de validation par l'accueil » et **les fichiers des supports
-  ne s'ouvrent qu'après la validation**.
-- Les pièces du dossier (CIN, certificat de résidence, photos) ne sont pas demandées en ligne :
-  l'Accueil les complète lors de la validation.
-- Une même formation choisie deux fois ne compte qu'une fois ; 1 à 4 tranches par formation ;
-  mot de passe de 8 caractères minimum ; e-mail déjà utilisé → 409.
+- **La même fonction que pour l'Accueil** : plutôt que de réécrire la logique,
+  `inscriptionService.creerInscriptionDans` (inscription + échéancier) est appelée une fois par
+  formation choisie, le tout dans une seule transaction. Si une étape échoue, rien n'est gardé.
+- **Chaque inscription est validée à part** par l'Accueil, avec le bouton « Valider » habituel.
+  À ce moment-là, c'est le paiement déjà déclaré qui est validé (le mode et la référence peuvent
+  être corrigés), pour éviter d'enregistrer un deuxième paiement.
+- **Le compte existe tout de suite** : l'étudiant peut se connecter (son e-mail est pré-rempli).
+  Ses formations affichent « En attente de validation par l'accueil », et **les fichiers des
+  supports ne s'ouvrent qu'une fois l'inscription validée**.
+- Les pièces du dossier (CIN, certificat de résidence, photos) ne sont pas demandées en ligne ;
+  l'Accueil les complète au moment de la validation.
+- Quelques garde-fous : une formation choisie deux fois ne compte qu'une fois, 1 à 4 tranches par
+  formation, mot de passe de 8 caractères minimum, et un e-mail déjà utilisé est refusé (409).
 
 #### c) Images de la vitrine
 
-*Ajouté le 11/10/2026.*
-
-- Le bandeau du haut affiche le titre **« Découvrir »** sur une image de réseau de neurones
+- En haut de l'écran, le titre **« Découvrir »** s'affiche sur une image de réseau de neurones
   (`mobile/assets/images/fond-decouvrir.jpg`, embarquée dans l'application), sous un voile bleu
-  nuit qui garde le texte lisible. Il remplit tout le haut de l'écran, barre d'état comprise.
-- **Fond modifiable par le Super Admin** : web, Paramètres > Apparence > « Fond de la vitrine
-  mobile » → `PUT /vitrine/fond` (image enregistrée dans `uploads/vitrine/`, chemin gardé dans la
-  table `parametre_application`, clé `fond_vitrine`). « Par défaut » → `DELETE /vitrine/fond`.
-  `GET /public/vitrine` renvoie ce chemin dans `presentation.fond` ; l'application mobile l'affiche,
-  ou l'image embarquée si `fond` est `null`. Contrairement au logo du web (gardé dans le navigateur),
-  le fond est stocké sur le serveur, car c'est l'application mobile qui l'affiche.
-- Chaque formation a une **photo de couverture** : colonne `formation.image`
-  (`formations/xxx.jpg` dans `uploads/`). Le Super Admin la choisit dans le formulaire de la
-  formation (web) → `PUT /formations/:id/image`. Sans image, la couverture reste une couleur avec
-  les initiales.
-- Les couvertures sont **publiques** : la vitrine est consultée sans connexion, le dossier
-  `uploads/formations` (et `uploads/vitrine` pour le fond) est donc servi sans token ni filigrane
-  (contrairement aux supports et documents).
-- Images de démonstration : photos libres de droits de Wikimedia Commons, téléchargées et
-  recadrées par `node scripts/fichiersDemo.js`.
+  nuit qui garde le texte lisible. Le bandeau occupe tout le haut de l'écran, barre d'état
+  comprise.
+- **Le Super Admin peut changer ce fond** depuis le web : Paramètres > Apparence > « Fond de la
+  vitrine mobile » → `PUT /vitrine/fond`. L'image est rangée dans `uploads/vitrine/` et son chemin
+  est gardé dans la table `parametre_application` (clé `fond_vitrine`). Le bouton « Par défaut »
+  appelle `DELETE /vitrine/fond`. `GET /public/vitrine` renvoie ce chemin dans `presentation.fond` ;
+  l'application l'affiche, ou reprend l'image embarquée si `fond` vaut `null`. Le logo du web, lui,
+  est gardé dans le navigateur ; le fond, au contraire, doit être sur le serveur, puisque c'est
+  l'application mobile qui l'affiche.
+- Chaque formation a sa **photo de couverture** (colonne `formation.image`, fichier
+  `formations/xxx.jpg` dans `uploads/`). Le Super Admin la choisit dans le formulaire de la
+  formation sur le web (`PUT /formations/:id/image`). Sans photo, la couverture affiche une couleur
+  avec les initiales de la formation.
+- Ces images sont **publiques** : la vitrine se consulte sans être connecté, donc les dossiers
+  `uploads/formations` et `uploads/vitrine` sont servis sans token ni filigrane, à la différence
+  des supports et des documents.
+- Pour la démonstration, les images sont des photos libres de droits trouvées sur Wikimedia
+  Commons, téléchargées et recadrées par `node scripts/fichiersDemo.js`.
 
 | Image | Fichier Wikimedia Commons | Auteur | Licence |
 |---|---|---|---|
@@ -1386,42 +1454,18 @@ sequenceDiagram
 
 ### 7.18 Supports mis en forme : texte riche, audio, vidéo et liens
 
-*Ajouté le 11/10/2026.*
-
-Objectif : le formateur publie un support comme dans un petit CMS. Un support contient un
-**titre**, et au choix un **texte mis en forme**, une **pièce jointe** (PDF, image, audio, vidéo),
-ou les deux. L'envoi immédiat ou programmé ([§7.15](#615-envoi-programmé-des-supports)), les
-commentaires et les réactions ne changent pas.
-
-#### Recherche globale (web et mobile)
-
-Dans la barre du haut de chaque page : bouton **Rechercher…** (ou **Ctrl+K**). Une fenêtre cherche à
-la fois dans les **pages du menu** (sur place) et dans les données (`GET /recherche`, selon le rôle).
-↑ ↓ pour choisir, Entrée pour ouvrir. Un résultat ouvre directement la bonne fiche : étudiant,
-formation, inscription, compte utilisateur ; pour le formateur, son espace avec la fenêtre des
-étudiants de la formation, ou la page Supports filtrée sur le support trouvé. Chaque fiche ayant
-sa propre adresse ([§7.19](#719-fiches-dans-lurl-web)), ouvrir un résultat revient à aller à
-cette adresse (`navigate(cheminResultat(resultat, role))`).
-
-**Sur le mobile (étudiant)**, *ajouté le 11/10/2026* : la loupe 🔍 de l'Accueil et de l'en-tête de
-chaque écran (`DetailHeader`) ouvre une fenêtre plein écran. Elle cherche :
-
-| Groupe | Où | Règle | Un toucher ouvre |
-|---|---|---|---|
-| Écrans | Sur place (sans serveur), sans tenir compte des accents | Titre et mots-clés (« payer » → Paiements, « theme » → Paramètres) | L'écran |
-| Mes formations | `GET /recherche` | Formations où l'étudiant a une inscription active, avec « En attente de validation » si l'Accueil ne l'a pas encore validée | Détail de la formation |
-| Supports de cours | `GET /recherche` | Titre ou texte des supports **publiés** des formations dont l'inscription est **validée** (mêmes droits que la lecture des fichiers, [§7.14](#714-consultation-sécurisée-des-documents)) ; type (PDF, vidéo…), formation et date affichés | Fiche du support |
-
-Comme sur le web : 2 caractères minimum, requête 250 ms après la dernière frappe, réponse
-dépassée ignorée (`hooks/use-recherche.ts`), 5 résultats par groupe. Un étudiant sans fiche
-étudiant ne reçoit rien, et il ne voit jamais les groupes du personnel (étudiants, inscriptions,
-comptes).
+Un support ne se limite pas à un fichier : le formateur peut écrire des consignes, mettre un lien
+ou partager un enregistrement. Il s'écrit comme dans un petit CMS : un **titre**, puis au choix un
+**texte mis en forme**, une **pièce jointe** (PDF, image, audio, vidéo), ou les deux. L'envoi
+immédiat ou programmé ([§7.15](#715-envoi-programmé-des-supports)), les commentaires et les
+réactions s'appliquent à tous les supports.
 
 #### a) Rédaction (web, page « Supports » du formateur)
 
-Le menu du formateur sépare trois pages : **Espace formateur** (formations, étudiants en fenêtre,
-classement et notes d'attestation), **Supports** (publication + supports publiés avec recherche,
-filtres et tri) et **Supports programmés** (brouillons en attente d'envoi).
+Le menu du formateur compte trois pages : **Espace formateur** (ses formations, la liste des
+étudiants, le classement et les notes d'attestation), **Supports** (pour publier, et retrouver
+les supports déjà publiés avec recherche, filtres et tri) et **Supports programmés** (les
+brouillons qui attendent leur heure).
 
 1. Le formateur choisit la formation et saisit le titre.
 2. Il rédige dans l'éditeur (`components/editeur/EditeurTexte.jsx`) : **gras**, *italique*,
@@ -1444,12 +1488,14 @@ contenu (HTML du navigateur)
 support.contenu (MEDIUMTEXT)   ← HTML toujours propre en base
 ```
 
-- Il faut un texte **ou** un fichier ; sans fichier, le titre est obligatoire. Un texte vide
-  laissé par l'éditeur (`<p><br></p>`) compte comme « pas de texte ».
-- Un brouillon sans fichier ne peut pas perdre son texte.
-- Pourquoi nettoyer côté serveur : le texte est affiché chez **tous** les étudiants de la
-  formation. Sans liste blanche, un `<script>` glissé dans le texte (formateur malveillant ou
-  compte volé) s'exécuterait chez eux (faille **XSS**) et pourrait voler leur session.
+- Il faut au moins un texte **ou** un fichier ; sans fichier, le titre devient obligatoire. Le
+  « texte vide » que laisse parfois l'éditeur (`<p><br></p>`) est traité comme une absence de texte.
+- Un brouillon sans fichier ne peut pas se retrouver sans texte, sinon il ne resterait rien.
+- Pourquoi ce nettoyage se fait-il sur le serveur ? Parce que ce texte s'affiche chez **tous** les
+  étudiants de la formation. Sans liste blanche, un `<script>` glissé dans le texte (par un
+  formateur mal intentionné, ou par quelqu'un qui aurait volé son compte) s'exécuterait chez chacun
+  d'eux : c'est la faille **XSS**, qui permettrait par exemple de voler leur session. Nettoyer dans
+  le navigateur ne suffirait pas, puisqu'on peut toujours contourner l'interface.
 
 #### c) Lecture
 
@@ -1460,18 +1506,16 @@ support.contenu (MEDIUMTEXT)   ← HTML toujours propre en base
 | Audio / vidéo | Lecteur intégré, sans bouton « Télécharger » ni clic droit | Lecteur sécurisé (`app/lecteur.tsx`) : lecteur HTML5 dans la WebView, captures bloquées |
 | PDF / image | Inchangé (lien, fichier filigrané) | Inchangé (lecteur sécurisé, filigrane) |
 
-Les fichiers audio / vidéo passent par le même contrôle d'accès que les autres supports
-([§7.14](#614-consultation-sécurisée-des-documents)) mais **sans filigrane** (impossible à
-ajouter à la volée) ; le serveur les sert par morceaux (`Range`) pour permettre d'avancer dans
-la lecture. Dans la liste des documents (web), un support texte seul n'apparaît pas (pas de fichier).
+L'audio et la vidéo passent par le même contrôle d'accès que les autres supports
+([§7.14](#714-consultation-sécurisée-des-documents)), mais **sans filigrane** : on ne sait pas en
+ajouter un à la volée sur ce type de fichier. Le serveur les envoie par morceaux (`Range`), ce qui
+permet d'avancer ou de reculer dans la lecture sans tout télécharger. Dans la liste des documents
+(web), un support qui n'a que du texte n'apparaît pas, puisqu'il n'a pas de fichier.
 
 ### 7.19 Fiches dans l'URL (web)
 
-*Ajouté le 11/10/2026.*
-
-Objectif : chaque vue du back-office a **sa propre adresse**. Un rechargement (F5) garde la fiche
-ouverte, le bouton « Précédent » du navigateur revient à la vue d'avant, et un lien vers une fiche
-peut être envoyé à un collègue.
+Chaque vue du back-office a **sa propre adresse** : un rechargement (F5) garde la fiche ouverte,
+« Précédent » revient à la vue précédente, et on peut envoyer le lien d'une fiche à un collègue.
 
 | Section | Liste | Fiche | Création | Modification |
 |---|---|---|---|---|
@@ -1499,27 +1543,23 @@ Déroulement :
    numérique, retour à la liste.
 3. Les boutons des pages (« Voir », « Modifier », « Retour ») appellent `navigate()` avec les
    adresses de `utils/navigation.js` (`CHEMINS.etudiant(id)`, `CHEMINS.modifierFormation(id)`…).
-   La recherche globale ([§7.18](#718-supports-mis-en-forme--texte-riche-audio-vidéo-et-liens))
+   La recherche globale ([§7.22](#722-recherche-globale-web-et-mobile))
    utilise les mêmes adresses.
 4. Lien ouvert **sans être connecté** : `App.jsx` envoie vers `/login` en gardant l'adresse
    demandée (`state.depuis`) ; après la connexion, on arrive directement sur la fiche.
 
-Le serveur ne change pas : la fiche appelle les mêmes routes qu'avant (`GET /etudiants/:id`…), et
-les contrôles d'accès restent côté API (un lien partagé n'ouvre rien à quelqu'un qui n'a pas le droit).
-
-> **Ce qui a changé.** Avant, la fiche ouverte était gardée en mémoire dans `DashboardLayout`
-> (`studentView`, `formationView`, `inscriptionView`, `userView`) : un F5 revenait à la liste,
-> « Précédent » quittait la page et aucun lien ne menait à une fiche. Ces états sont supprimés ;
-> `DashboardLayout` ne garde plus que le menu, les préférences d'affichage (`hooks/usePreferences.js`)
-> et le compteur de notifications.
+Côté serveur, la fiche appelle les routes habituelles (`GET /etudiants/:id`…), et les contrôles
+d'accès restent dans l'API. Un lien partagé n'ouvre donc rien à quelqu'un qui n'a pas le droit de
+voir la fiche. `DashboardLayout` ne s'occupe que du menu, des préférences d'affichage
+(`hooks/usePreferences.js`) et du compteur de notifications.
 
 ### 7.20 Pagination côté serveur
 
-*Ajouté le 11/10/2026.*
-
-Objectif : les listes les plus longues (étudiants, paiements, inscriptions, échéances) ne
-chargent plus **toute la table** à chaque ouverture : le serveur renvoie une page de 20 lignes et
-le nombre total. La page reste rapide avec des milliers de paiements.
+Au bout de quelques années, le centre aura des milliers de paiements. Les listes les plus longues
+(étudiants, paiements, inscriptions, échéances) ne chargent donc pas **toute la table** à chaque
+ouverture : le serveur renvoie une page de 20 lignes et le nombre total, et l'écran reste rapide
+quelle que soit la taille de la base. Le bandeau « paiements à valider » compte, lui, sur toute la
+base.
 
 ```mermaid
 sequenceDiagram
@@ -1548,7 +1588,7 @@ sequenceDiagram
 |---|---|
 | Paramètres | `?page=` (1 par défaut), `?limite=` (20 par défaut, **100 au maximum**) ; une valeur invalide est corrigée (page 0 ou « abc » → page 1) |
 | Réponse | `{ status, data, pagination: { page, limite, total, pages } }` (+ `compteurs` pour les paiements) |
-| Sans `?page=` | La route renvoie **toute la liste comme avant** : l'application mobile et le tableau de bord n'ont pas eu à changer |
+| Sans `?page=` | La route renvoie **toute la liste** (utilisé par l'application mobile et le tableau de bord) |
 | Filtres | Appliqués **dans la requête SQL** (avant le `LIMIT`), donc le total et les pages correspondent au filtre. Une valeur de filtre inconnue est ignorée (ex. `statut=VIOLET`) |
 | Recherche | `LIKE` sur nom, prénom, « prénom nom », « nom prénom » (+ e-mail et téléphone pour les étudiants, nom de la formation pour les autres listes) ; `%` et `_` tapés par l'utilisateur sont cherchés tels quels ; 100 caractères max |
 | Tri | Stable (un identifiant en dernier critère) : une ligne n'apparaît pas sur deux pages |
@@ -1573,22 +1613,20 @@ sequenceDiagram
 - Côté serveur, le code commun est dans `utils/pagination.js` (`lirePagination`, `clauseLimite`,
   `motifLike`, `reponsePaginee`) ; chaque model a une fonction de filtres partagée par la requête
   de la page et celle du total.
-- Le formateur, dans la page Étudiants, garde l'ancien fonctionnement (seulement les étudiants de
-  ses formations, chargés formation par formation).
-
-> **Ce qui a changé.** Avant, ces quatre routes renvoyaient toutes les lignes et la page filtrait /
-> découpait dans le navigateur : avec quelques milliers de paiements, chaque ouverture transférait
-> et affichait toute la table. Le bandeau « paiements à valider » est maintenant compté sur toute la
-> base (il ne dépend plus de la page affichée).
+- Le formateur, dans la page Étudiants, n'est pas paginé : il ne voit que les étudiants de ses
+  formations, chargés formation par formation.
 
 ### 7.21 Apparence : thème clair / sombre et couleur principale
 
-Chaque utilisateur règle son interface dans **Paramètres > Apparence** : thème clair ou sombre,
-couleur principale (7 choix), taille du texte, densité, menu réduit, logo. Sur le web, les choix
-sont appliqués sur `<html>` (attributs `data-*` et variables CSS) et gardés dans le navigateur
-(`hooks/usePreferences.js`) ; sur le mobile, par `SettingsContext` (palette passée à tous les styles).
+Chacun peut adapter l'interface à son goût dans **Paramètres > Apparence** : thème clair ou
+sombre, couleur principale (7 choix), taille du texte, densité, menu réduit, logo. Sur le web, ces
+choix sont appliqués sur `<html>` (attributs `data-*` et variables CSS) et gardés dans le
+navigateur (`hooks/usePreferences.js`) ; sur le mobile, c'est `SettingsContext` qui transmet la
+palette à tous les styles.
 
-Règle : **aucune couleur écrite en dur** dans les pages. Tout passe par des variables du thème :
+Pour que tout cela fonctionne, une règle a été suivie partout : **aucune couleur écrite en dur**
+dans les pages. Tout passe par des variables du thème. Sans cela, il suffit d'un seul bleu oublié
+pour qu'un texte devienne invisible en mode sombre.
 
 | Variable (web) / palette (mobile) | Rôle |
 |---|---|
@@ -1597,20 +1635,50 @@ Règle : **aucune couleur écrite en dur** dans les pages. Tout passe par des va
 | `--success`, `--danger`, `--warning` | Couleurs d'état (payé, retard, attention), avec une version claire pour le thème sombre |
 | `color-scheme: dark` | Listes déroulantes, calendriers et barres de défilement du navigateur en sombre |
 
-Contrastes mesurés en mode sombre (seuil recommandé pour un texte : 4,5:1) :
+Contrastes mesurés en mode sombre (le seuil recommandé pour un texte est de 4,5:1) :
 
-| Couleur | Avant | Après |
-|---|---|---|
-| Couleur principale (Bleu IMTECH) | 1,2 | **6,8** |
-| Succès / Erreur | 2,9 / 2,6 | **8,4 / 5,3** |
-| Texte sur bouton principal | 2,1 | **8,3** |
+| Couleur | Contraste |
+|---|---|
+| Couleur principale (Bleu IMTECH) | **6,8:1** |
+| Succès / Erreur | **8,4:1 / 5,3:1** |
+| Texte sur bouton principal | **8,3:1** |
 
 Le **Super Admin** choisit aussi le fond du bandeau « Découvrir » de l'application mobile
 (enregistré sur le serveur, [§7.17](#717-vitrine-publique-et-inscription-en-ligne)).
 
+### 7.22 Recherche globale (web et mobile)
+
+Plutôt que de naviguer de menu en menu pour retrouver un étudiant, on peut le chercher
+directement. En haut de chaque page, il y a un bouton **Rechercher…** (raccourci **Ctrl+K**). La
+fenêtre qui s'ouvre cherche à la fois dans les **pages du menu** (sans appeler le serveur) et dans
+les données (`GET /recherche`, selon le rôle). On choisit avec ↑ ↓ et on ouvre avec Entrée.
+Chaque résultat mène directement à la bonne fiche : étudiant, formation, inscription, compte
+utilisateur ; pour un formateur, son espace avec la liste des étudiants de la formation, ou la page
+Supports filtrée sur le support trouvé. Comme chaque fiche a sa propre adresse
+([§7.19](#719-fiches-dans-lurl-web)), ouvrir un résultat revient simplement à aller à cette adresse
+(`navigate(cheminResultat(resultat, role))`).
+
+**Sur le mobile (étudiant)**, la loupe 🔍 de l'Accueil et de l'en-tête de chaque écran (`DetailHeader`) ouvre une fenêtre plein écran, qui cherche dans :
+
+| Groupe | Où | Règle | Un toucher ouvre |
+|---|---|---|---|
+| Écrans | Sur place (sans serveur), sans tenir compte des accents | Titre et mots-clés (« payer » → Paiements, « theme » → Paramètres) | L'écran |
+| Mes formations | `GET /recherche` | Formations où l'étudiant a une inscription active, avec « En attente de validation » si l'Accueil ne l'a pas encore validée | Détail de la formation |
+| Supports de cours | `GET /recherche` | Titre ou texte des supports **publiés** des formations dont l'inscription est **validée** (mêmes droits que la lecture des fichiers, [§7.14](#714-consultation-sécurisée-des-documents)) ; type (PDF, vidéo…), formation et date affichés | Fiche du support |
+
+Les règles sont les mêmes que sur le web : il faut au moins 2 caractères, la requête part 250 ms
+après la dernière touche tapée (pour ne pas interroger le serveur à chaque lettre), une réponse
+arrivée trop tard est ignorée (`hooks/use-recherche.ts`), et on affiche 5 résultats par groupe.
+Un compte étudiant sans fiche étudiant ne reçoit aucun résultat, et un étudiant ne voit jamais les
+groupes réservés au personnel (étudiants, inscriptions, comptes).
+
 ---
 
 ## 8. Sécurité
+
+L'application manipule de l'argent, des pièces d'identité et des documents qui ont de la valeur.
+Le tableau suivant résume, pour chaque risque qu'on a identifié, ce qui a été mis en place pour
+s'en protéger.
 
 | Menace | Protection mise en place |
 |---|---|
@@ -1623,23 +1691,25 @@ Le **Super Admin** choisit aussi le fond du bandeau « Découvrir » de l'applic
 | Injection SQL | Requêtes paramétrées (`?`) dans tous les models |
 | Fuite d'informations techniques | Les erreurs 500 renvoient un message générique |
 | Énumération des comptes | « Mot de passe oublié » renvoie la même réponse que l'e-mail existe ou non |
-| Essais de mots de passe à l'infini (force brute) | 5 échecs / 15 min par compte, 20 par adresse IP ; mot de passe oublié limité à 5 demandes / heure ; réponse 429 ([§7.1](#71-connexion-session-et-déconnexion)) |
+| Essais de mots de passe à l'infini (force brute) | Échecs de connexion limités par compte et par adresse IP, demandes « mot de passe oublié » limitées ; réponse 429 ([§7.1](#71-connexion-session-et-déconnexion)) |
 | Liste énorme demandée pour ralentir le serveur | Pagination plafonnée à 100 lignes par page ([§7.20](#720-pagination-côté-serveur)) |
 | Fichiers malveillants | Liste blanche des types de fichiers et taille maximale à l'upload |
-| Script injecté dans le texte d'un support (XSS) | HTML nettoyé à l'enregistrement par une liste blanche de balises (`sanitize-html`), liens http(s) / mailto uniquement ([§7.18](#618-supports-mis-en-forme--texte-riche-audio-vidéo-et-liens)) |
-| Accès aux fichiers par URL | Fichiers servis uniquement à un utilisateur connecté ayant le droit de les voir ([§7.14](#614-consultation-sécurisée-des-documents)) |
+| Script injecté dans le texte d'un support (XSS) | HTML nettoyé à l'enregistrement par une liste blanche de balises (`sanitize-html`), liens http(s) / mailto uniquement ([§7.18](#718-supports-mis-en-forme--texte-riche-audio-vidéo-et-liens)) |
+| Accès aux fichiers par URL | Fichiers servis uniquement à un utilisateur connecté ayant le droit de les voir ([§7.14](#714-consultation-sécurisée-des-documents)) |
 | Fuite des documents hors d'IMTECH | Filigrane au nom de la personne, lecteur mobile sans téléchargement, captures bloquées sur mobile |
 | Secret JWT faible ou absent | Le serveur refuse de démarrer sans `JWT_SECRET` |
 
-> **Limite connue** : sur le **web**, un navigateur ne permet pas d'empêcher une capture d'écran.
-> Le filigrane reste la protection principale. Voir [§13](#12-limites-et-perspectives).
+> **Limite connue** : sur le **web**, aucun navigateur ne permet d'empêcher une capture d'écran.
+> Là, c'est le filigrane qui fait l'essentiel du travail. Voir [§12](#12-limites-et-perspectives).
 
 ---
 
 ## 9. Gestion des erreurs
 
-Toutes les erreurs suivent le même chemin : la couche qui détecte le problème **lève**
-une erreur, et un **gestionnaire unique** (dans `app.js`) construit la réponse.
+Quelle que soit l'erreur, elle suit toujours le même chemin : la couche qui repère le problème
+**lève** une erreur, puis un **gestionnaire unique** (dans `app.js`) se charge de construire la
+réponse. Chaque code HTTP a un sens précis, ce qui permet aux applications d'afficher le bon
+message à l'utilisateur :
 
 | Code | Signification | Exemple |
 |---|---|---|
@@ -1651,9 +1721,8 @@ une erreur, et un **gestionnaire unique** (dans `app.js`) construit la réponse.
 | 429 | Trop de requêtes | Trop d'échecs de connexion, trop de demandes « mot de passe oublié » ou d'inscriptions en ligne |
 | 500 | Erreur inattendue | Message générique ; le détail est écrit uniquement dans les logs du serveur |
 
-> **Ce qui a changé.** Chaque controller contenait son propre `try/catch` renvoyant un 500
-> générique, et certains devinaient le code HTTP en lisant le texte du message d'erreur.
-> Le nouveau système (`utils/errors.js` + gestionnaire unique) supprime cette duplication.
+Les services lèvent une `AppError(code, message)` (`utils/errors.js`) : les controllers n'ont donc
+pas de `try/catch`, et le code HTTP ne dépend jamais du texte du message.
 
 ---
 
@@ -1661,8 +1730,9 @@ une erreur, et un **gestionnaire unique** (dans `app.js`) construit la réponse.
 
 ### 10.1 Tests automatisés du backend
 
-Lancement : `cd backend-imtech && npm test` (101 tests, sans base de données : les models
-sont remplacés par des simulations).
+Pour les lancer : `cd backend-imtech && npm test`. Il y en a 101, et ils n'ont pas besoin de base
+de données : les models sont remplacés par des simulations, ce qui permet de les exécuter en
+quelques secondes, sur n'importe quel poste.
 
 | Fichier | Ce qui est vérifié |
 |---|---|
@@ -1676,7 +1746,7 @@ sont remplacés par des simulations).
 | `tests/fichiers.test.js` | Fichier refusé sans connexion, support refusé à un étudiant non inscrit, PDF et image filigranés et sans cache, token accepté dans l'URL, documents administratifs refusés aux étudiants, routes `/supports/:id` toujours accessibles, `../` impossible, support Word refusé à l'upload, couverture de formation publique sans filigrane |
 | `tests/contenuRiche.test.js` | Texte mis en forme : balises gardées ou converties, XSS supprimé (script, `onclick`, `javascript:`), liens en nouvel onglet, texte vide ; support texte seul, support vide ou sans titre refusé, texte d'un brouillon sans fichier non supprimable |
 | `tests/limiteConnexion.test.js` | Connexion : 429 après 5 mauvais mots de passe sur un compte (même avec majuscules / espaces), autre compte encore possible, réussite qui remet le compteur à zéro, blocage de tous les comptes après 20 échecs depuis une IP ; mot de passe oublié : 429 après 5 demandes |
-| `tests/pagination.test.js` | Sans `?page` : liste complète comme avant ; page et limite bornées (max 100) et converties en offset, nombre de pages ; filtres transmis au model (recherche nettoyée, statut, mode), nombre de paiements en attente, étudiant limité à ses paiements, valeurs de filtre inconnues ignorées |
+| `tests/pagination.test.js` | Sans `?page` : liste complète ; page et limite bornées (max 100) et converties en offset, nombre de pages ; filtres transmis au model (recherche nettoyée, statut, mode), nombre de paiements en attente, étudiant limité à ses paiements, valeurs de filtre inconnues ignorées |
 | `tests/autorisations.test.js` | Tests HTTP de bout en bout : 401 sans token, session révoquée refusée, étudiant ne pouvant pas modifier un autre compte ni changer son rôle, accès au tableau de paiement d'autrui refusé, tokens jamais renvoyés, erreur 500 sans fuite |
 
 ### 10.2 Analyse statique
@@ -1733,8 +1803,10 @@ gestionFormation_stage/
     └── src/
         ├── app/                écrans (Expo Router : navigation par fichiers)
         │   ├── (tabs)/         Accueil, Formations, Documents, Notifications, Profil
+        │   ├── decouvrir.tsx   vitrine publique et inscription en ligne (sans connexion)
         │   ├── login.tsx, paiements.tsx, parametres.tsx
-        │   ├── lecteur.tsx     lecteur sécurisé des supports (WebView, captures bloquées)
+        │   ├── assistance.tsx  demandes d'assistance à l'Accueil
+        │   └── lecteur.tsx     lecteur sécurisé des supports (WebView, captures bloquées)
         ├── constants/api.ts    URL de l'API et liste des endpoints
         ├── context/            AuthContext (utilisateur connecté), SettingsContext (thème)
         ├── hooks/              un hook par ressource (use-paiement, use-support...)
@@ -1746,117 +1818,10 @@ gestionFormation_stage/
 
 ---
 
-## 12. Évolutions apportées pendant la revue
+## 12. Limites et perspectives
 
-### 12.1 Démarche
-
-1. **Audit** du code existant (structure, sécurité, qualité) : note initiale d'environ **6,5/10**.
-2. **Priorisation** : d'abord les failles de sécurité, ensuite les bugs, enfin la qualité et les
-   nouvelles fonctionnalités, par **lots** livrés et vérifiés l'un après l'autre.
-3. **Décisions métier** prises avec le porteur du projet avant chaque lot (ex. paiements des
-   étudiants validés par l'Accueil, barème de la note d'attestation, vitrine publique).
-4. **Vérification** après chaque lot : tests automatisés, lint, build, appels réels de l'API sur
-   la base locale, puis essai dans l'application.
-5. **Nouvel audit** (11/10/2026) : 7/10, puis environ **8/10** après la pagination, la limite des
-   essais de connexion, les fiches dans l'URL et le découpage des gros fichiers.
-
-### 12.2 Historique des évolutions
-
-| Étape | Évolution | Règles détaillées |
-|---|---|---|
-| Lot 1 (07/10) | Revue sécurité et qualité : 21 failles et 17 bugs corrigés (12.4, 12.5), architecture en couches, gestion des erreurs unique, transactions, premiers tests ; **paiements étudiants en attente de validation** | [§3](#3-architecture-du-backend-en-couches), [§7.6](#76-paiement-dune-échéance-par-létudiant-mobile--validation-par-laccueil), [§9](#9-gestion-des-erreurs) |
-| Lot 2 | Assistance (étudiant → Accueil), rappels de paiement envoyés par l'Accueil, notifications | [§7.7](#77-suivi-des-échéances-et-rappels-de-paiement), [§7.10](#710-notifications), [§7.12](#712-assistance) |
-| Lot 3 | Protection des documents : fichiers servis seulement aux ayants droit, filigrane, lecteur mobile intégré, captures bloquées | [§7.14](#714-consultation-sécurisée-des-documents) |
-| Lot 4 (10/10) | Présence automatique et note d'attestation /20 (paiement + présence + présentation) | [§7.13](#713-présence-classement-et-note-dattestation) |
-| Lot 5 (10/10) | Envoi programmé des supports (annonce 1 h avant, publication automatique) | [§7.15](#715-envoi-programmé-des-supports) |
-| Lot 6 (10/10) | Fil de discussion, réaction « Je n'aime pas », avis des étudiants sur les formateurs | [§7.16](#716-fil-de-discussion-réaction--je-naime-pas--et-avis-sur-les-formateurs) |
-| Lot 7 (10/10) | Vitrine publique « Découvrir » et inscription en ligne à une ou plusieurs formations | [§7.17](#717-vitrine-publique-et-inscription-en-ligne) |
-| 10/10 | Un seul script d'évolution de la base (`alter2.sql`), données de démonstration réalistes | [§5.3](#53-scripts-sql) |
-| 11/10 | Supports mis en forme (texte riche, audio, vidéo, liens) ; images de la vitrine et fond choisi par le Super Admin | [§7.18](#718-supports-mis-en-forme--texte-riche-audio-vidéo-et-liens), [§7.17](#717-vitrine-publique-et-inscription-en-ligne) |
-| 11/10 | « Se déconnecter partout » visible en moins d'une minute (vérification périodique de la session, web et mobile) | [§7.1](#71-connexion-session-et-déconnexion) |
-| 11/10 | Espace formateur réorganisé (cartes, fenêtre des étudiants, pages Supports et Supports programmés, recherche / filtres / tri) ; pages limitées au menu du rôle | [§6.4](#64-web--formateur), [§4.2](#42-matrice-des-droits-résumé) |
-| 11/10 | Thème sombre lisible partout (variables de couleur, contrastes) | [§7.21](#721-apparence--thème-clair--sombre-et-couleur-principale) |
-| 11/10 | Recherche globale : web (Ctrl+K) puis mobile (loupe de l'en-tête) | [§7.18](#718-supports-mis-en-forme--texte-riche-audio-vidéo-et-liens) |
-| 11/10 | Limite des essais de connexion, pagination côté serveur, une adresse par fiche | [§7.1](#71-connexion-session-et-déconnexion), [§7.20](#720-pagination-côté-serveur), [§7.19](#719-fiches-dans-lurl-web) |
-| 11/10 | Qualité : `DashboardLayout` (415 → 144 lignes) et `Parametres` (531 → 80 lignes, un composant par onglet) découpés | [§11](#11-organisation-du-code) |
-| 11/10 | Page Paramètres (web) plus lisible : textes montés d'un cran (menu, libellés, explications, boutons de choix, formulaire), toujours réglables par « Taille du texte » | [§7.21](#721-apparence--thème-clair--sombre-et-couleur-principale) |
-
-### 12.3 Synthèse avant / après
-
-| Domaine | Avant | Après |
-|---|---|---|
-| Contrôle d'accès | Rôle vérifié, mais pas le propriétaire des données | Rôle **et** propriétaire vérifiés côté serveur |
-| Comptes | Tout utilisateur pouvait modifier n'importe quel compte et son rôle | Chacun son compte ; rôles réservés au Super Admin |
-| Paiements | Auto-validés par l'étudiant, montant libre | En attente puis validés par l'Accueil, montant imposé |
-| Sessions | Déconnexion sans effet côté serveur | Sessions révocables, vérifiées à chaque requête |
-| Données sensibles | Tokens et hash dans les logs et les réponses | Supprimés |
-| Cohérence des données | Opérations liées sans transaction | Transactions (inscription + échéancier, validation + paiement, dossier étudiant) |
-| Erreurs | `try/catch` copiés dans chaque controller | Gestionnaire unique, codes HTTP cohérents |
-| Couches | SQL dans certains services | SQL uniquement dans les models |
-| Configuration | IP et URL écrites en dur | Variables d'environnement + détection automatique |
-| Fichiers | Servis à tous sans connexion, ouverts dans le navigateur sur mobile | Accès contrôlé, filigrane, lecteur intégré, captures bloquées sur mobile |
-| Connexion | Essais de mots de passe illimités | 5 échecs / 15 min par compte, 20 par IP (429) |
-| Listes (étudiants, paiements, inscriptions, échéances) | Toute la table chargée puis filtrée dans le navigateur | Pagination et filtres côté serveur (20 lignes par page) |
-| Navigation web | Fiche gardée en mémoire : perdue au rechargement, pas de lien possible | Une adresse par fiche (`/dashboard/etudiants/12`), F5 et « Précédent » fonctionnent |
-| Thème sombre | Textes d'accent quasi invisibles (contraste 1,2:1) | Couleurs du thème partout (6,8:1) |
-| Tests | Aucun | 101 tests automatisés |
-| Lint | 25 erreurs (web), 20 (mobile) | 0 erreur |
-
-### 12.4 Failles de sécurité corrigées
-
-| # | Faille | Avant | Après |
-|---|---|---|---|
-| 1 | `PUT /utilisateurs/:id` | N'importe quel utilisateur connecté pouvait modifier **n'importe quel compte**, se donner le rôle Super Admin ou changer le mot de passe d'un autre | Seulement son propre compte, ou le Super Admin ; un non-admin ne peut changer ni le rôle ni le mot de passe par cette route |
-| 2 | `GET /utilisateurs/:id` | Tout utilisateur pouvait lire les infos de n'importe qui | Soi-même ou Super Admin |
-| 3 | `POST/PUT /etudiants` | Rôle lu depuis le formulaire : un compte Accueil pouvait créer un **Super Admin** | Rôle Étudiant imposé par le serveur |
-| 4 | `POST /paiements` (étudiant) | Paiement **déjà validé**, montant libre, sur n'importe quelle échéance | Sa propre échéance, montant imposé, statut « en attente », un seul paiement en attente par échéance |
-| 5 | `GET /paiements` (étudiant) | Renvoyait les paiements de **tous** les étudiants | Uniquement les siens |
-| 6 | `GET /paiements/:id` (étudiant) | Pouvait lire n'importe quel paiement | Uniquement les siens (404 sinon) |
-| 7 | `/etudiants/:id/dashboard-paiement` | Changer l'id dans l'URL donnait les données d'un autre étudiant (IDOR) | 403 si l'id n'est pas le sien |
-| 8 | `/etudiants/:id/formations` | Même problème | Même correction |
-| 9 | Déconnexion / « déconnecter les autres appareils » | Le token restait valide 24 h | La session est vérifiée en base à chaque requête |
-| 10 | `POST /auth/logout` | Non protégé, sans effet | Exige le token et désactive la session |
-| 11 | Changement / réinitialisation du mot de passe | Les autres sessions restaient connectées | Changement : autres appareils déconnectés ; réinitialisation : tous |
-| 12 | Suppression d'un utilisateur | Ses sessions restaient actives | Toutes ses sessions sont désactivées |
-| 13 | `GET /auth/sessions` | Renvoyait les **tokens** de toutes les sessions | Aucun token renvoyé |
-| 14 | Authentification | En-tête Authorization et token écrits dans les logs | Logs supprimés |
-| 15 | Changement de mot de passe | **Hash du mot de passe** écrit dans les logs | Logs supprimés |
-| 16 | Secret JWT | Valeur de secours écrite en dur dans le code | Le serveur refuse de démarrer sans `JWT_SECRET` |
-| 17 | Erreurs 500 | Message technique (SQL…) renvoyé au client | Message générique, détail dans les logs du serveur |
-| 18 | `DELETE /supports/:id` | Un formateur pouvait supprimer les supports des autres | Ses propres supports (le Super Admin peut tout supprimer) |
-| 19 | `POST /supports` | Un formateur pouvait publier dans n'importe quelle formation | Seulement dans ses formations |
-| 20 | `GET /formations/:id/etudiants` | Un formateur voyait les étudiants de toutes les formations | Seulement ceux de ses formations |
-| 21 | Factures | Facture possible pour un paiement non validé | 409 si le paiement n'est pas validé |
-| 22 | Fichiers (`/uploads`) | Pièces d'identité et supports accessibles à tous par leur URL | Servis seulement à un utilisateur connecté ayant le droit de les voir ([§7.14](#714-consultation-sécurisée-des-documents)) |
-| 23 | `POST /auth/login`, mot de passe oublié | Essais illimités (force brute) | Limités, réponse 429 ([§7.1](#71-connexion-session-et-déconnexion)) |
-
-### 12.5 Bugs corrigés
-
-| Bug | Conséquence avant correction |
-|---|---|
-| Notification de mention : module de base de données non importé | Les notifications de mention **plantaient toujours** (erreur masquée) |
-| Liste des notifications sans filtre sur les notifications supprimées | Une notification supprimée réapparaissait |
-| Modification d'un utilisateur sans nouvelle photo | La photo était **effacée** ; le mot de passe saisi par l'admin n'était jamais enregistré |
-| Modification de la référence d'un paiement (mauvais nom de champ) | Sans effet |
-| Inscription créée hors de la transaction de l'échéancier | Inscription sans échéances possible en cas d'erreur |
-| Validation d'une inscription appelable plusieurs fois | Première échéance **payée deux fois** |
-| Arrondi des tranches | 100 000 en 3 tranches = 99 999,99 (la dernière tranche absorbe maintenant l'écart) |
-| Retards comparés paiement par paiement au lieu de leur somme | Échéance payée en 2 fois comptée en retard |
-| Mises à jour partielles | Champs non envoyés remis à vide (`COALESCE` ajouté) |
-| Mise à jour d'un étudiant en 2 requêtes sans transaction | État incohérent possible |
-| Notification de mention envoyée avant la validation de l'enregistrement | Notification envoyée même si le commentaire était annulé |
-| Mobile : fonction d'URL de fichier importée du mauvais module | Ouvrir un support depuis le détail **plantait** |
-| Web : erreurs du profil et de génération de fiche calculées mais jamais affichées | L'utilisateur ne voyait ni l'erreur ni la confirmation |
-| Mobile : adresse de l'API du `.env` jamais lue, route `/echeance` inexistante | IP écrite en dur ; appel en erreur |
-| Fiche étudiant (web) : longue description de formation | Le tableau s'élargissait et repoussait les documents |
-| Aperçu d'un document (web) | La barre du haut restait claire au-dessus du voile sombre |
-| Mobile : « Se déconnecter partout » | Le téléphone déconnecté restait sur les onglets, avec des erreurs à chaque action |
-| Mobile : retour du lecteur sans écran précédent | Avertissement « GO_BACK was not handled » |
-| Mobile, thème sombre : lecteur et détail d'un support | Fond gris clair et icônes bleu foncé peu lisibles |
-
----
-
-## 13. Limites et perspectives
+L'application n'est pas terminée, et certaines limites sont connues. Plutôt que de les cacher,
+elles sont listées ici avec, pour chacune, une piste pour aller plus loin.
 
 | Priorité | Limite actuelle | Piste d'amélioration |
 |---|---|---|
@@ -1885,7 +1850,7 @@ gestionFormation_stage/
 
 ---
 
-## 14. Glossaire
+## 13. Glossaire
 
 | Terme | Définition |
 |---|---|

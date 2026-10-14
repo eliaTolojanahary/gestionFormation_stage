@@ -1,5 +1,6 @@
 // hooks/use-notification.ts
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { apiRequest } from '../utils/api';
 
 // ─────────────────────────────────────────────
@@ -38,6 +39,58 @@ export interface EmailPayload {
   sujet: string;
   message: string;
   [key: string]: any;
+}
+
+// ─────────────────────────────────────────────
+// Compteur de la cloche (barre d'onglets)
+// Rafraîchi au montage, toutes les minutes, au retour au premier plan, au changement
+// d'onglet et dès qu'un écran lit / supprime une notification (rafraichirCloche).
+// ─────────────────────────────────────────────
+const abonnesCloche = new Set<() => void>();
+let attenteCloche: ReturnType<typeof setTimeout> | undefined;
+
+// Regroupe les appels rapprochés (« Tout marquer comme lu » = une lecture par notification)
+export function rafraichirCloche() {
+  clearTimeout(attenteCloche);
+  attenteCloche = setTimeout(() => abonnesCloche.forEach((charger) => charger()), 300);
+}
+
+// Au-delà de 9 non lues, la cloche affiche « 9+ »
+const MAX_BADGE = 9;
+export function libelleBadge(nombre: number) {
+  return nombre > MAX_BADGE ? `${MAX_BADGE}+` : String(nombre);
+}
+
+export function useNombreNonLues() {
+  const [nombre, setNombre] = useState(0);
+
+  useEffect(() => {
+    let actif = true;
+    async function charger() {
+      try {
+        const data = await apiRequest('/notifications', { method: 'GET' });
+        const liste: Notification[] = data?.data ?? [];
+        if (actif) setNombre(liste.filter((n) => !n.lu).length);
+      } catch {
+        // compteur inchangé (hors ligne, session expirée...)
+      }
+    }
+
+    charger();
+    abonnesCloche.add(charger);
+    const intervalle = setInterval(charger, 60 * 1000);
+    const abonnement = AppState.addEventListener('change', (etat) => {
+      if (etat === 'active') charger();
+    });
+    return () => {
+      actif = false;
+      abonnesCloche.delete(charger);
+      clearInterval(intervalle);
+      abonnement.remove();
+    };
+  }, []);
+
+  return nombre;
 }
 
 // ─────────────────────────────────────────────
@@ -81,6 +134,7 @@ export function useNotification() {
       )
     );
 
+    rafraichirCloche();
     return result;
   }
 
@@ -94,6 +148,7 @@ export function useNotification() {
       current.filter((n) => n.id_notification !== Number(id))
     );
 
+    rafraichirCloche();
     return result;
   }
 

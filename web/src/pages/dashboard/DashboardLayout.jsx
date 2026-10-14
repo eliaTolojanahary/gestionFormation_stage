@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import logoImtech from '../../assets/logoImtech.png'
 import Sidebar from '../../components/sidebar/Sidebar'
 import ProfileModal from '../../components/profile/ProfileModal'
@@ -33,16 +33,27 @@ function DashboardLayout({ user, onLogout, updateCurrentUser }) {
   const [isRechercheOpen, setIsRechercheOpen] = useState(false)
   const [settings, setSettings] = usePreferences()
 
-  // Notifications non lues -> badge dans la barre latérale
-  const { notifications } = useNotification()
-  const nbNonLues = notifications.filter((notification) => notification.lu === false).length
+  // Notifications non lues -> badge de la cloche (header).
+  // `lu` vient de MySQL (0 / 1) : on teste donc !lu, pas lu === false.
+  const location = useLocation()
+  const { notifications, getNotifications } = useNotification()
+  const nbNonLues = notifications.filter((notification) => !notification.lu).length
+  const peutVoirNotifs = peutOuvrir(currentUser.role, 'notifications')
+
+  // Compteur rafraîchi à chaque changement de page et toutes les minutes
+  useEffect(() => {
+    if (peutVoirNotifs) getNotifications()
+  }, [location.pathname])
 
   // Session révoquée depuis un autre appareil (« Se déconnecter partout ») : sans requête,
   // ce navigateur ne le saurait qu'au prochain clic. On vérifie donc la session quand l'onglet
   // revient au premier plan et toutes les minutes ; un 401 renvoie à la connexion (utils/api.js).
+  // Le compteur de notifications est rafraîchi au même rythme.
   useEffect(() => {
     function verifierSession() {
-      if (document.visibilityState === 'visible') apiRequest('/auth/profil').catch(() => {})
+      if (document.visibilityState !== 'visible') return
+      apiRequest('/auth/profil').catch(() => {})
+      if (peutVoirNotifs) getNotifications()
     }
     document.addEventListener('visibilitychange', verifierSession)
     const intervalle = window.setInterval(verifierSession, 60 * 1000)
@@ -82,6 +93,9 @@ function DashboardLayout({ user, onLogout, updateCurrentUser }) {
         onProfile: () => setIsProfileOpen(true),
         onRecherche: () => setIsRechercheOpen(true),
         updateCurrentUser,
+        nbNotifs: nbNonLues,
+        onNotifications: peutVoirNotifs ? () => navigate('/dashboard/notifications') : null,
+        rafraichirNotifs: getNotifications,
       }}
     >
       <main className="dashboard-page">
@@ -89,7 +103,6 @@ function DashboardLayout({ user, onLogout, updateCurrentUser }) {
           user={currentUser}
           onLogout={onLogout}
           logo={settings.logo || logoImtech}
-          nbNotifs={nbNonLues}
         />
 
         <Routes>

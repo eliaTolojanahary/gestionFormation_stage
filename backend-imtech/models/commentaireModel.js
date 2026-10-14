@@ -40,7 +40,7 @@ async function getCommentaireAvecFormateur(id_commentaire) {
 // Commentaire auquel on répond : support, parent éventuel et compte de son auteur
 async function getCommentaireParent(id_commentaire) {
   const [rows] = await db.query(
-    `SELECT c.id_commentaire, c.id_support, c.id_parent,
+    `SELECT c.id_commentaire, c.id_support, c.id_parent, c.id_etudiant,
             COALESCE(e.id_utilisateur, c.id_utilisateur) AS id_utilisateur_auteur
      FROM commentaire c
      LEFT JOIN etudiant e ON e.id_etudiant = c.id_etudiant

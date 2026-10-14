@@ -103,11 +103,22 @@ async function notifierReponse({ idDestinataire, idSupport, auteur }) {
   await notifModel.insertNotificationInApp(idDestinataire, message);
 }
 
+// Prévient le formateur qu'un étudiant a commenté un support de sa formation
+async function notifierCommentaireFormateur({ idDestinataire, idSupport, auteur }) {
+  const contexte = await notifModel.getContexteMention(idSupport, auteur.idUtilisateur);
+  if (!contexte) return;
+
+  const auteurNom = `${contexte.auteur_prenom} ${contexte.auteur_nom}`.trim();
+  const message = `${auteurNom} a commenté le support "${contexte.support_titre}" (${contexte.formation_nom}).`;
+  await notifModel.insertNotificationInApp(idDestinataire, message);
+}
+
 module.exports = {
   notifierPersonnel,
   notifierEtudiant,
   notifierMention,
   notifierReponse,
+  notifierCommentaireFormateur,
   notifierInApp,
   notifierEmail,
   notifierEmailAvecPieceJointe,

@@ -3,13 +3,17 @@ import './Header.css'
 import { useProfile } from '../profile/ProfileContext'
 import Avatar from '../avatar/Avatar'
 import Icon from '../icon/Icon'
+import { libelleBadge } from '../../utils/badge'
 
-// Barre du haut : fil d'Ariane (page courante), recherche globale (Ctrl+K) et bouton du profil.
-// onProfile / onRecherche viennent des props ou, à défaut, du ProfileContext.
+// Barre du haut : fil d'Ariane (page courante), recherche globale (Ctrl+K), cloche des
+// notifications (badge « 9+ » au-delà de 9 non lues) et bouton du profil.
+// onProfile / onRecherche / onNotifications viennent des props ou, à défaut, du ProfileContext.
 function Header({ user, activeItem = 'Tableau de bord', onProfile }) {
   const profile = useProfile()
   const openProfile = onProfile || profile?.onProfile
   const openRecherche = profile?.onRecherche
+  const openNotifications = profile?.onNotifications
+  const nbNotifs = profile?.nbNotifs || 0
   const displayUser = user || { prenom: 'Admin' }
   const isDashboard = activeItem === 'Tableau de bord'
 
@@ -31,6 +35,18 @@ function Header({ user, activeItem = 'Tableau de bord', onProfile }) {
             <Icon name="search" />
             <span>Rechercher…</span>
             <kbd>Ctrl K</kbd>
+          </button>
+        )}
+        {openNotifications && (
+          <button
+            type="button"
+            className="topbar-cloche"
+            onClick={openNotifications}
+            title={nbNotifs ? `${nbNotifs} notification${nbNotifs > 1 ? 's' : ''} non lue${nbNotifs > 1 ? 's' : ''}` : 'Notifications'}
+            aria-label={`Notifications${nbNotifs ? ` (${nbNotifs} non lues)` : ''}`}
+          >
+            <Icon name="bell" />
+            {nbNotifs > 0 && <span className="cloche-badge">{libelleBadge(nbNotifs)}</span>}
           </button>
         )}
         <button

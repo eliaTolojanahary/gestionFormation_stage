@@ -31,6 +31,13 @@ export function menuDuRole(role) {
   return NAVIGATION.filter(([, , , roles]) => roles.includes(role))
 }
 
+// Pages accessibles mais absentes de la barre latérale : Notifications s'ouvre par la cloche du header
+const HORS_BARRE_LATERALE = new Set(['/dashboard/notifications'])
+
+export function menuLateral(role) {
+  return menuDuRole(role).filter(([, , chemin]) => !HORS_BARRE_LATERALE.has(chemin))
+}
+
 // Le rôle peut-il ouvrir la page /dashboard/<segment> ? (ex. segment = 'paiements')
 export function peutOuvrir(role, segment) {
   const page = NAVIGATION.find(([, , chemin]) => chemin === `/dashboard/${segment}`)

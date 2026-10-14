@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 
 const commentaireModel = require('../models/commentaireModel');
 const supportModel = require('../models/supportModel');
+const formationModel = require('../models/formationModel');
 const reactionModel = require('../models/reactionModel');
 const { construireFil, creerCommentaire } = require('../services/commentaireService');
 const { evaluerFormateurs, ajouterOuModifReaction, AVIS } = require('../services/reactionService');
@@ -44,6 +45,35 @@ test('répondre à un commentaire d\'un autre support est refusé', async () => 
   await assert.rejects(
     creerCommentaire({ idSupport: 1, idParent: 7, contenu: 'Merci' }, { id: 3, role: ROLES.FORMATEUR }),
     { status: 404 }
+  );
+});
+
+// ─── Mentions ───────────────────────────────
+
+const supportFormation = { id_support: 1, id_formation: 5, id_formateur: 3 };
+
+test('mention : un étudiant ne peut pas mentionner (il répond)', async () => {
+  mock.method(supportModel, 'getSupportById', async () => supportFormation);
+  await assert.rejects(
+    creerCommentaire({ idSupport: 1, contenu: 'Salut @Jean', mentions: [8] }, { id: 20, role: ROLES.ETUDIANT, id_etudiant: 9 }),
+    { status: 403 }
+  );
+});
+
+test('mention : un formateur ne mentionne pas dans la formation d\'un autre', async () => {
+  mock.method(supportModel, 'getSupportById', async () => supportFormation);
+  await assert.rejects(
+    creerCommentaire({ idSupport: 1, contenu: 'Bonjour', mentions: [8] }, { id: 4, role: ROLES.FORMATEUR }),
+    { status: 403 }
+  );
+});
+
+test('mention : seuls les étudiants inscrits à la formation sont acceptés', async () => {
+  mock.method(supportModel, 'getSupportById', async () => supportFormation);
+  mock.method(formationModel, 'getEtudiantsByFormation', async () => [{ id_etudiant: 8 }]);
+  await assert.rejects(
+    creerCommentaire({ idSupport: 1, contenu: 'Bonjour', mentions: [8, 42] }, { id: 3, role: ROLES.FORMATEUR }),
+    { status: 400 }
   );
 });
 

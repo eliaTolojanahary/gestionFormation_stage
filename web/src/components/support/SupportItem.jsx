@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import Icon from '../icon/Icon'
 import Avatar from '../avatar/Avatar'
 import ContenuSupport from './ContenuSupport'
+import ChampMention from './ChampMention'
+import { mentionsDuTexte } from '../../utils/mentions'
 import { useSupport } from '../../hooks/useSupport'
 import { useReaction } from '../../hooks/useReaction'
 import { formatRelative } from '../../utils/time'
@@ -120,12 +122,16 @@ function SupportItem({
   }
 
   /* ---------- Commentaires ---------- */
+  // Mention « @ » : le formateur de la formation et le Super Admin (même règle que l'API)
+  const peutMentionner = userRole === 'Super Admin' || (userRole === 'Formateur' && canDeleteSupport)
+
   async function publish(contenu, idParent = null) {
     setCommentError('')
     if (!contenu.trim()) return false
 
     try {
-      await createCommentaire(support.id_support, contenu.trim(), [], idParent)
+      const mentions = peutMentionner ? await mentionsDuTexte(contenu, support.id_formation) : []
+      await createCommentaire(support.id_support, contenu.trim(), mentions, idParent)
       setComments(await getCommentaires(support.id_support))
       if (onComment) onComment()
       return true
@@ -342,9 +348,11 @@ function SupportItem({
 
                 {replyTo?.id === comment.id_commentaire && (
                   <form className="comment-form comment-reply-form" onSubmit={submitReply}>
-                    <input
+                    <ChampMention
                       value={replyDraft}
-                      onChange={(event) => setReplyDraft(event.target.value)}
+                      onChange={setReplyDraft}
+                      peutMentionner={peutMentionner}
+                      idFormation={support.id_formation}
                       placeholder={`Répondre à ${replyTo.auteur || 'ce commentaire'}…`}
                       disabled={commentBusy}
                       autoFocus
@@ -386,10 +394,12 @@ function SupportItem({
           size="sm"
           shape="circle"
         />
-        <input
+        <ChampMention
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Écrire un commentaire…"
+          onChange={setDraft}
+          peutMentionner={peutMentionner}
+          idFormation={support.id_formation}
+          placeholder={peutMentionner ? 'Écrire un commentaire… (@ pour mentionner un étudiant)' : 'Écrire un commentaire…'}
           disabled={commentBusy}
         />
         <button

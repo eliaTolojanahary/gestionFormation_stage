@@ -172,8 +172,11 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 ### F1 Espace formateur (§6.4)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
-| 1 | Se connecter en formateur | — | — | Menu : Espace formateur, Supports, Supports programmés, Notifications |
+| 1 | Se connecter en formateur | — | — | Menu : Espace formateur, Supports, Supports programmés (Notifications : cloche du header) |
 | 2 | Cliquer sur une formation | `GET /formations/:id/etudiants` | L inscription, etudiant | Fenêtre des étudiants (seulement ses formations) |
+| 3 | Sous un de ses supports, taper `@` puis 2 lettres → choisir un étudiant → Publier | `GET /formations/:id/etudiants` puis `POST /commentaires` (`mentions`) → `verifierMentions` | É commentaire, commentaire_mention, notification_inapp | Liste des inscrits (flèches + Entrée) ; l'étudiant reçoit « … vous a mentionné » sur le mobile |
+| 4 | (Postman) mentionner un étudiant d'une autre formation | idem | — | **400** seuls les inscrits de la formation |
+| 5 | Cloche du header avec plus de 9 non lues | `GET /notifications` | L notification_inapp | Badge **« 9+ »** ; lire une notification fait baisser le compteur |
 
 ### F2 Publier un support mis en forme (§7.18) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
@@ -227,8 +230,9 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 ### M4 Commentaires et réactions (§7.9, §7.16)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
-| 1 | Commenter un support, mentionner `@prénom` | `POST /commentaires` | É commentaire, commentaire_mention, notification_inapp | La personne mentionnée est notifiée |
-| 2 | Répondre à un commentaire | idem | É commentaire | Réponse sous le commentaire (« Voir les réponses ») |
+| 1 | Commenter un support (commentaire principal) | `POST /commentaires` | É commentaire, notification_inapp | Le **formateur** de la formation est notifié ; pas de liste `@` côté étudiant |
+| 2 | Répondre à un commentaire | idem | É commentaire, notification_inapp | Réponse sous le commentaire (« Voir les réponses ») ; son auteur est notifié |
+| 2b | (Postman, token étudiant) `POST /commentaires` avec `"mentions": [2]` | `verifierMentions` | — | **403** un étudiant ne mentionne pas |
 | 3 | 👍 puis 👎 | `POST /supports/:id/reactions` | É reaction | Une seule réaction par support, modifiable |
 
 ### M5 Paiement d'une échéance (mobile) (§7.6) ⭐
@@ -243,6 +247,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 |---|---|---|---|---|
 | 1 | Menu ⋮ → Assistance → envoyer une demande | `POST /assistances` | É assistance, notification_inapp | Visible côté web (A8) |
 | 2 | Notifications : marquer lue, supprimer | `PUT /notifications/:id/lu`, `DELETE /notifications/:id` | É notification_inapp | Une notification supprimée ne revient pas |
+| 2b | Regarder l'onglet Notifications (cloche) | `GET /notifications` | L notification_inapp | Nombre de non lues, **« 9+ »** au-delà de 9 ; baisse dès qu'on lit, disparaît quand tout est lu |
 | 3 | Utiliser l'app un jour de semaine | `authMiddleware` → `marquerPresence` | É presence | Une présence de plus dans le classement (F4) |
 
 ---
@@ -283,13 +288,13 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 ## Tests automatisés à montrer
 
 ```bash
-cd backend-imtech && npm test      # 101 tests, sans base de données, quelques secondes
+cd backend-imtech && npm test      # 104 tests, sans base de données, quelques secondes
 cd web && npx eslint src && npx vite build
 cd mobile && npx tsc --noEmit && npx expo lint
 ```
 
 Les tests couvrent : échéancier, paiements, note d'attestation, supports programmés, commentaires
-et réactions, vitrine, texte riche (XSS), fichiers protégés, recherche selon le rôle, pagination,
+et réactions (dont les règles de mention), vitrine, texte riche (XSS), fichiers protégés, recherche selon le rôle, pagination,
 limite des essais de connexion, autorisations HTTP de bout en bout (§10.1 du flux).
 
 ## Questions probables du jury (réponses courtes)
@@ -300,7 +305,7 @@ limite des essais de connexion, autorisations HTTP de bout en bout (§10.1 du fl
   déconnexion révoque vraiment le token.
 - *Et la force brute sur la connexion ?* 5 échecs / 15 min par compte, 20 par adresse IP, puis 429.
 - *Un étudiant peut-il voir les données d'un autre ?* Non : rôle **et** propriétaire vérifiés côté
-  serveur (IDOR corrigés, §12.4 du flux) ; les menus ne font que masquer.
+  serveur (contrôles du propriétaire, §4.2 et §8 du flux) ; les menus ne font que masquer.
 - *Comment empêchez-vous la fuite des supports ?* Fichiers servis seulement aux ayants droit,
   filigrane au nom de la personne, captures bloquées sur Android ; sur le web, le filigrane permet
   d'identifier l'origine d'une fuite.
