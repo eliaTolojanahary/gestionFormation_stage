@@ -1,0 +1,103 @@
+Objectif : 35 pages (de l'avant-propos a la bibliographie).
+Les pages de debut (garde, table des matieres, listes, glossaire) et les annexes en plus.
+
+Page de garde
+Table des matieres
+Liste des tableaux
+Liste des figures
+Glossaire
+
+Avant-propos .................................................... 2 p
+    L'IT University
+    L'entreprise d'accueil : IMTECH INFO
+    Remerciements
+
+Introduction .................................................... 1 p
+    theme et interet, existant et ses problemes, resultats, structure du memoire
+
+1 Presentation du projet ......................................... 5 p
+1.1 Objectifs du projet .......................................... 1 p
+    (Tableau 1 : objectifs du projet et ce qui y repond)
+1.2 Planning de realisation ...................................... 1 p
+    (Figure 1 : diagramme de Gantt)
+1.3 Technologies utilisees ....................................... 3 p
+    1.3.1 Partie affichage : web et mobile
+        (Tableau 2 : comparaison entre React et Vue)
+        (Tableau 3 : comparaison entre React Native et Flutter)
+    1.3.2 Partie traitement : serveur
+        (Tableau 4 : comparaison entre Node.js et Spring Boot)
+    1.3.3 Base de donnees
+        (Tableau 5 : comparaison entre MySQL et PostgreSQL)
+    -> finir par 3 ou 4 lignes : ce que j'ai choisi et pourquoi
+
+2 Realisation de l'application .................................. 22 p
+2.1 Analyse et conception ........................................ 4 p
+    2.1.1 Analyse de l'existant
+        (Tableau 6 : avant le projet, et ce qui posait probleme)
+        (Tableau 7 : analyse des besoins par utilisateur)
+    2.1.2 Conception de l'application
+        - pourquoi concevoir avant de coder + le projet en chiffres (quelques lignes)
+        2.1.2.1 Conception affichage
+            (Figure 2 : architecture : web et mobile -> serveur -> base)
+        2.1.2.2 Conception metier
+            (Figure 3 : diagramme de cas d'utilisation)
+        2.1.2.3 Modele conceptuel de donnees
+            (Figure 4 : MCD)
+
+2.2 Developpement par fonctionnalite ou module ................... 13 p
+    (pour chaque module : description, pourquoi, scenario cle, ecran, diagramme de sequence)
+    (les autres modules sont juste cites en une phrase dans l'introduction de 2.2)
+
+    2.2.1 Vitrine et inscription de l'etudiant ................. 2 p
+        (Figure 5 : vitrine et inscription)
+        (Figure 6 : validation de l'inscription par l'Accueil)
+
+    2.2.2 Echeances et paiements ................................ 4 p
+        (validation de l'inscription -> echeancier automatique ;
+         suivi : a jour, a rappeler, en retard ; paiement "en attente" puis valide)
+        (Figure 7 : liste des echeances)
+        (Figure 8 : paiement depuis le telephone puis validation par l'Accueil)
+        (Figure 9 : diagramme de sequence d'un paiement)
+
+    2.2.3 Supports de cours ..................................... 4 p
+        (publication et programmation, commentaires et reactions)
+        (Figure 10 : publication d'un support)
+        (Figure 11 : support programme, vu par le formateur et par l'etudiant)
+        (Figure 12 : commentaires et reactions)
+
+    2.2.4 Utilisateurs et securite .............................. 3 p
+        (roles, sessions, limite des essais, protection des documents ;
+         assistance et personnalisation en une phrase chacune)
+        (Figure 13 : liste des sessions)
+        (Figure 14 : filigrane et capture d'ecran bloquee)
+        (Figure 15 : diagramme de sequence de la connexion)
+
+2.3 Etats d'analyse et statistiques .............................. 3 p
+    2.3.1 Etat : tableau de bord
+        (Figure 16 : tableau de bord)
+    2.3.2 Statistique : note d'attestation et classement
+        (note sur 20 = paiement + presence + presentation)
+        (Figure 17 : tableau des notes et classement d'une formation)
+    2.3.3 Statistique : avis des etudiants sur les formateurs
+        (Figure 18 : tri des formateurs par competence)
+
+2.4 Problemes rencontres et solutions ............................ 2 p
+    (Tableau 8 : problemes rencontres et solutions, 6 a 8 lignes)
+
+3 Evaluation du projet et connaissances acquises ................ 3 p
+3.1 Bilan pour l'entreprise
+3.2 Bilan personnel
+3.3 Extension et evolution de l'application
+
+Conclusion ...................................................... 1 p
+
+Bibliographie ................................................... 1 p
+
+Annexes (hors pages comptees)
+    Annexe A : securite
+    Annexe B : modele logique de donnees complet
+    Annexe C : conception affichage (ecrans, boutons, messages d'erreur)
+    Annexe D : conception metier (donnees echangees front/back, equivalent DTO)
+    Annexe E : base de donnees expliquee simplement
+
+Total : 35 pages.

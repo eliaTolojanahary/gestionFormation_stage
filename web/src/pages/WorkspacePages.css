@@ -189,6 +189,23 @@
   background: var(--accent-soft);
 }
 
+/* Groupe de boutons à droite d'un titre (ex. Exporter CSV + Nouveau) */
+.heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-csv-button {
+  white-space: nowrap;
+}
+
+.export-csv-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .primary-button .icon,
 .secondary-button .icon {
   width: 14px;

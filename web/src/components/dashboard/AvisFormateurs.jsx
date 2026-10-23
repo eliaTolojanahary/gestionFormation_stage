@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import Avatar from '../avatar/Avatar'
 import Tableau from '../tableau/Tableau'
 import SearchFilterBar from '../form/Filter'
+import BoutonExportCSV from '../tableau/BoutonExportCSV'
 import { useAvisFormateurs } from '../../hooks/useAvisFormateurs'
 import './AvisFormateurs.css'
 
@@ -77,10 +78,12 @@ function AvisFormateurs() {
       key: 'rang',
       header: '#',
       render: (_row, index) => <span className="avis-rang">{index + 1}</span>,
+      exportValue: (_row, index) => index + 1,
     },
     {
       key: 'formateur',
       header: 'Formateur',
+      exportValue: (row) => `${row.prenom} ${row.nom}`,
       render: (row) => (
         <div className="avis-formateur">
           <Avatar photo={row.photo} prenom={row.prenom} nom={row.nom} size="sm" shape="circle" />
@@ -94,6 +97,7 @@ function AvisFormateurs() {
     {
       key: 'reactions',
       header: 'Réactions',
+      export: false, // remplacée dans le fichier par une colonne par réaction (ci-dessous)
       render: (row) => (
         <div className="avis-reactions">
           {REACTIONS.map((r) => (
@@ -108,15 +112,20 @@ function AvisFormateurs() {
         </div>
       ),
     },
+    { key: 'nb_supports', header: 'Supports', exportSeulement: true },
+    ...REACTIONS.map((r) => ({ key: r.cle, header: r.label, exportSeulement: true })),
     { key: 'total_reactions', header: 'Total' },
     {
       key: 'taux_positif',
       header: 'Positif',
       render: (row) => <TauxPositif taux={row.taux_positif} />,
+      exportValue: (row) => row.taux_positif,
+      exportHeader: 'Positif (%)',
     },
     {
       key: 'avis',
       header: 'Avis',
+      exportValue: (row) => AVIS[row.avis]?.label || row.avis,
       render: (row) => (
         <span className={`avis-badge ${AVIS[row.avis]?.className || ''}`}>
           {AVIS[row.avis]?.label || row.avis}
@@ -135,6 +144,7 @@ function AvisFormateurs() {
             (👍 ❤️ 💡) sur 5 réactions ou plus.
           </p>
         </div>
+        <BoutonExportCSV columns={columns} lignes={lignes} nomFichier="avis_formateurs" />
       </div>
 
       <SearchFilterBar

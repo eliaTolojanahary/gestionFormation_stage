@@ -4,6 +4,7 @@ import Tableau from '../../components/tableau/Tableau'
 import PaymentModal from '../../components/paiements/PaymentFormModal'
 import SearchFilterBar from '../../components/form/Filter'
 import Pagination from '../../components/pagination/Pagination'
+import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import { useInscription } from '../../hooks/useInscription'
 import { useDocument } from '../../hooks/useDocument'
 import { useNotifEvent } from '../../hooks/useNotifEvent'
@@ -92,6 +93,7 @@ function Inscriptions({ user, onCreate, onDetail }) {
     {
       key: 'student',
       header: 'Etudiant',
+      exportValue: (row) => `${row.prenom_etudiant} ${row.nom_etudiant}`,
       render: (row) => (
         <>
           {row.prenom_etudiant} {row.nom_etudiant}
@@ -101,9 +103,17 @@ function Inscriptions({ user, onCreate, onDetail }) {
     },
     { key: 'nom_formation', header: 'Formation' },
     { key: 'date_inscription', header: 'Date' },
+    // Colonne présente seulement dans le fichier exporté (badge « En ligne » à l'écran)
+    {
+      key: 'origine',
+      header: 'Origine',
+      exportValue: (row) => (row.origine === 'en_ligne' ? 'En ligne' : 'Accueil'),
+      exportSeulement: true,
+    },
     {
       key: 'valide',
       header: 'Statut',
+      exportValue: (row) => (row.valide ? 'Validée' : 'En attente'),
       render: (row) => (
         <>
           <span className={`student-status ${row.valide ? 'actif' : 'inactif'}`}>
@@ -177,9 +187,12 @@ function Inscriptions({ user, onCreate, onDetail }) {
           <h1>Inscriptions</h1>
           <p>{liste.total} inscription{liste.total !== 1 ? 's' : ''} correspondante{liste.total !== 1 ? 's' : ''}</p>
         </div>
-        <button type="button" className="primary-button" onClick={onCreate}>
-          + Nouvelle inscription
-        </button>
+        <div className="heading-actions">
+          <BoutonExportCSV columns={columns} charger={liste.toutesLesLignes} nomFichier="inscriptions" />
+          <button type="button" className="primary-button" onClick={onCreate}>
+            + Nouvelle inscription
+          </button>
+        </div>
       </div>
 
       <article className="gestion-panel">

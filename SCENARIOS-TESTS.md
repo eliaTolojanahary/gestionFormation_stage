@@ -49,13 +49,12 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 6 | **F4 Classement et note** + **A10 Attestation** | Calcul automatique, QR code vérifiable |
 | 7 | **S1 à S4 Sécurité** | Rôles, force brute, sessions révocables |
 | 8 | **T1 à T3 Recherche, fiches, pagination** | Ergonomie et passage à l'échelle |
-| 9 | **Tests automatisés** | 101 tests en quelques secondes |
 
 ---
 
 ## S. Sécurité et accès
 
-### S1 Connexion et pages par rôle (§7.1, §4.2) ⭐
+### S1 Connexion et pages par rôle (§2.2.1, §2.1.2) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Se connecter (Accueil) | `POST /auth/login` → `authService.authentifier` | L utilisateur · É sessions | Tableau de bord, menu de l'Accueil |
@@ -63,7 +62,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 3 | Formateur : taper `/dashboard/paiements` | idem | — | Retour au tableau de bord |
 | 4 | Appeler une route du personnel avec un token d'étudiant (ou sans token) | `checkRole` / `verifyToken` | L sessions | **403** / **401** |
 
-### S2 Limite des essais de connexion (§7.1) ⭐
+### S2 Limite des essais de connexion (§2.2.1) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | 5 mauvais mots de passe sur un compte | `limiteRequetes` (échecs seulement) | — | 401 « Identifiants incorrects » |
@@ -73,14 +72,14 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 
 *(Redémarrer le backend remet les compteurs à zéro.)*
 
-### S3 Mot de passe oublié (§7.2)
+### S3 Mot de passe oublié (§2.2.1)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | « Mot de passe oublié » avec un e-mail existant, puis inexistant | `POST /auth/forgot-password` → `userService.demanderReinitialisation` | É reset_password | **Même message** dans les deux cas ; code reçu par e-mail (30 min) |
 | 2 | Saisir le code + nouveau mot de passe | `POST /auth/reset-password` | É utilisateur, reset_password, sessions | Mot de passe changé, **toutes** les sessions fermées |
 | 3 | Réutiliser le même code | idem | — | Refusé (code déjà utilisé) |
 
-### S4 Sessions et « Se déconnecter partout » (§7.1) ⭐
+### S4 Sessions et « Se déconnecter partout » (§2.2.1) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Se connecter avec le même compte dans Chrome, Edge et sur le téléphone | `POST /auth/login` | É sessions | 3 sessions dans Paramètres > Sécurité (aucun token affiché) |
@@ -91,14 +90,14 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 
 ## A. Web — Super Admin et Accueil
 
-### A1 Tableau de bord (§7.11)
+### A1 Tableau de bord (§2.3.1)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Ouvrir le tableau de bord | `GET /dashboard/kpi`, `/evolution`, `/inscriptionParMois`, `/topInscription` | L paiement, echeance, inscription | Indicateurs (paiements **validés** seulement), courbes |
 | 2 | Export CSV | `GET /dashboard/export-csv` | L inscription… | Fichier CSV téléchargé |
 | 3 | Bloc « Avis sur les formateurs » | `GET /formateurs/avis` | L reaction, support | Tiana / Voahangy « Compétent », Hery « Non compétent », Lalaina « Pas assez d'avis » |
 
-### A2 Comptes utilisateurs (Super Admin) (§4.2)
+### A2 Comptes utilisateurs (Super Admin) (§2.2.2, §2.1.2)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Créer un compte Formateur | `POST /utilisateurs` → `userService.creerUtilisateur` (mot de passe haché) | É utilisateur | Compte dans la liste, connexion possible |
@@ -112,14 +111,14 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 2 | Changer l'image de couverture | `PUT /formations/:id/image` | É formation | Nouvelle image sur la vitrine |
 | 3 | Ouvrir la fiche puis Modifier (`/dashboard/formations/:id/modifier`) | `GET` / `PUT /formations/:id` | É formation | F5 garde le formulaire ouvert |
 
-### A4 Dossier étudiant et inscription au guichet (§7.3, §7.4)
+### A4 Dossier étudiant et inscription au guichet (§2.2.3, §2.2.5)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Étudiants → Nouveau : identité, e-mail, photo, pièces | `POST /etudiants` → `insertUtilisateurEtEtudiant` (transaction) | É utilisateur, etudiant | Dossier créé (rôle Étudiant imposé par le serveur) |
 | 2 | Inscriptions → Nouvelle : cet étudiant, une formation, 3 tranches | `POST /inscriptions` → `creerInscription` (transaction + échéancier) | É inscription, echeance | 3 échéances dont la somme = tarif exact (la dernière absorbe l'arrondi) |
 | 3 | Réinscrire le même étudiant à la même formation | idem | — | **409** inscription déjà active |
 
-### A5 Validation d'une inscription en ligne et fiche PDF (§7.5, §7.8) ⭐
+### A5 Validation d'une inscription en ligne et fiche PDF (§2.2.5, §2.2.8) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Inscriptions → filtre « En ligne » / « Non validée » | `GET /inscriptions?page=1&origine=en_ligne&valide=non` | L inscription… | Mahery, Miora (paiement déclaré visible) |
@@ -127,7 +126,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 3 | Valider une seconde fois | idem | — | **409** déjà validée |
 | 4 | Générer la fiche d'inscription | `POST /fiche/:id_inscription/generer` | L inscription… | PDF ouvert dans un nouvel onglet |
 
-### A6 Paiements : guichet, validation, facture (§7.6) ⭐
+### A6 Paiements : guichet, validation, facture (§2.2.6) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Paiements : bandeau « à valider » | `GET /paiements?page=1` (+ `compteurs.en_attente`) | L paiement… | Nombre de paiements en attente sur **toute** la base |
@@ -136,7 +135,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 4 | Générer la facture d'un paiement validé, puis d'un refusé | `POST /factures/:id_paiement/generer` | É facture | PDF avec QR ; **409** pour le paiement non validé |
 | 5 | Enregistrer un paiement au guichet supérieur au reste | `POST /paiements` | — | **400** montant supérieur au reste à payer |
 
-### A7 Échéances et rappels (§7.7) ⭐
+### A7 Échéances et rappels (§2.2.7) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Échéances → filtre ROUGE | `GET /echeances?page=1&statut=ROUGE` | L echeance… | Toky et Fano en retard |
@@ -144,20 +143,20 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 3 | Rappeler une échéance déjà réglée ou « payée, à valider » | idem | — | **409** (l'étudiant attend la validation de l'Accueil) |
 | 4 | Notifications de l'Accueil | traitement automatique (`alerteService`) | É alerte_envoyee | Une **seule** alerte « doit être rappelé » par échéance à J-2 |
 
-### A8 Assistance (§7.12)
+### A8 Assistance (§2.2.13)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Assistance : demandes en attente | `GET /assistances` | L assistance | 3 demandes en attente |
 | 2 | **Résoudre** une demande | `PUT /assistances/:id/resoudre` | É assistance, notification_inapp | Statut « Résolu », étudiant notifié sur le mobile |
 | 3 | Résoudre à nouveau | idem | — | **409** |
 
-### A9 Notifications envoyées par le personnel (§7.10)
+### A9 Notifications envoyées par le personnel (§2.2.12)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Envoyer une notification in-app à un étudiant | `POST /notifications/in-app` | É notification_inapp | Reçue sur le mobile |
 | 2 | Envoyer un e-mail avec pièce jointe | `POST /notifications/email/piece-jointe` | É notification_email | E-mail reçu avec le fichier |
 
-### A10 Documents et attestation vérifiée par QR code (§7.8, §7.13) ⭐
+### A10 Documents et attestation vérifiée par QR code (§2.2.8, §2.2.11) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Générer l'attestation de Fitiavana **avant** la note de présentation | `POST /attestations/:id/generer` | — | Refusé : le formateur doit noter la présentation |
@@ -169,7 +168,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 
 ## F. Web — Formateur
 
-### F1 Espace formateur (§6.4)
+### F1 Espace formateur (§2.2.11)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Se connecter en formateur | — | — | Menu : Espace formateur, Supports, Supports programmés (Notifications : cloche du header) |
@@ -178,7 +177,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 4 | (Postman) mentionner un étudiant d'une autre formation | idem | — | **400** seuls les inscrits de la formation |
 | 5 | Cloche du header avec plus de 9 non lues | `GET /notifications` | L notification_inapp | Badge **« 9+ »** ; lire une notification fait baisser le compteur |
 
-### F2 Publier un support mis en forme (§7.18) ⭐
+### F2 Publier un support mis en forme (§2.2.9) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Supports : titre, texte en gras / liste / lien, PDF joint → Envoyer | `POST /supports` → `creerSupports` (HTML nettoyé) | É support, notification_inapp | Visible sur le mobile, étudiants notifiés |
@@ -186,7 +185,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 3 | Publier un support **audio** ou **vidéo** | idem | É support | Lecteur intégré sans bouton Télécharger |
 | 4 | Recherche, filtre, tri et « Voir plus » dans la liste | côté navigateur | — | Liste filtrée |
 
-### F3 Supports programmés (§7.15)
+### F3 Supports programmés (§2.2.9)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Programmer un support dans 2 minutes | `POST /supports` (date d'envoi) | É support (programmé) | Dans « Supports programmés », invisible des étudiants |
@@ -194,7 +193,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 3 | « Projet : site vitrine » : **Envoyer maintenant** | `POST /supports/:id/envoyer` | É support | Publié tout de suite |
 | 4 | Programmer dans le passé | idem | — | **400** la date doit être dans le futur |
 
-### F4 Classement et note d'attestation (§7.13) ⭐
+### F4 Classement et note d'attestation (§2.2.11) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Espace formateur → Classement d'une formation | `GET /formations/:id/classement` → `classementService` | L presence, paiement · É inscription | Rang, présences, note système /10 (4 à 10) |
@@ -205,7 +204,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 
 ## M. Mobile — Étudiant et visiteur
 
-### M1 Vitrine et inscription en ligne (§7.17) ⭐
+### M1 Vitrine et inscription en ligne (§2.2.14) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Ouvrir l'app sans compte → Découvrir | `GET /public/vitrine` | L formation, reaction, parametre_application | Fond plein écran, formations en couverture, formateurs « compétents » |
@@ -219,7 +218,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 1 | Se connecter (étudiant) → Accueil | `GET /etudiants/:id/formations`, `/dashboard-paiement` | L inscription, paiement | Dernière formation, prochaine échéance, derniers supports et commentaires |
 | 2 | Formations → détail | `GET /formations/:id` | L formation | Détail ; formation non validée : « En attente de validation » |
 
-### M3 Consultation sécurisée d'un support (§7.14) ⭐
+### M3 Consultation sécurisée d'un support (§2.2.9) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Documents → ouvrir un PDF | `GET /supports/<fichier>?token=` → `fichierMiddleware` | L sessions, inscription | Lecteur intégré, **filigrane** nom + e-mail + date |
@@ -227,7 +226,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 3 | Ouvrir l'URL du fichier dans un navigateur sans `?token=` | idem | — | **401** |
 | 4 | Fichier d'une formation où l'étudiant n'est pas inscrit | idem | — | Refusé |
 
-### M4 Commentaires et réactions (§7.9, §7.16)
+### M4 Commentaires et réactions (§2.2.10)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Commenter un support (commentaire principal) | `POST /commentaires` | É commentaire, notification_inapp | Le **formateur** de la formation est notifié ; pas de liste `@` côté étudiant |
@@ -235,7 +234,7 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 2b | (Postman, token étudiant) `POST /commentaires` avec `"mentions": [2]` | `verifierMentions` | — | **403** un étudiant ne mentionne pas |
 | 3 | 👍 puis 👎 | `POST /supports/:id/reactions` | É reaction | Une seule réaction par support, modifiable |
 
-### M5 Paiement d'une échéance (mobile) (§7.6) ⭐
+### M5 Paiement d'une échéance (mobile) (§2.2.6) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Accueil → **Payer** la prochaine échéance (mode, référence) | `POST /paiements` → `enregistrerPaiement` | É paiement (en attente), notification_inapp | « En attente de validation » ; montant **imposé** par le serveur ; Accueil notifié |
@@ -254,14 +253,14 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 
 ## T. Fonctions transverses
 
-### T1 Recherche globale (§7.18) ⭐
+### T1 Recherche globale (§2.2.15) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Web : **Ctrl+K** → nom d'étudiant, formation, « paie » → Entrée | `GET /recherche?q=` | L etudiant, formation, inscription | La bonne fiche s'ouvre ; résultats limités au rôle (Accueil : pas de comptes) |
 | 2 | Formateur : chercher un étudiant, un support | idem | L support | Espace formateur avec la fenêtre des étudiants ; page Supports filtrée |
 | 3 | Mobile : loupe 🔍 de l'Accueil ou d'un en-tête → titre d'un support, « payer », « theme » | `GET /recherche?q=` [ET] | L formation, inscription, support | Support / formation / écran ouvert ; jamais d'étudiants ni de comptes |
 
-### T2 Une adresse par fiche (§7.19) ⭐
+### T2 Une adresse par fiche (§2.2.16) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Ouvrir une fiche étudiant | `SectionsRoutes.jsx` | — | Adresse `/dashboard/etudiants/12` |
@@ -269,14 +268,14 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 | 3 | Copier le lien dans l'autre navigateur (non connecté) | `App.jsx` (`state.depuis`) | — | Connexion, puis arrivée directe sur la fiche |
 | 4 | Taper `/dashboard/etudiants/abc` | — | — | Retour à la liste |
 
-### T3 Pagination côté serveur (§7.20) ⭐
+### T3 Pagination côté serveur (§2.2.16) ⭐
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Paiements / Étudiants / Inscriptions / Échéances | `GET /…?page=1&limite=20` | `LIMIT / OFFSET` + `COUNT(*)` | Pied « 1–20 sur N », boutons de pages ; onglet Réseau : une seule page transférée |
 | 2 | Rechercher ou filtrer depuis la page 3 | idem + filtres | — | Retour page 1, total mis à jour |
 | 3 | Supprimer la dernière ligne de la dernière page | `useListePaginee` | — | Retour à la page précédente |
 
-### T4 Apparence (§7.21)
+### T4 Apparence (§2.2.16)
 | Étape | Action | Route / fonctions | Base | Attendu |
 |---|---|---|---|---|
 | 1 | Paramètres → mode sombre + autre couleur, taille, densité | `usePreferences` (navigateur) | — | Tout reste lisible ; « Modifications enregistrées » |
@@ -285,17 +284,14 @@ Données de démo utiles : **Toky** et **Fano** ont une 2ᵉ tranche en retard ;
 
 ---
 
-## Tests automatisés à montrer
+## Vérification du code
 
 ```bash
-cd backend-imtech && npm test      # 104 tests, sans base de données, quelques secondes
 cd web && npx eslint src && npx vite build
 cd mobile && npx tsc --noEmit && npx expo lint
 ```
 
-Les tests couvrent : échéancier, paiements, note d'attestation, supports programmés, commentaires
-et réactions (dont les règles de mention), vitrine, texte riche (XSS), fichiers protégés, recherche selon le rôle, pagination,
-limite des essais de connexion, autorisations HTTP de bout en bout (§10.1 du flux).
+Voir l'annexe C du flux.
 
 ## Questions probables du jury (réponses courtes)
 
@@ -305,12 +301,13 @@ limite des essais de connexion, autorisations HTTP de bout en bout (§10.1 du fl
   déconnexion révoque vraiment le token.
 - *Et la force brute sur la connexion ?* 5 échecs / 15 min par compte, 20 par adresse IP, puis 429.
 - *Un étudiant peut-il voir les données d'un autre ?* Non : rôle **et** propriétaire vérifiés côté
-  serveur (contrôles du propriétaire, §4.2 et §8 du flux) ; les menus ne font que masquer.
+  serveur (contrôles du propriétaire, §2.1.2 et annexe A du flux) ; les menus ne font que masquer.
 - *Comment empêchez-vous la fuite des supports ?* Fichiers servis seulement aux ayants droit,
   filigrane au nom de la personne, captures bloquées sur Android ; sur le web, le filigrane permet
   d'identifier l'origine d'une fuite.
 - *Et si la base grossit ?* Les grosses listes sont paginées côté serveur (20 lignes, filtres en SQL).
-- *Comment l'interface est-elle testée ?* Les règles métier et les droits sont testés côté serveur
-  (101 tests) ; le front est vérifié par lint, build et ces scénarios. Piste : Vitest (§13).
+- *Comment l'application est-elle testée ?* À la main : les adresses du serveur avec Postman, le
+  site et le mobile avec ces scénarios ; le code est relu par lint et build. Pas encore de tests
+  automatiques (piste au §3.3).
 - *Limites ?* Un seul serveur (compteurs en mémoire, fichiers sur disque), paiement mobile
-  déclaratif, pas encore en ligne en HTTPS : voir §13 du flux.
+  déclaratif, pas encore en ligne en HTTPS : voir §3.3 du flux.

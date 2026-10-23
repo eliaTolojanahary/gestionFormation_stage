@@ -1,0 +1,6 @@
+Outline Level,ID,Name,Start,Finish,Duration,% Complete,Predecessors,Resource Names,Color,Notes
+1,1,"Example",2026-10-12,2026-10-30,15 day,50,"","",,"<p><br></p>"
+2,2,"",2026-10-12,2026-10-16,5 day,80,"","Team Member 1",121,"<p><br></p>"
+2,3,"Example Task 2",2026-10-19,2026-10-23,5 day,50,"2FS","Team Member 2",211,"<p><br></p>"
+2,4,"Example Task 3",2026-10-26,2026-10-30,5 day,20,"3FS","Team Member 3",301,"<p><br></p>"
+2,5,"Example Milestone",2026-10-30,2026-10-30,0 day,0,"4FS","Team Member 3",,"<p><br></p>"

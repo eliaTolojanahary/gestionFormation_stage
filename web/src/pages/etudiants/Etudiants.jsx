@@ -3,6 +3,7 @@ import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import SearchFilterBar from '../../components/form/Filter'
 import Pagination from '../../components/pagination/Pagination'
+import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import Avatar from '../../components/avatar/Avatar'
 import { useEtudiant } from '../../hooks/useEtudiant'
 import { useFormation } from '../../hooks/useFormation'
@@ -184,10 +185,10 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
   }
 
   const columns = [
-    { key: 'name', header: 'Etudiant', render: renderNom },
+    { key: 'name', header: 'Etudiant', render: renderNom, exportValue: (s) => `${s.prenom} ${s.nom}` },
     { key: 'email', header: 'Email' },
     { key: 'telephone', header: 'Téléphone' },
-    { key: 'etat', header: 'Statut', render: renderStatut },
+    { key: 'etat', header: 'Statut', render: renderStatut, exportValue: (s) => (s.etat ? 'Actif' : 'Inactif') },
     { key: 'actions', header: 'Actions', render: renderActions },
   ]
 
@@ -210,16 +211,25 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
           <p>{sousTitre}</p>
         </div>
 
-        {canManage && (
-          <button
-            type="button"
-            className="primary-button"
-            /* ✅ Callback au lieu de navigate() */
-            onClick={() => onCreate && onCreate()}
-          >
-            <span aria-hidden="true">+</span> Nouvel étudiant
-          </button>
-        )}
+        <div className="heading-actions">
+          {/* Personnel : toute la liste filtrée (pas seulement la page) ; formateur : ses étudiants filtrés */}
+          <BoutonExportCSV
+            columns={columns}
+            lignes={etudiantsFormateur}
+            charger={isFormateur ? undefined : liste.toutesLesLignes}
+            nomFichier="etudiants"
+          />
+          {canManage && (
+            <button
+              type="button"
+              className="primary-button"
+              /* ✅ Callback au lieu de navigate() */
+              onClick={() => onCreate && onCreate()}
+            >
+              <span aria-hidden="true">+</span> Nouvel étudiant
+            </button>
+          )}
+        </div>
       </div>
 
       <article className="students-panel">

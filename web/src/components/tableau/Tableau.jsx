@@ -15,8 +15,10 @@ function isIsoDate(value) {
 // un affichage personnalisé (boutons, badges...) ; sinon on affiche row[key].
 // rowKey = nom du champ identifiant, ou fonction (row, index) => clé.
 // dateFormat : 'date' (défaut), 'relative' ("il y a 2 h") ou 'none'.
+// exportValue / export / exportSeulement : utilisés par l'export CSV (voir utils/exportCsv.js) ;
+// une colonne exportSeulement n'est pas affichée.
 function Tableau({
-  columns,
+  columns: toutesLesColonnes,
   rows = [],
   rowKey = 'id',
   emptyMessage = 'Aucune donnée disponible.',
@@ -25,6 +27,7 @@ function Tableau({
   dateFormat = 'date',
 }) {
   const [previewImage, setPreviewImage] = useState(null)
+  const columns = toutesLesColonnes.filter((column) => !column.exportSeulement)
 
   // Un clic sur n'importe quelle image du tableau l'ouvre en grand
   function handleTableClick(event) {

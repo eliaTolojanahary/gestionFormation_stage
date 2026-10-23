@@ -59,11 +59,21 @@ export function useListePaginee(chemin, filtres, { limite = 20, delai = 250 } = 
     }
   }, [chemin, cleFiltres, page, limite, delai, version])
 
+  // Toutes les lignes des filtres en cours (sans ?page=, l'API renvoie la liste complète) : export CSV
+  const toutesLesLignes = useCallback(async () => {
+    const params = new URLSearchParams()
+    for (const [cle, valeur] of Object.entries(JSON.parse(cleFiltres))) {
+      if (valeur !== '' && valeur !== null && valeur !== undefined) params.set(cle, String(valeur))
+    }
+    const reponse = await apiRequest(`${chemin}?${params}`)
+    return reponse.data || []
+  }, [chemin, cleFiltres])
+
   const recharger = useCallback(() => setVersion((v) => v + 1), [])
   const setLignes = useCallback(
     (miseAJour) => setResultat((actuel) => ({ ...actuel, lignes: miseAJour(actuel.lignes) })),
     []
   )
 
-  return { ...resultat, page, setPage, limite, isLoading, error, recharger, setLignes }
+  return { ...resultat, page, setPage, limite, isLoading, error, recharger, setLignes, toutesLesLignes }
 }

@@ -1,0 +1,69 @@
+Sprint,Tâches,Estimation (jours)
+,,
+,ANALYSE ET CONCEPTION,
+SPRINT I,Étude du projet et recueil des besoins avec l'encadreur,"2,0"
+,"Prise en main des technologies (React, React Native, Node.js, MySQL)","2,5"
+,"Installation des environnements (web, mobile, API, base de données)","1,0"
+,"Modélisation MERISE (MCD, MLD) et création de la base de données","2,0"
+,SOUS TOTAL,"7,5"
+,,
+,"API BACKEND, SÉCURITÉ ET GESTION DE BASE",
+SPRINT II,"Architecture de l'API en couches (routes, services, modèles) et gestion des erreurs","1,0"
+,"Connexion par token JWT, sessions révocables et déconnexion","1,0"
+,Service d'envoi d'e-mails (Nodemailer) et mot de passe oublié (code à usage unique),"1,0"
+,"Rôles et droits d'accès (Super Admin, Accueil, Formateur, Étudiant) : rôle et propriétaire vérifiés","1,0"
+,Gestion des comptes utilisateurs du personnel,"0,5"
+,"CRUD étudiants avec pièces justificatives (photos, CIN, certificat de résidence)","1,5"
+,"CRUD formations (affectation du formateur, tarif, durée, image de couverture)","1,0"
+,Inscriptions et génération automatique de l'échéancier (transaction),"1,5"
+,Limitation des tentatives de connexion (protection contre la force brute),"0,5"
+,Tests de l'API (Postman) et premiers tests automatisés,"1,5"
+,SOUS TOTAL,"10,5"
+,,
+,"PAIEMENTS, DOCUMENTS PDF ET SUIVI",
+SPRINT III,"Paiements au guichet (en une fois ou par tranches, paiement partiel plafonné)","1,0"
+,Paiement depuis le mobile en attente + validation / refus par l'Accueil,"1,5"
+,"Suivi des échéances (Vert / Jaune / Rouge), alerte J-2 à l'Accueil et bouton ""Rappeler""","1,5"
+,Moteur PDF : fiche d'inscription,"1,0"
+,Moteur PDF : facture (paiement validé) et envoi par e-mail,"1,0"
+,Moteur PDF : attestation avec QR code + page publique de vérification,"2,0"
+,"Présence automatique, note d'attestation /20 et classement des étudiants","2,0"
+,"Filtres avancés, recherche multi-mots et pagination côté serveur","1,5"
+,Export des données au format CSV,"0,5"
+,Tests fonctionnels web et vérification des PDF générés,"1,5"
+,SOUS TOTAL,"13,5"
+,,
+,ESPACE FORMATEUR ET APPLICATION MOBILE ÉTUDIANT,
+SPRINT IV,"Mise en place du mobile (Expo), connexion et stockage local du token","1,0"
+,"Accueil mobile (résumé des paiements), formations suivies et historique","1,0"
+,"Espace formateur web (ses formations, ses étudiants, classement, note de présentation)","1,0"
+,"Supports de cours : texte mis en forme, PDF, image, audio, vidéo, liens","1,5"
+,Envoi programmé des supports (publication automatique),"1,0"
+,Commentaires en fil de discussion avec mentions d'étudiants,"1,5"
+,"Réactions sur les supports (J'aime, J'adore, Utile, Je n'aime pas) et avis sur les formateurs","1,0"
+,"Consultation sécurisée des documents (accès contrôlé, filigrane, lecteur mobile, captures bloquées)","2,0"
+,Notifications in-app et assistance administrative (étudiant vers Accueil),"1,0"
+,"Paiement des échéances et réception des documents (facture, attestation) sur mobile","1,0"
+,Intégration de l'API mobile et tests sur téléphone,"1,0"
+,SOUS TOTAL,"13,0"
+,,
+,"VITRINE, TABLEAU DE BORD ET FINITIONS",
+SPRINT V,"Vitrine publique ""Découvrir"" et inscription en ligne à une ou plusieurs formations","2,0"
+,Tableau de bord : indicateurs clés (KPI) et graphiques (jour / semaine / mois / année),"2,0"
+,"Recherche globale (Ctrl+K sur le web, loupe sur le mobile)","1,0"
+,"Apparence : thème clair / sombre, couleur principale, taille du texte","1,0"
+,Optimisation des requêtes SQL et des performances de l'API,"1,0"
+,Responsive web et mobile (adaptation aux tailles d'écran),"1,0"
+,Tests croisés de bout en bout (web / mobile / API) et corrections de bugs,"2,0"
+,SOUS TOTAL,"10,0"
+,,
+,"QUALITÉ, LIVRAISON ET GESTION DE PROJET",
+SPRINT VI,"Audit de sécurité et du code, corrections des failles et des bugs","2,0"
+,Génération de l'APK et préparation des données de démonstration,"1,0"
+,"Documentation technique (architecture, flux, routes de l'API, scénarios de test)","2,0"
+,Suivi du projet et réunions d'avancement avec l'encadreur,"3,0"
+,Recette avec l'encadreur et formation des utilisateurs,"1,5"
+,Marge pour les corrections de dernière minute,"2,0"
+,SOUS TOTAL,"11,5"
+,,
+,SOMME TOTAL,"66,0"

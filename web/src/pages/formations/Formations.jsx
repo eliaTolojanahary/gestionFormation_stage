@@ -3,6 +3,7 @@ import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import { useFormation } from '../../hooks/useFormation'
 import SearchFilterBar from '../../components/form/Filter'
+import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import './Formations.css'
 
 // Liste des formations avec recherche et filtre par statut.
@@ -62,11 +63,13 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
       key: 'tarif',
       header: 'Tarif',
       render: (row) => `${Number(row.tarif || 0).toLocaleString('fr-FR')} MGA`,
+      exportValue: (row) => Number(row.tarif || 0),
     },
     {
       key: 'duree_jours',
       header: 'Durée',
       render: (row) => `${row.duree_jours || 0} jours`,
+      exportValue: (row) => Number(row.duree_jours || 0),
     },
     {
       key: 'formateur',
@@ -125,16 +128,19 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
           </p>
         </div>
 
-        {canManage && (
-          <button
-            type="button"
-            className="primary-button"
-            /* ✅ Callback au lieu de navigate() */
-            onClick={() => onCreate && onCreate()}
-          >
-            + Nouvelle formation
-          </button>
-        )}
+        <div className="heading-actions">
+          <BoutonExportCSV columns={columns} lignes={filtered} nomFichier="formations" />
+          {canManage && (
+            <button
+              type="button"
+              className="primary-button"
+              /* ✅ Callback au lieu de navigate() */
+              onClick={() => onCreate && onCreate()}
+            >
+              + Nouvelle formation
+            </button>
+          )}
+        </div>
       </div>
 
       <article className="gestion-panel">

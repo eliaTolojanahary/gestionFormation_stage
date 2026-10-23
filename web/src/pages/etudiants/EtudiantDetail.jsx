@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Header from '../../components/header/Header'
 import Informations from '../../components/form/Informations'
 import Tableau from '../../components/tableau/Tableau'
+import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import DocumentAffichage from '../../components/doc/DocumentAffichage'
 import { useEtudiant } from '../../hooks/useEtudiant'
 import './Etudiants.css'
@@ -45,6 +46,7 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
       key: 'tarif',
       header: 'Tarif',
       render: (formation) => `${Number(formation.tarif || 0).toLocaleString('fr-FR')} MGA`,
+      exportValue: (formation) => Number(formation.tarif || 0),
     },
     { key: 'date_inscription', header: 'Inscription' },
   ]
@@ -110,7 +112,16 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
         <div className="detail-main-column">
           <Informations title="Informations personnelles" items={informationItems} />
           
-          <Informations title="Formations suivies">
+          <Informations
+            title="Formations suivies"
+            action={
+              <BoutonExportCSV
+                columns={formationColumns}
+                lignes={formations}
+                nomFichier={`formations_${student.prenom}_${student.nom}`}
+              />
+            }
+          >
             <Tableau
               columns={formationColumns}
               rows={formations}

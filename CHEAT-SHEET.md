@@ -151,7 +151,7 @@ async function archiverDemande(id) {
 </button>
 ```
 
-**⑧ Doc** : flux (§6 tableau de la page, §7 règle ; fonctionnement actuel seulement, pas d'historique) + un scénario dans `SCENARIOS-TESTS.md`.
+**⑧ Doc** : flux (§2.2 : tableau page → action → métier → base et règles du module ; fonctionnement actuel seulement, pas d'historique) + un scénario dans `SCENARIOS-TESTS.md`.
 
 ---
 

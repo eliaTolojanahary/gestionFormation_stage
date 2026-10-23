@@ -5,6 +5,7 @@ import SearchFilterBar from '../../components/form/Filter'
 import { useUser } from '../../hooks/useUser'
 
 import Avatar from '../../components/avatar/Avatar'
+import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import './Users.css'
 
 // Liste des comptes utilisateurs (Super Admin) avec recherche et filtre par rôle.
@@ -52,6 +53,7 @@ function Users({ user, onCreate, onEdit }) {
     {
       key: 'name',
       header: 'Utilisateur',
+      exportValue: (item) => `${item.prenom || ''} ${item.nom}`.trim(),
       render: (item) => (
         <div className="user-name">
 <Avatar photo={item.photo} prenom={item.prenom} nom={item.nom} shape="circle" size="lg" fallback="U" />
@@ -65,6 +67,7 @@ function Users({ user, onCreate, onEdit }) {
       key: 'role',
       header: 'Rôle',
       render: (item) => <span className="user-role">{item.role_nom}</span>,
+      exportValue: (item) => item.role_nom,
     },
     {
       key: 'actions',
@@ -91,9 +94,12 @@ function Users({ user, onCreate, onEdit }) {
           <h1>Utilisateurs</h1>
           <p>{users.length} utilisateurs enregistrés</p>
         </div>
-        <button type="button" className="primary-button" onClick={onCreate}>
-          <span aria-hidden="true">+</span>Nouvel utilisateur
-        </button>
+        <div className="heading-actions">
+          <BoutonExportCSV columns={columns} lignes={filteredUsers} nomFichier="utilisateurs" />
+          <button type="button" className="primary-button" onClick={onCreate}>
+            <span aria-hidden="true">+</span>Nouvel utilisateur
+          </button>
+        </div>
       </div>
 
       <article className="users-panel">

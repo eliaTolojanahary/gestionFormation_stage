@@ -65,6 +65,7 @@ async function getDonneesInscriptions() {
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
     JOIN formation f ON i.id_formation = f.id_formation
     WHERE i.etat = true
+    ORDER BY i.id_inscription
   `;
   const [rows] = await db.query(sql);
   return rows;

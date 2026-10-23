@@ -29,7 +29,7 @@ async function evolution(req, res) {
 // GET /dashboard/export-csv : téléchargement du fichier export_inscriptions.csv
 async function exportCSV(req, res) {
   const csv = await dashboardService.genererExportCSV();
-  res.header('Content-Type', 'text/csv');
+  res.header('Content-Type', 'text/csv; charset=utf-8');
   res.attachment('export_inscriptions.csv');
   res.send(csv);
 }

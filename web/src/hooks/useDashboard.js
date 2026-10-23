@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { apiRequest } from '../utils/api'
+import { apiRequest, API_BASE_URL, buildHeaders } from '../utils/api'
 
 // Hook du tableau de bord : charge les indicateurs, l'évolution des encaissements,
 // les inscriptions par mois, le top des formations et le tableau des échéances.
@@ -116,6 +116,25 @@ export function useDashboard() {
     }
   }
 
+  // Export des inscriptions en CSV : apiRequest attend du JSON, on lit donc la réponse
+  // en fichier (blob) puis on déclenche le téléchargement avec un lien temporaire.
+  async function exporterCSV() {
+    setError('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboard/export-csv`, { headers: buildHeaders() })
+      if (!response.ok) throw new Error(`Erreur ${response.status}`)
+
+      const url = URL.createObjectURL(await response.blob())
+      const lien = document.createElement('a')
+      lien.href = url
+      lien.download = `inscriptions_${new Date().toISOString().slice(0, 10)}.csv`
+      lien.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.message || "Impossible d'exporter les inscriptions.")
+    }
+  }
+
   // Chargement de toutes les données à l'ouverture du tableau de bord
   useEffect(() => {
     getKpiList()
@@ -138,6 +157,7 @@ export function useDashboard() {
     getInscriptionsParMois,
     getTopInscriptions,
     getPaymentTable,
+    exporterCSV,
   }
 }
 

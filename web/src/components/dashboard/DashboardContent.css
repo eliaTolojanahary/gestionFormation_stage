@@ -6,6 +6,18 @@
   box-sizing: border-box;
 }
 
+/* Titre à gauche, bouton d'export CSV à droite */
+.dashboard-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.export-button {
+  flex-shrink: 0;
+}
+
 .period-tabs,
 .chart-tabs {
   display: flex;

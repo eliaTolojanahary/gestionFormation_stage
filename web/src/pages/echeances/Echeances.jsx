@@ -6,6 +6,7 @@ import Modal from '../../components/modal/Modal'
 import SearchFilterBar from '../../components/form/Filter'
 import PaymentFormModal from '../../components/paiements/PaymentFormModal'
 import Pagination from '../../components/pagination/Pagination'
+import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 
 import { useEcheance } from '../../hooks/useEcheance'
 import { usePaiement } from '../../hooks/usePaiement'
@@ -112,6 +113,7 @@ function Echeances({ user }) {
       header: 'Prévu',
       render: (row) =>
         `${Number(row.montant_prevu).toLocaleString('fr-FR')} MGA`,
+      exportValue: (row) => Number(row.montant_prevu),
     },
 
     {
@@ -119,11 +121,14 @@ function Echeances({ user }) {
       header: 'Reste',
       render: (row) =>
         `${Number(row.reste_a_payer).toLocaleString('fr-FR')} MGA`,
+      exportValue: (row) => Number(row.reste_a_payer),
     },
 
     {
       key: 'statut_paiement',
       header: 'Statut',
+      exportValue: (row) =>
+        LIBELLE_STATUT(row.statut_paiement) + (Number(row.montant_en_attente) > 0 ? ' (payé, à valider)' : ''),
       render: (row) => (
         <>
           <span className={`student-status echeance-statut-${String(row.statut_paiement).toLowerCase()}`}>
@@ -193,6 +198,7 @@ function Echeances({ user }) {
             {liste.total} échéance{liste.total !== 1 ? 's' : ''} à suivre
           </p>
         </div>
+        <BoutonExportCSV columns={columns} charger={liste.toutesLesLignes} nomFichier="echeances" />
       </div>
 
       <article className="gestion-panel">

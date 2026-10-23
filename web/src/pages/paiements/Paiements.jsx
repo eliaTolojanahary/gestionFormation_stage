@@ -4,6 +4,7 @@ import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import SearchFilterBar from '../../components/form/Filter'
 import Pagination from '../../components/pagination/Pagination'
+import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import Modal from '../../components/modal/Modal'
 import { usePaiement, STATUTS_PAIEMENT } from '../../hooks/usePaiement'
 import { useDocument } from '../../hooks/useDocument'
@@ -125,6 +126,7 @@ function Paiements({ user }) {
       key: 'montant',
       header: 'Montant',
       render: (row) => formatMontant(row.montant),
+      exportValue: (row) => Number(row.montant),
     },
     { key: 'mode_paiement', header: 'Mode' },
     {
@@ -136,6 +138,7 @@ function Paiements({ user }) {
       key: 'statut',
       header: 'Statut',
       render: (row) => <StatutPaiement statut={row.statut} />,
+      exportValue: (row) => STATUTS_PAIEMENT[row.statut] || row.statut,
     },
     {
       key: 'actions',
@@ -191,6 +194,7 @@ function Paiements({ user }) {
           <h1>Paiements</h1>
           <p>{liste.total} paiement{liste.total !== 1 ? 's' : ''} correspondant{liste.total !== 1 ? 's' : ''}</p>
         </div>
+        <BoutonExportCSV columns={columns} charger={liste.toutesLesLignes} nomFichier="paiements" />
       </div>
 
       {/* Bandeau d'alerte : un clic filtre la liste sur les paiements en attente */}

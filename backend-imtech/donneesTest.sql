@@ -10,7 +10,8 @@
 --
 -- Scénarios couverts :
 --   - formateurs « Compétent » (Tiana, Voahangy), « Non compétent » (Hery), « Pas assez d'avis » (Lalaina)
---   - paiements validés, en attente (mobile), refusé ; échéances en retard (Toky, Fano)
+--   - paiements validés, en attente (mobile), refusé ; échéances en retard (Toky, Fano, Fitiavana)
+--   - échéances à rappeler (JAUNE) : Tsiory (aujourd'hui), Andry Python (demain), Ny Aina (dans 2 jours)
 --   - 2 inscriptions en ligne à valider (Mahery, Miora), 1 inscription Accueil non validée (Haja)
 --   - formation terminée (Fitiavana, Bureautique) et formation qui se termine bientôt (Nomena)
 --   - support programmé (publication dans 2 jours), support image, fil de discussion avec mentions
@@ -72,9 +73,9 @@ INSERT INTO utilisateur (id_utilisateur, nom, prenom, email, mot_de_passe, telep
 (13, 'Rakotondrabe',    'Sitraka',       'sitraka.rakotondrabe@imtech.test',    @mdp, '0336677889', 4, 'utilisateurs/demo-sitraka.jpg',   DATE_SUB(NOW(), INTERVAL 45 DAY),  true),
 (14, 'Raharimanana',    'Onja',          'onja.raharimanana@imtech.test',       @mdp, '0347788990', 4, 'utilisateurs/demo-onja.jpg',      DATE_SUB(NOW(), INTERVAL 45 DAY),  true),
 (15, 'Rabe',            'Fanomezantsoa', 'fanomezantsoa.rabe@imtech.test',      @mdp, '0328899001', 4, 'utilisateurs/demo-fano.jpg',      DATE_SUB(NOW(), INTERVAL 45 DAY),  true),
-(16, 'Ramanantsoa',     'Ny Aina',       'nyaina.ramanantsoa@imtech.test',      @mdp, '0339900112', 4, 'utilisateurs/demo-nyaina.jpg',    DATE_SUB(NOW(), INTERVAL 20 DAY),  true),
+(16, 'Ramanantsoa',     'Ny Aina',       'nyaina.ramanantsoa@imtech.test',      @mdp, '0339900112', 4, 'utilisateurs/demo-nyaina.jpg',    DATE_SUB(NOW(), INTERVAL 28 DAY),  true),
 (17, 'Randrianasolo',   'Haja',          'haja.randrianasolo@imtech.test',      @mdp, '0341011121', 4, 'utilisateurs/demo-haja.jpg',      DATE_SUB(NOW(), INTERVAL 20 DAY),  true),
-(18, 'Razanakoto',      'Tsiory',        'tsiory.razanakoto@imtech.test',       @mdp, '0321213141', 4, 'utilisateurs/demo-tsiory.jpg',    DATE_SUB(NOW(), INTERVAL 12 DAY),  true),
+(18, 'Razanakoto',      'Tsiory',        'tsiory.razanakoto@imtech.test',       @mdp, '0321213141', 4, 'utilisateurs/demo-tsiory.jpg',    DATE_SUB(NOW(), INTERVAL 30 DAY),  true),
 (19, 'Rabemananjara',   'Mahery',        'mahery.rabemananjara@imtech.test',    @mdp, '0331314151', 4, 'utilisateurs/demo-mahery.jpg',    DATE_SUB(NOW(), INTERVAL 2 DAY),   true);
 
 -- Dossiers étudiants (Mahery, inscrit en ligne : pièces pas encore fournies)
@@ -138,16 +139,16 @@ CREATE TEMPORARY TABLE seed_inscription (
 INSERT INTO seed_inscription VALUES
 (1,  1,  8,  1, 50, 3, true,  'accueil'),  -- Andry      : Développement web, à jour
 (2,  2,  9,  1, 50, 1, true,  'accueil'),  -- Miora      : Développement web, payé comptant
-(3,  3,  10, 1, 50, 2, true,  'accueil'),  -- Fitiavana  : Développement web
+(3,  3,  10, 1, 50, 2, true,  'accueil'),  -- Fitiavana  : Développement web, 1re tranche EN RETARD (5 jours)
 (4,  4,  11, 1, 75, 3, true,  'accueil'),  -- Toky       : 2e tranche EN RETARD (virement refusé)
 (5,  5,  12, 2, 26, 1, true,  'accueil'),  -- Nomena     : Bureautique, se termine dans 4 jours
 (6,  6,  13, 2, 26, 2, true,  'accueil'),  -- Sitraka    : 2e tranche payée sur mobile, à valider
 (7,  7,  14, 3, 45, 3, true,  'accueil'),  -- Onja       : Réseaux, à jour
 (8,  8,  15, 3, 45, 3, true,  'accueil'),  -- Fano       : 2e tranche EN RETARD
-(9,  9,  16, 4, 20, 2, true,  'accueil'),  -- Ny Aina    : Infographie
+(9,  9,  16, 4, 28, 2, true,  'accueil'),  -- Ny Aina    : Infographie, 1re tranche À RAPPELER (dans 2 jours)
 (10, 10, 17, 4, 20, 1, true,  'accueil'),  -- Haja       : Infographie
-(11, 11, 18, 5, 12, 2, true,  'accueil'),  -- Tsiory     : Python
-(12, 1,  8,  5, 12, 2, true,  'accueil'),  -- Andry      : 2e formation (Python)
+(11, 11, 18, 5, 30, 2, true,  'accueil'),  -- Tsiory     : Python, 1re tranche À RAPPELER (aujourd'hui)
+(12, 1,  8,  5, 29, 2, true,  'accueil'),  -- Andry      : 2e formation (Python), 1re tranche À RAPPELER (demain)
 (13, 12, 19, 6, 2,  1, false, 'en_ligne'), -- Mahery     : inscription en ligne À VALIDER
 (14, 2,  9,  6, 1,  2, false, 'en_ligne'), -- Miora      : inscription en ligne À VALIDER
 (15, 10, 17, 2, 0,  1, false, 'accueil'),  -- Haja       : saisie par l'Accueil, pas encore payée
@@ -185,7 +186,6 @@ CREATE TEMPORARY TABLE seed_paiement (
 INSERT INTO seed_paiement VALUES
 (1,  1,  1, 1, NULL,            50, 'valide'),
 (2,  2,  1, 2, 'VIR-2026-0412', 50, 'valide'),
-(3,  3,  1, 1, NULL,            50, 'valide'),
 (4,  4,  1, 1, NULL,            75, 'valide'),
 (5,  4,  2, 2, 'VIR-2026-0587', 13, 'refuse'),     -- référence introuvable à la banque
 (6,  5,  1, 1, NULL,            26, 'valide'),
@@ -194,10 +194,7 @@ INSERT INTO seed_paiement VALUES
 (9,  7,  1, 2, 'VIR-2026-0498', 45, 'valide'),
 (10, 7,  2, 2, 'VIR-2026-0701', 6,  'valide'),
 (11, 8,  1, 1, NULL,            45, 'valide'),
-(12, 9,  1, 1, NULL,            20, 'valide'),
 (13, 10, 1, 2, 'VIR-2026-0655', 20, 'valide'),
-(14, 11, 1, 1, NULL,            12, 'valide'),
-(15, 12, 1, 1, NULL,            12, 'valide'),
 (16, 13, 1, 2, 'VIR-2026-0761', 2,  'en_attente'), -- déclaré à l'inscription en ligne
 (17, 14, 1, 2, 'VIR-2026-0768', 1,  'en_attente'), -- déclaré à l'inscription en ligne
 (18, 16, 1, 1, NULL,            35, 'valide'),

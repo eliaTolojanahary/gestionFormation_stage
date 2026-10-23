@@ -3,6 +3,7 @@ import Icon from '../icon/Icon'
 import Header from '../header/Header'
 import Tableau from '../tableau/Tableau'
 import AvisFormateurs from './AvisFormateurs'
+import BoutonExportCSV from '../tableau/BoutonExportCSV'
 import { useDashboard } from '../../hooks/useDashboard'
 
 import {
@@ -149,7 +150,8 @@ function DashboardContent({ user ,onProfile}) {
     error,
     getEvolution,
     topInscriptions,
-    paymentTable
+    paymentTable,
+    exporterCSV
   } = useDashboard()
   const displayUser = user || { prenom: 'Admin' }
 
@@ -162,6 +164,9 @@ function DashboardContent({ user ,onProfile}) {
           <h1>Bonjour, {displayUser.prenom || 'Admin'}</h1>
           <p>Voici un aperçu de l'activité du centre de formation.</p>
         </div>
+        <button className="primary-button export-button" type="button" onClick={exporterCSV}>
+          <Icon name="download" /> Exporter les inscriptions (CSV)
+        </button>
       </div>
 
       {isLoading && <p>Chargement...</p>}
@@ -247,6 +252,7 @@ function PaymentTable({ paymentTable }) {
       key: 'reste_a_payer',
       header: 'Montant',
       render: (payment) => `${Number(payment.reste_a_payer).toLocaleString('fr-FR')} MGA`,
+      exportValue: (payment) => Number(payment.reste_a_payer),
     },
     {
       key: 'date_echeance',
@@ -256,6 +262,7 @@ function PaymentTable({ paymentTable }) {
     {
       key: 'statut_paiement',
       header: 'Statut',
+      exportValue: (payment) => getPaymentStatus(payment.statut_paiement).label,
       render: (payment) => {
         const status = getPaymentStatus(payment.statut_paiement)
 
@@ -289,7 +296,11 @@ function PaymentTable({ paymentTable }) {
             Paiements à surveiller <em>{alertCount} alertes</em>
           </h2>
         </div>
-        <a href="/dashboard/echeances">Filtres avancés</a>
+        <div className="heading-actions">
+          {/* Le tableau n'affiche que 5 lignes ; le fichier contient toutes les échéances */}
+          <BoutonExportCSV columns={paymentColumns} lignes={payments} nomFichier="paiements_a_surveiller" />
+          <a href="/dashboard/echeances">Filtres avancés</a>
+        </div>
       </div>
 
       <Tableau
