@@ -24,9 +24,14 @@ const REACTIONS = [
   { cle: 'nb_dislike', icon: '👎', label: "Je n'aime pas" },
 ]
 
-// Libellé affiché dans le filtre -> champ trié (null = ordre de l'API : compétents d'abord)
+// Note sur 10 ou sur 20 ; « — » tant qu'elle n'est pas calculable
+const afficherNote = (note) => (note === null || note === undefined ? '—' : String(note).replace('.', ','))
+
+// Libellé affiché dans le filtre -> champ trié (null = ordre de l'API : meilleure note sur 20 d'abord)
 const TRIS = {
-  'Avis (compétents d’abord)': null,
+  'Note sur 20': null,
+  'Note des réactions': 'note_reactions',
+  'Note des commentaires': 'note_commentaires',
   '% positif': 'taux_positif',
   'Nombre de réactions': 'total_reactions',
   'Nombre de supports': 'nb_supports',
@@ -48,10 +53,11 @@ function TauxPositif({ taux }) {
   )
 }
 
-// Back-office : formateurs classés selon les réactions des étudiants sur leurs supports.
+// Back-office : classement des formateurs sur 20 (réactions sur 10 + commentaires notés sur 10).
 // La période { debut, fin } vient du filtre « Du … au … » du tableau de bord.
-function AvisFormateurs({ periode = PERIODE_TOUT }) {
-  const { formateurs, isLoading, error } = useAvisFormateurs(periode)
+// `version` change quand un commentaire est noté : le classement est alors relu.
+function AvisFormateurs({ periode = PERIODE_TOUT, version = 0 }) {
+  const { formateurs, isLoading, error } = useAvisFormateurs(periode, version)
   const [search, setSearch] = useState('')
   const [avisFilter, setAvisFilter] = useState(TOUS)
   const [tri, setTri] = useState(TRI_DEFAUT)
@@ -118,6 +124,24 @@ function AvisFormateurs({ periode = PERIODE_TOUT }) {
     ...REACTIONS.map((r) => ({ key: r.cle, header: r.label, exportSeulement: true })),
     { key: 'total_reactions', header: 'Total' },
     {
+      key: 'note_reactions',
+      header: 'Réactions / 10',
+      render: (row) => afficherNote(row.note_reactions),
+      exportValue: (row) => row.note_reactions,
+    },
+    {
+      key: 'note_commentaires',
+      header: 'Commentaires / 10',
+      render: (row) => afficherNote(row.note_commentaires),
+      exportValue: (row) => row.note_commentaires,
+    },
+    {
+      key: 'note_finale',
+      header: 'Note / 20',
+      render: (row) => <strong>{afficherNote(row.note_finale)}</strong>,
+      exportValue: (row) => row.note_finale,
+    },
+    {
       key: 'taux_positif',
       header: 'Positif',
       render: (row) => <TauxPositif taux={row.taux_positif} />,
@@ -140,14 +164,14 @@ function AvisFormateurs({ periode = PERIODE_TOUT }) {
     <article className="dashboard-card avis-card">
       <div className="card-heading avis-heading">
         <div>
-          <h2>Avis des étudiants sur les formateurs</h2>
+          <h2>Classement des formateurs</h2>
           <p>
-            Réactions reçues sur leurs supports. Compétent : au moins 60 % de réactions positives
-            (👍 ❤️ 💡) sur 5 réactions ou plus.
-            {` Réactions données ${libellePeriode(periode)}.`}
+            Note sur 20 : réactions sur leurs supports (10 points, à partir de 5 réactions) + moyenne des
+            commentaires notés (10 points). Compétent : au moins 60 % de réactions positives (👍 ❤️ 💡).
+            {` Données ${libellePeriode(periode)}.`}
           </p>
         </div>
-        <BoutonExportCSV columns={columns} lignes={lignes} nomFichier="avis_formateurs" />
+        <BoutonExportCSV columns={columns} lignes={lignes} nomFichier="classement_formateurs" />
       </div>
 
       <SearchFilterBar

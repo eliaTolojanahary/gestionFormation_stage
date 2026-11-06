@@ -12,10 +12,11 @@
 // Exemple : présence 80 % (−1), une échéance payée en retard (−1) → 10 − 1 − 1 = 8 ;
 //   avec une présentation à 7/10, la note d'attestation est 15/20.
 const classementModel = require('../models/classementModel');
+const documentModel = require('../models/documentModel');
 const formationModel = require('../models/formationModel');
 const dependanceService = require('./dependanceService');
 const { ROLES } = require('../config/roles');
-const { badRequest, forbidden, notFound } = require('../utils/errors');
+const { badRequest, conflict, forbidden, notFound } = require('../utils/errors');
 
 const NOTE_SYSTEME_MAX = 10;
 // Taux de présence minimal (en %) -> points retirés, du meilleur palier au moins bon
@@ -129,12 +130,16 @@ async function classementFormation(id_formation, auteur) {
 
 // Le formateur (de cette formation) ou le Super Admin note la présentation, sur 10.
 // `note` vide ou null : on efface la note de présentation.
+// Une attestation délivrée imprime la note : elle ne change plus ensuite.
 async function definirNote(id_inscription, note, auteur) {
   await dependanceService.verifierInscription(id_inscription);
   const inscription = await classementModel.getInscriptionAvecFormateur(id_inscription);
   if (!inscription) throw notFound('Inscription introuvable.');
   if (auteur.role === ROLES.FORMATEUR && Number(inscription.id_formateur) !== Number(auteur.id)) {
     throw forbidden('Cette formation ne vous est pas attribuée.');
+  }
+  if (await documentModel.findAttestation(id_inscription)) {
+    throw conflict("L'attestation a déjà été délivrée : cette note ne peut plus être modifiée.");
   }
 
   let valeur = null;

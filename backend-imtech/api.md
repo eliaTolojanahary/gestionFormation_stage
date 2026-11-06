@@ -110,7 +110,7 @@ Un `DELETE` sur un utilisateur, un étudiant, une formation, une inscription, un
 | DELETE | /inscriptions/:id | SA, AC — désactive |
 | PUT | /inscriptions/:id/reactiver | SA, AC |
 | GET | /inscriptions/:id/echeances | SA, AC |
-| PUT | /inscriptions/:id/note | SA, FO (ses formations) — `{ note_presentation }` entre 0 et 10 (au-delà : 400), vide = effacer. Note d'attestation = note système + présentation /20 |
+| PUT | /inscriptions/:id/note | SA, FO (ses formations) — `{ note_presentation }` entre 0 et 10 (au-delà : 400), vide = effacer. Note d'attestation = note système + présentation /20 — **409** si l'attestation est déjà délivrée |
 | GET | /echeances | SA, AC — `statut_paiement` : VERT (payée ou loin), JAUNE (J-2 à J), ROUGE (en retard) ; `?recherche=`, `?statut=VERT\|JAUNE\|ROUGE`, `?debut=&fin=` (date d'échéance, AAAA-MM-JJ, bornes incluses ; 400 si invalide), paginable |
 | PUT | /echeances/:id | SA, AC |
 | DELETE | /echeances/:id | SA, AC — désactive |
@@ -118,27 +118,27 @@ Un `DELETE` sur un utilisateur, un étudiant, une formation, une inscription, un
 | POST | /echeances/:id/rappeler | SA, AC — bouton « Rappeler » : notification in-app + e-mail à l'étudiant |
 
 ## Paiements (étape 5)
-Un paiement a un `statut` : `en_attente`, `valide` ou `refuse`.
+Un paiement a un `statut` : `en_attente`, `valide` ou `refuse`. `id_agent`, `agent_prenom` et `agent_nom` indiquent le membre du personnel qui l'a saisi, validé ou refusé (`null` : ancien paiement, ou déclaration pas encore traitée). Valider un paiement qui dépasse le reste à payer (échéance encaissée au guichet entre-temps) renvoie **409** : le refuser ou corriger son montant.
 Seuls les paiements `valide` comptent dans les totaux, le dashboard et les factures.
 
 | Méthode | Route | Accès |
 |---|---|---|
 | GET | /paiements?statut=en_attente | SA, AC (tout) — ET (uniquement les siens) ; `?mode=` (nom du mode), `?recherche=` (étudiant ou formation), paginable (+ `compteurs.en_attente` : paiements en attente sur toute la base) |
 | GET | /paiements/:id | SA, AC — ET (uniquement les siens) |
-| POST | /paiements | SA, AC : paiement `valide`, partiel autorisé, plafonné au reste à payer.<br>ET : uniquement sur sa propre échéance, montant imposé, statut `en_attente`. |
-| PUT | /paiements/:id | SA, AC |
+| POST | /paiements | SA, AC : paiement `valide`, partiel autorisé, plafonné au reste à payer.<br>ET : uniquement sur sa propre échéance, montant imposé, statut `en_attente`.<br>Deux envois simultanés sur une échéance passent l'un après l'autre : le second reçoit **409** si elle est réglée. |
+| PUT | /paiements/:id | SA, AC — paiement facturé (`facture_emise = 1` dans les réponses) : montant et mode figés (**409**), la référence reste modifiable. Montant plafonné au reste à payer (400 sinon) ; l'ancien montant d'un paiement validé n'y compte pas, un paiement refusé n'est pas plafonné |
 | PUT | /paiements/:id/valider | SA, AC — notifie l'étudiant |
 | PUT | /paiements/:id/refuser | SA, AC — notifie l'étudiant |
 | DELETE | /paiements/:id | SA, AC — désactive (ne compte plus dans les totaux) |
-| PUT | /paiements/:id/reactiver | SA, AC |
+| PUT | /paiements/:id/reactiver | SA, AC (`DELETE /paiements/:id` : **409** si le paiement a une facture) — **409** si un paiement validé dépasse le reste à payer (échéance repayée entre-temps) |
 
 ## Documents (étapes 5 et 9, §5 Documents)
 | Méthode | Route | Accès |
 |---|---|---|
 | POST | /fiche/:id_inscription/generer | SA, AC |
-| POST | /factures/:id_paiement/generer | SA, AC (paiement validé uniquement) — régénère et renvoie le PDF. La facture est **déjà envoyée automatiquement** à l'étudiant (notification + e-mail) à chaque validation : `PUT /paiements/:id/valider`, paiement au guichet `POST /paiements`, `POST /inscriptions/:id/valid` |
-| POST | /attestations/:id_inscription/generer | SA, AC (la note est imprimée sur l'attestation) |
-| POST | /attestations/:id_inscription/envoyer | SA, AC — génère puis envoie à l'étudiant (in-app + e-mail avec le PDF) |
+| POST | /factures/:id_paiement/generer | SA, AC (paiement validé uniquement) — renvoie la facture du paiement ; elle n'est créée qu'une fois (une seule facture par paiement, même numéro à chaque appel). La facture est **déjà envoyée automatiquement** à l'étudiant (notification + e-mail) à chaque validation : `PUT /paiements/:id/valider`, paiement au guichet `POST /paiements`, `POST /inscriptions/:id/valid` |
+| POST | /attestations/:id_inscription/generer | SA, AC (la note est imprimée sur l'attestation) — **409** si l'étudiant n'a pas commenté son formateur. Une seule attestation par inscription : si elle existe, renvoie la même (même QR code) |
+| POST | /attestations/:id_inscription/envoyer | SA, AC — génère si besoin puis envoie à l'étudiant (in-app + e-mail avec le PDF) ; un nouvel envoi renvoie la même attestation |
 | GET | /verification/:uuid | public (QR code des attestations) |
 | GET | /documents | SA, AC, FO |
 | POST | /documents | SA, AC |
@@ -164,7 +164,11 @@ Seuls les paiements `valide` comptent dans les totaux, le dashboard et les factu
 | POST | /commentaires | ET, FO, SA |
 | DELETE | /commentaires/:id | SA (tout), FO (ses formations), ET (ses commentaires) |
 | GET / POST / DELETE | /supports/:id/reactions | SA, FO, ET — POST `{ type_reaction: 'like' \| 'coeur' \| 'utile' \| 'dislike' }` (`id_type_reaction` encore accepté) ; support publié uniquement |
-| GET | /formateurs/avis?debut=&fin= | SA, AC — formateurs avec réactions reçues par type, % positif et avis (`competent`, `non_competent`, `pas_assez_avis`) ; période facultative (date de la réaction) |
+| GET | /formateurs/avis?debut=&fin= | SA, AC — classement : formateurs avec réactions reçues par type, % positif, avis (`competent`, `non_competent`, `pas_assez_avis`), `note_reactions` (/10, % positif ÷ 10, à partir de 5 réactions), `note_commentaires` (/10, moyenne des notes), `nb_commentaires` et `note_finale` (/20, `null` s'il manque une partie). Meilleure note d'abord |
+| GET | /mes-formateurs-a-commenter | ET — formations à commenter (à partir de la veille de la fin) |
+| POST | /inscriptions/:id/commentaire-formateur | ET (sa propre inscription) — `{ commentaire }`, 2 000 caractères au plus, une seule fois (409 sinon) ; l'Accueil et le SA sont prévenus. Obligatoire pour l'attestation |
+| GET | /formateurs/commentaires?statut=a_noter\|notes&recherche=&page=&limite= | SA, AC — commentaires, ceux à noter d'abord. Jamais visibles par le formateur |
+| PUT | /formateurs/commentaires/:id/note | SA, AC — `{ note }` de 0 à 10 (`7,5` accepté) ; modifiable |
 
 ## Notifications (§5 Notifications)
 | Méthode | Route | Accès |

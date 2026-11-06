@@ -157,3 +157,26 @@
   color: var(--text-muted);
   background: var(--accent-soft);
 }
+
+/* Commentaires de fin de formation : texte complet et note sur 10 */
+.avis-commentaire {
+  margin: 0;
+  max-width: 420px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.avis-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avis-note input {
+  width: 56px;
+  padding: 5px 6px;
+  border: 1px solid var(--line, #d7dde3);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}

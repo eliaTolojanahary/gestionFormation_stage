@@ -67,7 +67,7 @@ async function validerInscription(id_inscription, id_mode_paiement, reference_vi
     const premiereEcheance = echeances[0];
     const declare = await paiementModel.getPaiementEnAttenteEcheance(premiereEcheance.id_echeance, connection);
     if (declare) {
-      await paiementModel.validerPaiementDeclare(declare.id_paiement, { id_mode_paiement, reference_virement }, connection);
+      await paiementModel.validerPaiementDeclare(declare.id_paiement, { id_mode_paiement, reference_virement, id_utilisateur: id_auteur }, connection);
       return { id_inscription, id_paiement: declare.id_paiement };
     }
 
@@ -75,6 +75,7 @@ async function validerInscription(id_inscription, id_mode_paiement, reference_vi
     const id_paiement = await paiementModel.insererPaiement({
       id_echeance: premiereEcheance.id_echeance,
       id_mode_paiement,
+      id_utilisateur: id_auteur,
       montant: premiereEcheance.montant_prevu,
       reference_virement,
       statut: paiementModel.STATUTS_PAIEMENT.VALIDE,

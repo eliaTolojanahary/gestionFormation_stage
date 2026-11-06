@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { ROLES } = require('../config/roles');
 const documentModel = require('../models/documentModel');
+const formateurNoteModel = require('../models/formateurNoteModel');
 const { genererFichePDF, genererFacturePDF, genererAttestationPDF } = require('../utils/pdf');
 const { genererQRCodeBuffer } = require('../utils/qrcode');
 const { STATUTS_PAIEMENT } = require('../models/paiementModel');
@@ -13,6 +14,7 @@ const dependanceService = require('./dependanceService');
 const etatService = require('./etatService');
 const { notFound, conflict } = require('../utils/errors');
 const { formatMontant } = require('../utils/format');
+const { supprimerUpload } = require('../utils/fichiersUpload');
 const echeanceModel = require('../models/echeanceModel');
 const { salutation, titre, encadre, formation } = require('../utils/modeleEmail');
 
@@ -31,8 +33,13 @@ async function creerFiche(id_inscription) {
   return await genererFichePDF(donnees, nomFichier);
 }
 
+const factureExistante = async (id_paiement) => {
+  const facture = await documentModel.findFacture(id_paiement);
+  return facture && { cheminRelatif: facture.fichier_pdf, numeroFacture: facture.numero_facture };
+};
+
 // Génère la facture d'un paiement VALIDÉ (numéro FAC-<année>-<id sur 4 chiffres>)
-// et l'enregistre dans la table facture
+// et l'enregistre dans la table facture. Un paiement n'a qu'une facture : si elle existe déjà, on la renvoie.
 async function creerFacture(id_paiement) {
   await dependanceService.verifierPaiement(id_paiement);
   const donnees = await documentModel.findPaiementPourFacture(id_paiement);
@@ -40,12 +47,21 @@ async function creerFacture(id_paiement) {
   if (donnees.statut !== STATUTS_PAIEMENT.VALIDE) {
     throw conflict("Ce paiement n'est pas encore validé : impossible d'émettre une facture.");
   }
+  const existante = await factureExistante(id_paiement);
+  if (existante) return existante;
 
   const numeroFacture = `FAC-${new Date().getFullYear()}-${String(id_paiement).padStart(4, '0')}`;
   const nomFichier = `facture_${id_paiement}_${Date.now()}.pdf`;
   const cheminRelatif = await genererFacturePDF({ ...donnees, numero_facture: numeroFacture }, nomFichier);
 
-  await documentModel.insertFacture(id_paiement, numeroFacture, cheminRelatif);
+  try {
+    await documentModel.insertFacture(id_paiement, numeroFacture, cheminRelatif);
+  } catch (error) {
+    if (error.code !== 'ER_DUP_ENTRY') throw error;
+    // Deux demandes simultanées : la base n'en garde qu'une, on retire le PDF de trop
+    await supprimerUpload(cheminRelatif);
+    return factureExistante(id_paiement);
+  }
   return { cheminRelatif, numeroFacture };
 }
 
@@ -92,8 +108,20 @@ async function envoyerFacture(id_paiement, id_auteur = null) {
   return { cheminRelatif, numeroFacture, emailEnvoye };
 }
 
+const attestationExistante = async (id_inscription) => {
+  const attestation = await documentModel.findAttestation(id_inscription);
+  return attestation && { cheminRelatif: attestation.fichier_pdf, uuid: attestation.uuid_verification };
+};
+
+// Une inscription n'a qu'une attestation : si elle existe déjà, on la renvoie (même QR code, même note)
 async function creerAttestation(id_inscription) {
   await dependanceService.verifierInscription(id_inscription);
+  const existante = await attestationExistante(id_inscription);
+  if (existante) return existante;
+  if (!(await formateurNoteModel.commentaireExiste(id_inscription))) {
+    throw conflict("L'étudiant doit d'abord commenter son formateur depuis l'application mobile.");
+  }
+
   const inscription = await documentModel.findInscriptionPourAttestation(id_inscription);
   if (!inscription) throw notFound('Inscription introuvable.');
 
@@ -113,7 +141,14 @@ async function creerAttestation(id_inscription) {
   const nomFichier = `attestation_${id_inscription}_${Date.now()}.pdf`;
   const cheminRelatif = await genererAttestationPDF({ ...donnees, date_delivrance: dateDelivrance }, qrBuffer, nomFichier);
 
-  await documentModel.insertAttestation(id_inscription, uuid, dateDelivrance, cheminRelatif);
+  try {
+    await documentModel.insertAttestation(id_inscription, uuid, dateDelivrance, cheminRelatif);
+  } catch (error) {
+    if (error.code !== 'ER_DUP_ENTRY') throw error;
+    // Deux demandes simultanées : la base n'en garde qu'une, on retire le PDF de trop
+    await supprimerUpload(cheminRelatif);
+    return attestationExistante(id_inscription);
+  }
   return { cheminRelatif, uuid };
 }
 

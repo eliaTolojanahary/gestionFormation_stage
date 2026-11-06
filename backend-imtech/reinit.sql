@@ -15,6 +15,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 -- Suivi
 TRUNCATE TABLE historique_etat;
+TRUNCATE TABLE formateur_note;
 TRUNCATE TABLE alerte_envoyee;
 TRUNCATE TABLE presence;
 TRUNCATE TABLE reset_password;

@@ -345,6 +345,7 @@ await paiementModel.insererPaiement({ id_echeance, montant: resteAPayer, statut:
 - `auteur` est `req.user`, fourni par `verifyToken` : on vérifie que l'échéance est bien la sienne.
 - Le personnel peut aussi encaisser au guichet (web : **Échéances → Payer**). Son paiement est alors
   « validé » directement, et un paiement partiel est accepté.
+- **Une facture par paiement** (`uq_facture_paiement`) : `creerFacture` renvoie la facture existante au lieu d'en créer une autre.
 - **Facture automatique** : `envoyerFactureAuto(id_paiement)` n'est pas attendue (`.catch` sans `await`) :
   l'Accueil a sa réponse tout de suite, l'e-mail part ensuite. Si la facture échoue (Gmail en panne…),
   l'étudiant reçoit quand même « Votre paiement … a été validé » en notification.
@@ -501,7 +502,7 @@ e-mail. N'importe qui peut scanner le QR code pour vérifier qu'elle est authent
 | **Tableau de bord** | Web — Tableau de bord | `GET /dashboard/kpi`, `/evolution`, `/export-csv`, `/inscriptionParMois`, `/topInscription`, `/echeances`, `/formateurs/avis` | `dashboardService.*` (cache d'1 minute par période), `dashboardModel.getSituationEcheances` | **Filtre « Du … au … »** (`FiltreDates.jsx`, `?debut=&fin=` contrôlé par `utils/periode.js`) commun aux indicateurs, inscriptions par mois, formations les plus suivies, paiements à surveiller et avis sur les formateurs. Sous les cartes, barre « Détail du reste à encaisser » : à venir / à valider / en retard, chacun avec son montant et son nombre d'échéances (somme des montants = total). Barres des encaissements : montant au-dessus des barres non vides, libellé sur deux lignes sous l'axe (jour puis mois, ou mois puis année), évolution vs période précédente en vert / rouge ; nombre d'inscriptions sous chaque mois. Paiements à surveiller : retards puis J-2 en tête (5 lignes par couleur demandées au serveur, `?statut=&page=1&limite=5`, totaux de la pagination) ; « Filtres avancés » ouvre Échéances avec la même période. Export CSV |
 | **Supports et commentaires** | Détail d'une formation et d'un support (mobile), onglet Documents (mobile), page Supports du formateur (web) | `?limite=5&avant=<id>` (curseur) ; `GET /supports?page=&limite=5` (recherche, filtres) | `lireCurseur`, `clauseCurseur`, `reponseCurseur` (`utils/pagination.js`) ; `commentaireService.listerFil` | Le serveur n'envoie que 5 éléments à la fois ; « Voir plus » demande la suite. Commentaires : la page compte les commentaires principaux, leurs réponses sont lues en **une** requête (`getReponses`). Un appel unique `GET /formations/:id/commentaires` remplace l'ancien appel par support |
 | **Listes** | Étudiants, Paiements, Inscriptions, Échéances | `?page=&limite=&recherche=` | `utils/pagination.js` | 10 lignes par page (100 max), filtres faits par le serveur. Échéances : statut (à jour / J-2 / en retard) **et** dates « Du … au … » sur la date d'échéance, combinables (ex. en retard du X au Y), période gardée dans l'adresse ; Utilisateurs et Documents encore paginés dans le navigateur ; « Exporter CSV » = la liste filtrée sans `?page=`, plafonnée à 10 000 lignes par le serveur (message si coupée, `BoutonExportCSV.jsx`) ; formulaire Formation : seuls les formateurs sont chargés (`/utilisateurs?role=Formateur`) ; mobile : liste des formations « Voir plus » par 10 dans le téléphone |
-| **Éléments désactivés** | Utilisateurs, Étudiants, Formations, Inscriptions, Échéances, Paiements, Documents (administratifs et supports) : filtre « État » | `?etat=actif\|inactif\|tous`, `DELETE /…/:id` (désactiver), `PUT /…/:id/reactiver` | `etatService.*`, `dependanceService.verifierInscription / verifierEcheance / verifierPaiement` | Actifs par défaut ; une ligne désactivée n'a qu'un bouton « Réactiver » (Super Admin). Badge orange (« Étudiant désactivé »…) sur une ligne dont un élément parent est désactivé : toute action dessus renvoie **409** avec ce qu'il faut réactiver. Réactivation refusée tant qu'un parent est désactivé (un support : sa formation ; un formateur ne réactive que ses supports) |
+| **Éléments désactivés** | Utilisateurs, Étudiants, Formations, Inscriptions, Échéances, Paiements, Documents (administratifs et supports) : filtre « État » | `?etat=actif\|inactif\|tous`, `DELETE /…/:id` (désactiver), `PUT /…/:id/reactiver` | `etatService.*`, `dependanceService.verifierInscription / verifierEcheance / verifierPaiement` | Actifs par défaut ; une ligne désactivée n'a qu'un bouton « Réactiver » (Super Admin) ; un paiement facturé n'a pas « Désactiver ». Chaque changement est noté dans `historique_etat`. Badge orange (« Étudiant désactivé »…) sur une ligne dont un élément parent est désactivé : toute action dessus renvoie **409** avec ce qu'il faut réactiver. Réactivation refusée tant qu'un parent est désactivé (un support : sa formation ; un formateur ne réactive que ses supports) |
 | **Montants** | Partout (web, mobile, PDF, e-mails, notifications) | — | `formatMontant` | « 3 160 000 Ar » : séparateur de milliers, arrondi à l'ariary ; les exports CSV gardent le nombre brut |
 
 ---
@@ -535,6 +536,21 @@ e-mail. N'importe qui peut scanner le QR code pour vérifier qu'elle est authent
   (personnel seulement : `utils/etat.js`). **Avant une action** sur une inscription, une échéance ou un paiement,
   appeler `dependanceService.verifierInscription / verifierEcheance / verifierPaiement` : 409 si l'élément, son
   échéance, son inscription, son étudiant ou sa formation est désactivé, avec un message qui dit quoi réactiver.
+- **Agent d'un paiement** : `paiement.id_utilisateur` retient qui l'a saisi au guichet, validé ou refusé ; toujours
+  transmettre `req.user.id`. `NULL` : ancien paiement ou déclaration pas encore traitée. Corriger une référence ne le change pas.
+- **Note des formateurs (sur 20)** : 10 points de réactions (% positif ÷ 10, à partir de 5 réactions) + 10 points manuels
+  (moyenne des notes données par l'Accueil ou le SA aux commentaires de `formateur_note`). Il faut les deux parties pour
+  avoir une note sur 20. `formateurNoteService.classementFormateurs` sert le tableau de bord ; la vitrine garde `avisFormateurs`.
+- **Commentaire de fin de formation** : ouvert à J-1, un par inscription, rappelé une fois par la tâche horaire
+  (`commentaire_fo`), obligatoire pour l'attestation (`creerAttestation` et `raisonsBlocage`). Le formateur n'y a pas accès.
+- **Attestation** : une seule par inscription (`uq_attestation_inscription`). `creerAttestation` renvoie celle qui existe ;
+  une fois délivrée, la note de présentation ne change plus (`definirNote` : 409).
+- **Paiements facturés** : pas de désactivation, montant et mode figés (`facture_emise` dans les listes : le web
+  masque « Désactiver »). L'application n'a pas d'avoir : une erreur sur un paiement facturé se règle hors application.
+- **Paiements** : toute opération qui dépend du reste à payer se fait dans une transaction, avec
+  `paiementModel.verrouillerEcheance` en **première** requête (`SELECT … FOR UPDATE` : sinon la transaction
+  relit une ancienne image de la base). Pas d'appel à une requête sur `db` pendant ce verrou (risque de bloquer
+  le pool) : contrôles avant la transaction, notification et facture après.
 - **Montants** : toujours affichés avec `formatMontant` (« 3 160 000 Ar ») : `web/src/utils/format.js`,
   `mobile/src/utils/format.ts`, `backend-imtech/utils/format.js` (PDF, e-mails, notifications). Jamais « MGA »,
   jamais de `toLocaleString` à la main.
@@ -585,7 +601,7 @@ INSCRIPTION (id_inscription, #id_etudiant, #id_formation, #id_utilisateur, date_
 TRANCHE (id_tranche, code, nom, etat)
 ECHEANCE (id_echeance, #id_inscription, #id_tranche, montant_prevu, date_echeance, genere_auto, date_dernier_rappel, etat)
 MODE_PAIEMENT (id_mode_paiement, nom, etat)
-PAIEMENT (id_paiement, #id_echeance, #id_mode_paiement, montant, date_paiement, reference_virement, statut, etat)
+PAIEMENT (id_paiement, #id_echeance, #id_mode_paiement, #id_utilisateur, montant, date_paiement, reference_virement, statut, etat)
 FACTURE (id_facture, #id_paiement, numero_facture, date_emission, fichier_pdf)
 ATTESTATION (id_attestation, #id_inscription, uuid_verification, date_delivrance, fichier_pdf)
 DOCUMENT_ADMINISTRATIF (id_document, #id_utilisateur, nom_document, fichier, date_creation, etat)
@@ -603,11 +619,13 @@ NOTIFICATION_EMAIL (id_notification_email, #id_utilisateur, email, contenu, date
 ALERTE_ENVOYEE (id_alerte, type, id_reference, date_envoi)
 RESET_PASSWORD (id_reset, #id_utilisateur, token, date_expiration, utilise, date_creation)
 PARAMETRE_APPLICATION (cle, valeur, modifie_le)        -- fond_vitrine, logo
+FORMATEUR_NOTE (id_note, #id_utilisateur, #id_etudiant, #id_inscription, note, commentaire, date_commentaire)
 HISTORIQUE_ETAT (id_historique, table_origine, id_origine, actif, date_action)  -- id_origine sans clé étrangère : pointe vers 8 tables
 ```
 
 La base refuse aussi certains doublons : une réaction par personne et par support, une présence par
-personne et par jour, une alerte par sujet.
+personne et par jour, une alerte par sujet, une facture par paiement, une attestation par inscription, un commentaire de
+fin de formation par inscription.
 
 ---
 
@@ -646,7 +664,6 @@ personne et par jour, une alerte par sujet.
 | Haute | Vrai paiement en ligne | **MVola Merchant Pay** : plan détaillé dans [`paiement Mvola.md`](paiement%20Mvola.md) |
 | Moyenne | Lecture des supports sans internet | Garder les supports sur le téléphone, protégés |
 | Moyenne | Inscription en ligne sans vérifier l'e-mail | Code par e-mail (les pièces, elles, sont exigées avant la validation) |
-| Moyenne | Avis sur les formateurs basé seulement sur les réactions | Questionnaire de fin de formation |
 | Moyenne | Mobile : logo intégré à l'appli (pas le logo choisi par le Super Admin) | Lire `GET /public/logo` comme le site |
 | Basse | Pas de notification quand l'appli est fermée | Notifications « push » |
 | Basse | Présence = « a ouvert l'appli ce jour-là » ; jours fériés comptés | QR code en classe ; liste des jours fériés |

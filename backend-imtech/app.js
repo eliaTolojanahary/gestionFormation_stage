@@ -63,7 +63,9 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ status: 'error', message: 'Corps de requête JSON invalide.' });
   }
   if (err.code === 'ER_DUP_ENTRY') {
-    return res.status(409).json({ status: 'error', message: 'Cet email existe déjà.' });
+    // Seule la clé de l'e-mail justifie ce message : les autres contraintes uniques ne parlent pas d'e-mail
+    const message = /for key '(\w+\.)?email'/.test(err.sqlMessage) ? 'Cet email existe déjà.' : 'Cet élément existe déjà.';
+    return res.status(409).json({ status: 'error', message });
   }
 
   // Erreur inattendue : on la journalise mais on ne renvoie jamais son détail au client

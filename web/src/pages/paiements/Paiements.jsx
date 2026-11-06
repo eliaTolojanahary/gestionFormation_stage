@@ -66,6 +66,8 @@ function Paiements({ user }) {
   const groupe = useActionsGroupees({ selection, apres: liste.recharger, setErreur: setActionError })
   const enAttente = selection.selection.filter((p) => Number(p.etat) && p.statut === 'en_attente')
   const actifs = selection.selection.filter((p) => Number(p.etat))
+  // Un paiement facturé ne se désactive pas (document officiel déjà envoyé)
+  const desactivables = actifs.filter((p) => !Number(p.facture_emise))
   const inactifs = selection.selection.filter((p) => !Number(p.etat))
   const totalEnAttente = enAttente.reduce((somme, p) => somme + Number(p.montant), 0)
 
@@ -104,12 +106,12 @@ function Paiements({ user }) {
     canManage && {
       libelle: 'Désactiver',
       danger: true,
-      nombre: actifs.length,
+      nombre: desactivables.length,
       onClick: () => groupe.lancer({
-        lignes: actifs,
+        lignes: desactivables,
         confirmation: {
           titre: 'Désactiver les paiements',
-          message: `${actifs.length} paiement(s) seront désactivés et ne compteront plus dans ce qui a été payé. Vous pourrez les réactiver avec le filtre « Désactivés ».`,
+          message: `${desactivables.length} paiement(s) seront désactivés et ne compteront plus dans ce qui a été payé. Vous pourrez les réactiver avec le filtre « Désactivés ».`,
           bouton: 'Désactiver',
           danger: true,
         },
@@ -288,7 +290,7 @@ function Paiements({ user }) {
             </button>
           )}
 
-          {canManage && (
+          {canManage && !Number(row.facture_emise) && (
             <button type="button" className="row-action danger-action" onClick={() => handleEtat(row, false)}>
               Désactiver
             </button>
@@ -390,6 +392,10 @@ function Paiements({ user }) {
             <p><strong>Échéance :</strong> #{selectedPayment.id_echeance}</p>
             <p><strong>Montant :</strong> {formatMontant(selectedPayment.montant)}</p>
             <p><strong>Mode :</strong> {selectedPayment.mode_paiement}</p>
+            <p>
+              <strong>Traité par :</strong>{' '}
+              {selectedPayment.agent_nom ? `${selectedPayment.agent_prenom} ${selectedPayment.agent_nom}` : 'Non renseigné'}
+            </p>
             <p><strong>Référence :</strong> {selectedPayment.reference_virement || 'Aucune'}</p>
             <p><strong>Date :</strong> {formatDate(selectedPayment.date_paiement)}</p>
             <p><strong>Statut :</strong> <StatutPaiement statut={selectedPayment.statut} /></p>

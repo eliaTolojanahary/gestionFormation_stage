@@ -37,6 +37,9 @@ inscription en ligne (à valider) et **Fitiavana** a une inscription Accueil non
 payé sa 1ʳᵉ tranche de Réseaux sur le mobile (en attente) ; **Tsiory** attend sa note de
 présentation (Bureautique) ; les attestations de **Rindra** (Python) et **Onja** (Maintenance) partent
 automatiquement au démarrage du serveur ; le support « Projet : site vitrine » est programmé le 28/10.
+12 commentaires de fin de formation sont déjà écrits : 9 notés, 3 à noter (Rindra en Python et en Excel avancé,
+Onja en Maintenance). **Toky**, **Fano** et **Tsiory** n'ont pas encore commenté : leur attestation reste bloquée.
+Classement : Tiana, Voahangy, Rivo et Hery ont une note sur 20 ; Lalaina n'en a pas (moins de 5 réactions).
 
 ---
 
@@ -320,7 +323,11 @@ Barème de la note système /10 : départ à **10**, on retire des points (jamai
 | 4 | Désactiver cette inscription, puis la **Réactiver** (filtre « Désactivés ») | `PUT /inscriptions/:id/reactiver` → `etatService.reactiverInscription` | — | **409** : l'étudiant doit être réactivé d'abord |
 | 5 | Désactiver un étudiant puis cliquer **Annuler** dans le bandeau vert (7 s) | `notifier(…, { annuler })` → `PUT /etudiants/:id/reactiver` | É etudiant | L'étudiant revient aussitôt dans la liste |
 | 5 bis | Étudiants → filtre « Désactivés » → **Réactiver** ; puis réactiver l'inscription | `PUT /etudiants/:id/reactiver` | É etudiant, inscription | Bandeau vert « … réactivé(e) », la ligne revient dans « Actifs », les actions marchent |
-| 6 | Paiements → **Désactiver** un paiement validé | `DELETE /paiements/:id` | É paiement | Le reste à payer de l'échéance augmente ; réactivable avec le filtre « Désactivés » |
+| 6 | Paiements → **Désactiver** un paiement en attente ; un paiement facturé n'a pas ce bouton | `DELETE /paiements/:id` (409 si facturé) | É paiement | Le paiement passe dans le filtre « Désactivés », réactivable ; un paiement facturé reste encaissé |
+| 6 bis | Paiements → ouvrir le détail d'un paiement traité | `GET /paiements/:id` | É paiement | « Traité par » affiche l'agent ; « Non renseigné » pour un ancien paiement |
+| 6 ter | Paiements → **Facture** deux fois sur le même paiement | `POST /factures/:id_paiement/generer` | É paiement | Le même numéro de facture revient, aucun doublon en base |
+| 6 quater | Mobile, à partir de J-1 : Formations → bandeau → **Commenter mon formateur** | `POST /inscriptions/:id/commentaire-formateur` | É formateur_note | L'Accueil est notifié ; sans ce commentaire, l'attestation est bloquée |
+| 6 quinquies | Tableau de bord → **Commentaires des étudiants** → noter sur 10 | `PUT /formateurs/commentaires/:id/note` | É classement | La note sur 20 du formateur et le classement sont mis à jour |
 | 7 | Formations → filtre « Désactivés » → **Réactiver** | `PUT /formations/:id/reactiver` (Super Admin) | É formation | La formation revient dans la liste et sur la vitrine |
 | 8 | Documents → **Désactiver** un document administratif et un support, puis filtre « Désactivés » → **Réactiver** | `DELETE` / `PUT /documents/:id/reactiver`, `/supports/:id/reactiver` | É document_administratif, support | Badge « Désactivé » dans le filtre ; le support réapparaît chez les étudiants une fois réactivé |
 

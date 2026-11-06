@@ -19,6 +19,7 @@ const paiement = require('../controllers/paiementController');
 const document = require('../controllers/documentController');
 const support = require('../controllers/supportController');
 const commentaire = require('../controllers/commentaireController');
+const formateurNote = require('../controllers/formateurNoteController');
 const reaction = require('../controllers/reactionController');
 const notif = require('../controllers/notifController');
 const dashboard = require('../controllers/dashboardController');
@@ -252,7 +253,12 @@ router.get('/supports/:id/reactions', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), e
 router.post('/supports/:id/reactions', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), exigerAccesSupport, reaction.reagir);
 router.delete('/supports/:id/reactions', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), reaction.retirerReaction);
 // Back-office : avis des étudiants sur les formateurs (compétent / non compétent selon les réactions)
-router.get('/formateurs/avis', roles(SUPER_ADMIN, ACCUEIL), reaction.avisFormateursController);
+router.get('/formateurs/avis', roles(SUPER_ADMIN, ACCUEIL), formateurNote.classementFormateursController);
+// Commentaires de fin de formation : écrits par l'étudiant, notés sur 10 par le personnel
+router.get('/mes-formateurs-a-commenter', roles(ETUDIANT), formateurNote.listerACommenterController);
+router.post('/inscriptions/:id/commentaire-formateur', roles(ETUDIANT), formateurNote.commenterController);
+router.get('/formateurs/commentaires', roles(SUPER_ADMIN, ACCUEIL), formateurNote.listerCommentairesController);
+router.put('/formateurs/commentaires/:id/note', roles(SUPER_ADMIN, ACCUEIL), formateurNote.noterCommentaireController);
 
 // ─── Notifications ──────────────────────────
 router.get('/notifications', verifyToken, notif.listerNotifications);

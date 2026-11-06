@@ -8,6 +8,7 @@ const dependanceModel = require('../models/dependanceModel');
 const changerEtatReel = dependanceModel.changerEtat;
 const inscriptionModel = require('../models/inscriptionModel');
 const paiementModel = require('../models/paiementModel');
+const documentModel = require('../models/documentModel');
 const supportModel = require('../models/supportModel');
 const userModel = require('../models/userModel');
 const etatService = require('../services/etatService');
@@ -180,6 +181,7 @@ test("chaque désactivation passe par changerEtat (donc par l'historique)", asyn
   const changer = mock.method(dependanceModel, 'changerEtat', async () => true);
   mock.method(userModel, 'deactivateAllSessions', async () => {});
   mock.method(supportModel, 'getSupportPourSuppression', async () => ({ id_utilisateur: 3 }));
+  mock.method(documentModel, 'findFacture', async () => null);
 
   await userService.supprimerUtilisateur(1);
   await etudiantService.supprimerEtudiant(2);
@@ -203,4 +205,12 @@ test('désactiver un élément déjà désactivé : 409 ; inexistant : 404', asy
 
   mock.method(dependanceModel, 'existe', async () => false);
   await assert.rejects(formationService.supprimerFormation(1), (err) => err.status === 404);
+});
+
+test("un paiement facturé ne peut pas être désactivé", async () => {
+  const changer = mock.method(dependanceModel, 'changerEtat', async () => true);
+  mock.method(documentModel, 'findFacture', async () => ({ numero_facture: 'FAC-2026-0003' }));
+
+  await assert.rejects(etatService.desactiverPaiement(3), (err) => err.status === 409 && /a une facture/.test(err.message));
+  assert.equal(changer.mock.callCount(), 0);
 });

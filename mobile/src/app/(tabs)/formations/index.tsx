@@ -1,5 +1,5 @@
 // app/(tabs)/formations/index.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Search, BookOpen, GraduationCap, Sparkles } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Search, BookOpen, GraduationCap, Sparkles, MessageCircle } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useFormationEtudiant, Formation } from '@/hooks/use-formation';
+import { useCommentaireFormateur } from '@/hooks/use-commentaire-formateur';
 import { useAffichageProgressif } from '@/hooks/use-affichage-progressif';
 import { VoirPlus } from '@/components/voir-plus';
 import { CarteFormation } from '@/components/formation/carte-formation';
@@ -28,6 +29,7 @@ export default function FormationsListScreen() {
   const { palette } = useSettings();
   const { user } = useAuth();
   const { formations, isLoading, error, getFormations } = useFormationEtudiant();
+  const { aCommenter, chargerACommenter } = useCommentaireFormateur();
   const router = useRouter();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -42,6 +44,13 @@ export default function FormationsListScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etudiantId]);
+
+  // Au retour sur cet onglet : le bandeau disparaît une fois le commentaire envoyé
+  useFocusEffect(
+    useCallback(() => {
+      chargerACommenter();
+    }, [chargerACommenter])
+  );
 
   // La dernière inscription = formation « en cours »
   const formationEnCoursId =
@@ -118,6 +127,20 @@ export default function FormationsListScreen() {
           Retrouvez vos formations, leurs supports pédagogiques et les échanges
           avec les formateurs.
         </Text>
+
+        {/* ─── Commentaire de fin de formation, obligatoire pour l'attestation ─── */}
+        {aCommenter.length > 0 && (
+          <TouchableOpacity
+            style={styles.commentaireAttendu}
+            activeOpacity={0.85}
+            onPress={() => router.push('/commentaire-formateur' as any)}
+          >
+            <MessageCircle size={16} color={palette.warning} />
+            <Text style={styles.commentaireAttenduTexte}>
+              Commentez votre formateur pour recevoir votre attestation
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* ─── Autres formations : vitrine en mode connecté, inscription à une ou plusieurs ─── */}
         <TouchableOpacity

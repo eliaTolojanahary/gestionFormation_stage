@@ -213,7 +213,7 @@ message ; et l'étudiant devait se déplacer pour savoir où il en était.
 - un **site web** pour l'équipe (direction, accueil, formateurs) ;
 - une **application mobile** Android pour les étudiants et les visiteurs ;
 - un **serveur** commun, qui applique les règles du centre, crée les PDF et envoie les e-mails ;
-- une base de données de **27 tables**.
+- une base de données de **28 tables**.
 
 **Structure du mémoire.** Le **premier chapitre** présente le projet : objectifs, planning et
 technologies choisies. Le **deuxième** raconte la réalisation : l'analyse de l'existant, la
@@ -411,7 +411,7 @@ commencé à saisir. J'ai donc d'abord décidé **comment les écrans parlent au
 droit de faire quoi** et **où ranger chaque information**.
 
 **Le projet en chiffres.** 23 écrans web, 13 écrans mobiles (+ 4 fenêtres), 86 adresses sur le
-serveur, 27 tables, 4 rôles (+ le visiteur).
+serveur, 28 tables, 4 rôles (+ le visiteur).
 
 ##### 2.1.2.1 Conception affichage
 
@@ -433,7 +433,7 @@ flowchart LR
         MAIL["E-mails"]
         FS[("Fichiers<br/>uploads/")]
     end
-    DB[("Base MySQL<br/>27 tables")]
+    DB[("Base MySQL<br/>28 tables")]
 
     W -- "demande + badge" --> API
     M -- "demande + badge" --> API
@@ -503,7 +503,7 @@ l'affichage et le serveur (équivalent des DTO) : [Annexe D](#annexe-d--concepti
 
 ##### 2.1.2.3 Modèle conceptuel de données
 
-La base a été dessinée avec la méthode **Merise**. Elle contient **27 tables**, sans vue, sans
+La base a été dessinée avec la méthode **Merise**. Elle contient **28 tables**, sans vue, sans
 procédure stockée ni trigger : toutes les règles restent dans le serveur. Le schéma ci-dessous
 montre les tables principales.
 
@@ -700,8 +700,24 @@ sequenceDiagram
 - Si deux employés cliquent « Valider » en même temps, **une seule validation passe** : le
   serveur ne change le statut que s'il est encore « en attente ».
 - Au guichet, l'accueil peut encaisser une partie de l'échéance, mais **jamais plus que ce qui
-  reste à payer**.
-- Une facture PDF (numérotée FAC-AAAA-0001) ne peut être créée que pour un paiement **validé**.
+  reste à payer**. Le serveur bloque l'échéance le temps de l'enregistrement : deux saisies
+  simultanées passent l'une après l'autre, et la seconde est refusée si tout est déjà réglé.
+- Un paiement en attente qui dépasse le reste à payer (échéance encaissée au guichet entre-temps)
+  ne peut plus être validé : l'accueil le refuse ou corrige son montant.
+- La même limite vaut pour **corriger** le montant d'un paiement et pour **réactiver** un paiement
+  validé : une échéance repayée entre-temps refuse la réactivation.
+- Chaque paiement garde le **membre du personnel** qui l'a saisi, validé ou refusé.
+- La veille de la fin de formation, l'étudiant doit **commenter son formateur** depuis l'application
+  mobile : sans ce commentaire, pas d'attestation. L'Accueil et la direction le lisent et le notent sur
+  10 ; le formateur ne le voit pas.
+- Le **classement des formateurs** se fait sur 20 : 10 points calculés d'après les réactions sur leurs
+  supports, 10 points d'après la moyenne des commentaires notés.
+- Une inscription n'a **qu'une seule attestation** : un nouvel envoi renvoie la même, avec le même QR
+  code, et la note de présentation ne peut plus changer une fois l'attestation délivrée.
+- Une facture émise est un document officiel : son paiement ne peut plus être désactivé, et son
+  montant et son mode ne peuvent plus être modifiés (la référence, si).
+- Une facture PDF (numérotée FAC-AAAA-0001) ne peut être créée que pour un paiement **validé**, et
+  un paiement n'a **qu'une seule facture** : la redemander renvoie la même.
 
 #### 2.2.3 Supports de cours
 
@@ -1279,7 +1295,7 @@ INSCRIPTION (id_inscription, #id_etudiant, #id_formation, #id_utilisateur, date_
 TRANCHE (id_tranche, code, nom, etat)
 ECHEANCE (id_echeance, #id_inscription, #id_tranche, montant_prevu, date_echeance, genere_auto, date_dernier_rappel, etat)
 MODE_PAIEMENT (id_mode_paiement, nom, etat)
-PAIEMENT (id_paiement, #id_echeance, #id_mode_paiement, montant, date_paiement, reference_virement, statut, etat)
+PAIEMENT (id_paiement, #id_echeance, #id_mode_paiement, #id_utilisateur, montant, date_paiement, reference_virement, statut, etat)
 FACTURE (id_facture, #id_paiement, numero_facture, date_emission, fichier_pdf)
 ATTESTATION (id_attestation, #id_inscription, uuid_verification, date_delivrance, fichier_pdf)
 DOCUMENT_ADMINISTRATIF (id_document, #id_utilisateur, nom_document, fichier, date_creation, etat)
@@ -1298,10 +1314,12 @@ ALERTE_ENVOYEE (id_alerte, type, id_reference, date_envoi)
 RESET_PASSWORD (id_reset, #id_utilisateur, token, date_expiration, utilise, date_creation)
 PARAMETRE_APPLICATION (cle, valeur, modifie_le)
 HISTORIQUE_ETAT (id_historique, table_origine, id_origine, actif, date_action)
+FORMATEUR_NOTE (id_note, #id_utilisateur, #id_etudiant, #id_inscription, note, commentaire, date_commentaire)
 ```
 
 Contraintes d'unicité : une réaction par personne et par support, une présence par personne et
-par jour, une alerte par sujet.
+par jour, une alerte par sujet, une facture par paiement, une attestation par inscription, un commentaire de
+fin de formation par inscription.
 
 ### Annexe C — Conception affichage : les écrans un par un
 
@@ -1345,7 +1363,9 @@ par jour, une alerte par sujet.
 **5. Paiements (web)** 📷 `Paiements.png`
 - → Bandeau : « 2 paiements … attendent votre validation » (un clic filtre la liste).
 - → Boutons **« Valider »** / **« Refuser »** : changent le statut et préviennent l'étudiant.
-- → Bouton **« Facture »** : seulement pour un paiement validé.
+- → Bouton **« Facture »** : seulement pour un paiement validé ; il rouvre toujours la même facture.
+- → Bouton **« Désactiver »** : absent pour un paiement facturé.
+- → Fenêtre de détail : **« Traité par »** indique l'agent qui a saisi, validé ou refusé le paiement.
 - → Message d'erreur : « Ce paiement a déjà été traité. »
 
 **6. Échéances (web)** 📷 `listeEcheance.PNG`
@@ -1436,7 +1456,7 @@ bien rangée.
 Au lieu de recopier le nom de l'étudiant sur chaque paiement, on écrit simplement **son numéro**.
 Si l'étudiant change de téléphone, on le corrige **à un seul endroit** et tout reste juste.
 
-**Les 27 tiroirs, rangés par thème.**
+**Les 28 tiroirs, rangés par thème.**
 
 | Thème | Tiroir (table) | Ce qu'il contient |
 |---|---|---|
@@ -1466,7 +1486,8 @@ Si l'étudiant change de téléphone, on le corrige **à un seul endroit** et to
 | | `assistance` | Les demandes d'aide des étudiants |
 | | `statut` | Où en est une demande d'aide |
 | **Réglages** | `parametre_application` | Les réglages généraux de la plateforme |
-| **Suivi** | `historique_etat` | Chaque désactivation et réactivation : quel élément, dans quel sens, quand |
+| **Suivi** | `formateur_note` | Le commentaire de fin de formation sur le formateur et sa note sur 10 |
+| | `historique_etat` | Chaque désactivation et réactivation : quel élément, dans quel sens, quand |
 
 **Comment les tiroirs sont reliés.** Le schéma suivant se lit comme des phrases.
 

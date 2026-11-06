@@ -34,7 +34,7 @@ async function etatsEcheance(id_echeance) {
 
 async function etatsPaiement(id_paiement) {
   const [rows] = await db.query(
-    `SELECT p.id_paiement, p.etat AS paiement_actif, ec.etat AS echeance_active, ${COLONNES_INSCRIPTION}
+    `SELECT p.id_paiement, p.etat AS paiement_actif, ec.id_echeance, ec.etat AS echeance_active, ${COLONNES_INSCRIPTION}
      FROM paiement p
      JOIN echeance ec ON ec.id_echeance = p.id_echeance
      JOIN inscription i ON i.id_inscription = ec.id_inscription ${JOINTURES_INSCRIPTION}
@@ -45,7 +45,8 @@ async function etatsPaiement(id_paiement) {
 }
 
 // Désactivation / réactivation (etat = false / true) tracée dans historique_etat, tout ou rien ;
-// false si l'élément n'existe pas ou est déjà dans l'état demandé (rien n'est tracé)
+// false si l'élément n'existe pas ou est déjà dans l'état demandé (rien n'est tracé).
+// `connection` : pour participer à une transaction déjà ouverte.
 const TABLES = {
   etudiant: 'id_etudiant',
   formation: 'id_formation',
@@ -57,20 +58,20 @@ const TABLES = {
   utilisateur: 'id_utilisateur',
 };
 
-async function changerEtat(table, id, actif) {
+async function changerEtat(table, id, actif, connection = null) {
+  if (!connection) return avecTransaction((c) => changerEtat(table, id, actif, c));
+
   const cle = TABLES[table];
-  return avecTransaction(async (connection) => {
-    const [result] = await connection.query(
-      `UPDATE ${table} SET etat = ? WHERE ${cle} = ? AND etat = ?`,
-      [actif, id, !actif]
-    );
-    if (result.affectedRows === 0) return false;
-    await connection.query(
-      `INSERT INTO historique_etat (table_origine, id_origine, actif) SELECT ?, ${cle}, ? FROM ${table} WHERE ${cle} = ?`,
-      [table, actif, id]
-    );
-    return true;
-  });
+  const [result] = await connection.query(
+    `UPDATE ${table} SET etat = ? WHERE ${cle} = ? AND etat = ?`,
+    [actif, id, !actif]
+  );
+  if (result.affectedRows === 0) return false;
+  await connection.query(
+    `INSERT INTO historique_etat (table_origine, id_origine, actif) SELECT ?, ${cle}, ? FROM ${table} WHERE ${cle} = ?`,
+    [table, actif, id]
+  );
+  return true;
 }
 
 async function existe(table, id) {

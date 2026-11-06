@@ -311,9 +311,10 @@ Lancer un seul fichier : `node --test tests/recherche.test.js`.
 `echeance`, `paiement`, `mode_paiement`, `facture`, `attestation`, `document_administratif`,
 `support`, `commentaire`, `commentaire_mention`, `reaction`, `type_reaction`, `assistance`, `statut`,
 `notification_inapp`, `notification_email`, `reset_password`, `alerte_envoyee`, `presence`,
-`parametre_application`.
-Conventions : `etat = false` = supprimé (suppression logique) ; `paiement.statut` = `en_attente` /
-`valide` / `refuse` ; seuls les paiements **validés** comptent dans les montants.
+`parametre_application`, `historique_etat`, `formateur_note`.
+Conventions : `etat = false` = supprimé (suppression logique), chaque changement est noté dans `historique_etat` ;
+`paiement.statut` = `en_attente` / `valide` / `refuse` ; seuls les paiements **validés** comptent dans les montants ;
+`paiement.id_utilisateur` = agent qui l'a saisi ou traité (`NULL` : ancien paiement ou déclaration non traitée).
 
 **Commandes de base**
 ```sql
@@ -392,6 +393,10 @@ aussi dans `reinit.sql` (flux §7).
 | 401 partout | Session expirée ou révoquée | Se reconnecter |
 | 403 | Mauvais rôle, ou données d'un autre | Normal : vérifier le compte utilisé |
 | 409 « … est désactivé(e). Réactivez-le d'abord » | L'étudiant, la formation, l'inscription ou l'échéance de cette ligne est désactivé | Sa page → filtre « État » : Désactivés → **Réactiver** |
+| 409 « Ce paiement a une facture » | Un paiement facturé ne se désactive pas ; son montant et son mode sont figés | Normal : l'application n'a pas d'avoir, la correction se règle hors application |
+| 409 « L'étudiant doit d'abord commenter son formateur » | Commentaire de fin de formation manquant | L'étudiant l'écrit sur le mobile (onglet Formations), à partir de la veille de la fin |
+| 409 « L'attestation a déjà été délivrée » | La note imprimée sur une attestation ne change plus | Normal : décision du 06/11/2026 |
+| 409 « dépasse le reste à payer » | L'échéance a été payée entre-temps | Refuser le paiement en attente ou corriger son montant |
 | Une ligne a « disparu » d'une liste | Elle a été désactivée | Filtre « État » : Désactivés (ou Tous) |
 | Mobile : icône invisible en mode sombre | Couleur écrite en dur (`color="#072E4C"`) | `color={palette.heading}` (ou `textMuted`, `success`…) |
 | 429 « Trop de tentatives » | Limite d'essais atteinte | Attendre 15 min ou **redémarrer le backend** (compteurs en mémoire) |

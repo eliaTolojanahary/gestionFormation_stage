@@ -6,6 +6,7 @@ const { ECHEANCE_PROCHE, MONTANT_ENVOYE } = require('./echeanceModel');
 const TYPES_ALERTE = Object.freeze({
   ECHEANCE_J2: 'echeance_j2',
   NOTE_MANQUANTE: 'note_manquante',       // formateur prévenu : note de présentation à attribuer
+  COMMENTAIRE_FORMATEUR: 'commentaire_fo', // étudiant prévenu : commentaire de fin de formation à écrire
 });
 
 // Échéances passées au statut JAUNE (non soldées, J-2, J-1 ou J), pas encore signalées à l'Accueil.

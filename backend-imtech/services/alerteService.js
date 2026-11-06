@@ -3,6 +3,8 @@
 const alerteModel = require('../models/alerteModel');
 const notifService = require('./notifService');
 const attestationService = require('./attestationService');
+const formateurNoteModel = require('../models/formateurNoteModel');
+const { salutation, titre, formation } = require('../utils/modeleEmail');
 const { formatMontant } = require('../utils/format');
 
 const { TYPES_ALERTE } = alerteModel;
@@ -29,7 +31,8 @@ function messageRappels(echeances) {
  *  - Accueil : « Étudiant A doit être rappelé » pour chaque échéance non soldée à J-2 ;
  *  - attestations PRÊTES (date de fin atteinte, tout payé, note attribuée) : envoyées toutes seules
  *    à l'étudiant, dès le jour de fin (ou dès qu'elles deviennent prêtes), l'Accueil en est prévenu ;
- *  - formation terminée sans note de présentation : le formateur est prévenu.
+ *  - formation terminée sans note de présentation : le formateur est prévenu ;
+ *  - veille de la fin de formation : l'étudiant doit commenter son formateur pour avoir son attestation.
  * Chaque alerte n'est envoyée qu'une seule fois (table alerte_envoyee).
  */
 async function verifierAlertes() {
@@ -40,8 +43,9 @@ async function verifierAlertes() {
   }
   if (aRappeler.length) await notifService.notifierPersonnel(messageRappels(aRappeler));
 
+  const commentairesDemandes = await demanderCommentaires();
   const { attestations, notesDemandees } = await verifierAttestations();
-  return { rappels: aRappeler.length, attestations, notesDemandees };
+  return { rappels: aRappeler.length, commentairesDemandes, attestations, notesDemandees };
 }
 
 const libelle = (i) => `${i.etudiant_prenom} ${i.etudiant_nom} (${i.formation_nom})`;
@@ -49,6 +53,29 @@ const libelle = (i) => `${i.etudiant_prenom} ${i.etudiant_nom} (${i.formation_no
 // La tâche horaire ne regarde que les formations terminées depuis moins de JOURS_ATTESTATIONS jours ;
 // une attestation devenue prête plus tard s'envoie depuis la page Attestations de l'Accueil.
 const JOURS_ATTESTATIONS = 180;
+
+// À partir de J-1 : chaque étudiant est prévenu une fois qu'il doit commenter son formateur
+async function demanderCommentaires() {
+  let demandes = 0;
+  for (const i of await formateurNoteModel.getInscriptionsARappeler(JOURS_ATTESTATIONS)) {
+    if (!(await alerteModel.reserverAlerte(TYPES_ALERTE.COMMENTAIRE_FORMATEUR, i.id_inscription))) continue;
+    const formateur = `${i.formateur_prenom} ${i.formateur_nom}`;
+    await notifService.notifierEtudiant({
+      id_utilisateur: i.id_utilisateur,
+      email: i.email,
+      message: `Votre formation ${i.formation_nom} se termine : commentez votre formateur, ${formateur}, dans l'application (onglet Formations). C'est obligatoire pour recevoir votre attestation.`,
+      sujet: `IMTECH INFO — Votre avis sur la formation : ${i.formation_nom}`,
+      contenuHtml: `${titre('Votre avis nous intéresse')}
+        ${salutation(i.prenom, i.nom)}
+        <p>Votre formation ${formation(i.formation_nom)} se termine. Merci de <strong>commenter votre
+        formateur</strong>, ${formateur}, depuis l'application mobile (onglet Formations).</p>
+        <p>Ce commentaire est <strong>obligatoire</strong> pour recevoir votre attestation. Il est lu par
+        l'Accueil et la direction, pas par le formateur.</p>`,
+    });
+    demandes += 1;
+  }
+  return demandes;
+}
 
 // Fins de formation : envoi des attestations prêtes et notes de présentation manquantes
 async function verifierAttestations() {

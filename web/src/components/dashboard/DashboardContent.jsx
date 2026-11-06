@@ -4,6 +4,7 @@ import Icon from '../icon/Icon'
 import Header from '../header/Header'
 import Tableau from '../tableau/Tableau'
 import AvisFormateurs from './AvisFormateurs'
+import CommentairesFormateurs from './CommentairesFormateurs'
 import FiltreDates from './FiltreDates'
 import BoutonExportCSV from '../tableau/BoutonExportCSV'
 import { useDashboard } from '../../hooks/useDashboard'
@@ -222,6 +223,7 @@ function DashboardContent({ user ,onProfile}) {
   const { notifier } = useRetour()
   // Période « Du … au … » commune aux indicateurs, aux inscriptions et aux avis sur les formateurs
   const [periode, setPeriode] = useState(PERIODE_TOUT)
+  const [versionNotes, setVersionNotes] = useState(0) // un commentaire noté relit le classement
   const displayUser = user || { prenom: 'Admin' }
 
   // Une période impossible (début après la fin) est affichée mais pas envoyée à l'API
@@ -265,7 +267,8 @@ function DashboardContent({ user ,onProfile}) {
 
       <PopularFormations topInscriptions={topInscriptions} periode={periodeAppliquee} />
       <PaymentTable paymentTable={paymentTable} periode={periodeAppliquee} />
-      <AvisFormateurs periode={periodeAppliquee} />
+      <AvisFormateurs periode={periodeAppliquee} version={versionNotes} />
+      <CommentairesFormateurs onNote={() => setVersionNotes((version) => version + 1)} />
       
     </section>
   )

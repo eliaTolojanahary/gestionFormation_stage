@@ -184,13 +184,15 @@ CREATE TABLE paiement (
     id_paiement INT AUTO_INCREMENT PRIMARY KEY,
     id_echeance INT NOT NULL,
     id_mode_paiement INT NOT NULL,
+    id_utilisateur INT NULL, -- personnel qui a saisi ou traité le paiement
     montant DECIMAL(10,2) NOT NULL,
     date_paiement DATETIME DEFAULT CURRENT_TIMESTAMP,
     reference_virement VARCHAR(100),
     statut ENUM('en_attente', 'valide', 'refuse') NOT NULL DEFAULT 'valide',
     etat BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_echeance) REFERENCES echeance(id_echeance),
-    FOREIGN KEY (id_mode_paiement) REFERENCES mode_paiement(id_mode_paiement)
+    FOREIGN KEY (id_mode_paiement) REFERENCES mode_paiement(id_mode_paiement),
+    CONSTRAINT fk_paiement_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur)
 );
 
 -- 16. facture
@@ -200,6 +202,7 @@ CREATE TABLE facture (
     numero_facture VARCHAR(50) NOT NULL UNIQUE,
     date_emission DATETIME DEFAULT CURRENT_TIMESTAMP,
     fichier_pdf VARCHAR(255),
+    CONSTRAINT uq_facture_paiement UNIQUE (id_paiement),
     FOREIGN KEY (id_paiement) REFERENCES paiement(id_paiement)
 );
 
@@ -221,6 +224,7 @@ CREATE TABLE attestation (
     uuid_verification VARCHAR(36) NOT NULL UNIQUE,
     date_delivrance DATETIME DEFAULT CURRENT_TIMESTAMP,
     fichier_pdf VARCHAR(255),
+    CONSTRAINT uq_attestation_inscription UNIQUE (id_inscription),
     FOREIGN KEY (id_inscription) REFERENCES inscription(id_inscription)
 );
 
@@ -316,6 +320,22 @@ CREATE TABLE historique_etat (
     actif BOOLEAN NOT NULL,              -- false = désactivation, true = réactivation
     date_action DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_historique_element (table_origine, id_origine, date_action)
+);
+
+-- Commentaire de fin de formation sur le formateur (un par inscription, obligatoire pour l'attestation)
+CREATE TABLE formateur_note (
+    id_note INT AUTO_INCREMENT PRIMARY KEY,
+    id_utilisateur INT NOT NULL,   -- formateur commenté
+    id_etudiant INT NOT NULL,
+    id_inscription INT NOT NULL,
+    note DECIMAL(4,2) NULL,        -- sur 10, donnée par l'Accueil ou le Super Admin ; NULL = à noter
+    commentaire TEXT NOT NULL,
+    date_commentaire DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_formateur_note_inscription UNIQUE (id_inscription),
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
+    FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant),
+    FOREIGN KEY (id_inscription) REFERENCES inscription(id_inscription),
+    INDEX idx_formateur_note_classement (id_utilisateur, date_commentaire)
 );
 
 CREATE INDEX idx_commentaire_support ON commentaire(id_support);

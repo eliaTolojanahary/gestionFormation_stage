@@ -24,14 +24,17 @@ const PAIEMENT_ACTIF = (alias = 'p') => `${alias}.etat = true AND ${alias}.statu
 const SELECT_PAIEMENT_DETAILLE = `
   SELECT p.id_paiement, p.id_echeance, p.id_mode_paiement, p.montant,
     p.date_paiement, p.reference_virement, p.statut, p.etat,
+    EXISTS (SELECT 1 FROM facture fa WHERE fa.id_paiement = p.id_paiement) AS facture_emise,
     e.etat AS echeance_active, i.etat AS inscription_active, et.etat AS etudiant_actif, f.etat AS formation_active,
     mp.nom AS mode_paiement, e.id_inscription, e.montant_prevu, e.date_echeance,
     i.id_etudiant, i.id_formation,
     u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
     u.nom AS etudiant_nom, u.prenom AS etudiant_prenom,
-    f.nom AS formation_nom
+    f.nom AS formation_nom,
+    p.id_utilisateur AS id_agent, ag.prenom AS agent_prenom, ag.nom AS agent_nom
   FROM paiement p
   LEFT JOIN mode_paiement mp ON p.id_mode_paiement = mp.id_mode_paiement
+  LEFT JOIN utilisateur ag ON ag.id_utilisateur = p.id_utilisateur
   JOIN echeance e ON p.id_echeance = e.id_echeance
   JOIN inscription i ON e.id_inscription = i.id_inscription
   JOIN etudiant et ON i.id_etudiant = et.id_etudiant
@@ -39,17 +42,18 @@ const SELECT_PAIEMENT_DETAILLE = `
   JOIN formation f ON i.id_formation = f.id_formation
 `;
 
-// Insère un paiement daté de maintenant (statut VALIDE par défaut)
+// Insère un paiement daté de maintenant (statut VALIDE par défaut).
+// id_utilisateur : membre du personnel qui le saisit (NULL : déclaré par l'étudiant, à traiter)
 async function insererPaiement(
-  { id_echeance, id_mode_paiement, montant, reference_virement, statut = STATUTS_PAIEMENT.VALIDE },
+  { id_echeance, id_mode_paiement, id_utilisateur = null, montant, reference_virement, statut = STATUTS_PAIEMENT.VALIDE },
   connection = db
 ) {
   const sql = `
-    INSERT INTO paiement (id_echeance, id_mode_paiement, montant, date_paiement, reference_virement, statut, etat)
-    VALUES (?, ?, ?, NOW(), ?, ?, true)
+    INSERT INTO paiement (id_echeance, id_mode_paiement, id_utilisateur, montant, date_paiement, reference_virement, statut, etat)
+    VALUES (?, ?, ?, ?, NOW(), ?, ?, true)
   `;
   const [result] = await connection.query(sql, [
-    id_echeance, id_mode_paiement, montant, reference_virement || null, statut,
+    id_echeance, id_mode_paiement, id_utilisateur, montant, reference_virement || null, statut,
   ]);
   return result.insertId;
 }
@@ -110,7 +114,7 @@ async function compterPaiements(filtres = {}) {
   return Number(total);
 }
 
-async function updatePaiement(id_paiement, { id_mode_paiement, montant, reference_virement }) {
+async function updatePaiement(id_paiement, { id_mode_paiement, montant, reference_virement }, connection = db) {
   const sql = `
     UPDATE paiement
     SET id_mode_paiement = COALESCE(?, id_mode_paiement),
@@ -118,7 +122,7 @@ async function updatePaiement(id_paiement, { id_mode_paiement, montant, referenc
         reference_virement = COALESCE(?, reference_virement)
     WHERE id_paiement = ? AND etat = true
   `;
-  const [result] = await db.query(sql, [
+  const [result] = await connection.query(sql, [
     id_mode_paiement ?? null, montant ?? null, reference_virement ?? null, id_paiement,
   ]);
   return result.affectedRows > 0;
@@ -136,28 +140,49 @@ async function getPaiementEnAttenteEcheance(id_echeance, connection = db) {
 }
 
 // Valide un paiement déclaré ; le personnel peut corriger le mode et la référence au passage
-async function validerPaiementDeclare(id_paiement, { id_mode_paiement, reference_virement }, connection = db) {
+async function validerPaiementDeclare(id_paiement, { id_mode_paiement, reference_virement, id_utilisateur = null }, connection = db) {
   const [result] = await connection.query(
     `UPDATE paiement
-     SET statut = ?, id_mode_paiement = COALESCE(?, id_mode_paiement),
+     SET statut = ?, id_utilisateur = ?, id_mode_paiement = COALESCE(?, id_mode_paiement),
          reference_virement = COALESCE(?, reference_virement)
      WHERE id_paiement = ? AND statut = ? AND etat = true`,
-    [STATUTS_PAIEMENT.VALIDE, id_mode_paiement || null, reference_virement || null, id_paiement, STATUTS_PAIEMENT.EN_ATTENTE]
+    [STATUTS_PAIEMENT.VALIDE, id_utilisateur, id_mode_paiement || null, reference_virement || null, id_paiement, STATUTS_PAIEMENT.EN_ATTENTE]
   );
   return result.affectedRows > 0;
 }
 
 // Ne change le statut que d'un paiement encore en attente (évite de "re-valider" ou d'annuler un paiement traité).
-async function changerStatutPaiementEnAttente(id_paiement, nouveauStatut, connection = db) {
+async function changerStatutPaiementEnAttente(id_paiement, nouveauStatut, connection = db, id_utilisateur = null) {
   const [result] = await connection.query(
-    `UPDATE paiement SET statut = ? WHERE id_paiement = ? AND statut = ? AND etat = true`,
-    [nouveauStatut, id_paiement, STATUTS_PAIEMENT.EN_ATTENTE]
+    `UPDATE paiement SET statut = ?, id_utilisateur = ? WHERE id_paiement = ? AND statut = ? AND etat = true`,
+    [nouveauStatut, id_utilisateur, id_paiement, STATUTS_PAIEMENT.EN_ATTENTE]
   );
   return result.affectedRows > 0;
 }
 
+// Bloque l'échéance jusqu'à la fin de la transaction : deux opérations sur une même échéance passent
+// l'une après l'autre. À appeler en premier, pour que la suite de la transaction lise les données à jour.
+async function verrouillerEcheance(id_echeance, connection) {
+  await connection.query('SELECT id_echeance FROM echeance WHERE id_echeance = ? FOR UPDATE', [id_echeance]);
+}
+
+// Montant et état d'un paiement, même désactivé (lu dans la transaction qui verrouille son échéance)
+async function getPaiementPourControle(id_paiement, connection) {
+  const [rows] = await connection.query(
+    'SELECT montant, id_mode_paiement, statut, etat FROM paiement WHERE id_paiement = ?',
+    [id_paiement]
+  );
+  return rows[0] || null;
+}
+
+// Ce qu'il reste à payer sur une échéance lue par getEcheanceAvecSituation. `montantExclu` : paiement validé
+// à ne pas compter (celui qu'on corrige). Arrondi au centime : évite les résidus (33333.34 - 33333.33 = 0.00999...)
+function resteAPayer(echeance, montantExclu = 0) {
+  return Math.round((Number(echeance.montant_prevu) - Number(echeance.montant_valide) + Number(montantExclu)) * 100) / 100;
+}
+
 // Échéance + son propriétaire + ce qui est déjà payé / en attente dessus.
-async function getEcheanceAvecSituation(id_echeance) {
+async function getEcheanceAvecSituation(id_echeance, connection = db) {
   const sql = `
     SELECT e.id_echeance, e.montant_prevu, e.date_echeance, i.id_etudiant,
       COALESCE(SUM(CASE WHEN ${PAIEMENT_VALIDE()} THEN p.montant END), 0) AS montant_valide,
@@ -168,7 +193,7 @@ async function getEcheanceAvecSituation(id_echeance) {
     WHERE e.id_echeance = ? AND e.etat = true AND i.etat = true
     GROUP BY e.id_echeance
   `;
-  const [rows] = await db.query(sql, [id_echeance]);
+  const [rows] = await connection.query(sql, [id_echeance]);
   return rows[0] || null;
 }
 
@@ -248,6 +273,9 @@ module.exports = {
   getPaiementById,
   getAllPaiements,
   changerStatutPaiementEnAttente,
+  verrouillerEcheance,
+  getPaiementPourControle,
+  resteAPayer,
   getEcheanceAvecSituation,
   getProchainPaiementEtudiant,
   getDernierPaiementEtudiant,

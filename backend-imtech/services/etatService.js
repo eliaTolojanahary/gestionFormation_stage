@@ -3,9 +3,13 @@
 // est actif (ex. pas d'inscription réactivée pour un étudiant désactivé).
 const dependanceModel = require('../models/dependanceModel');
 const inscriptionModel = require('../models/inscriptionModel');
+const paiementModel = require('../models/paiementModel');
+const documentModel = require('../models/documentModel');
 const dependanceService = require('./dependanceService');
+const { avecTransaction } = require('../utils/transaction');
 const { ROLES } = require('../config/roles');
 const { notFound, conflict, forbidden } = require('../utils/errors');
+const { formatMontant } = require('../utils/format');
 
 const LIBELLES = {
   etudiant: { introuvable: 'Étudiant introuvable', deja: { true: 'Cet étudiant est déjà actif.', false: 'Cet étudiant est déjà désactivé.' } },
@@ -52,11 +56,34 @@ async function reactiverEcheance(id) {
   await changer('echeance', id, true);
 }
 
-const desactiverPaiement = (id) => changer('paiement', id, false);
+// Un paiement facturé reste encaissé : sa facture est un document officiel déjà envoyé à l'étudiant
+async function desactiverPaiement(id) {
+  if (await documentModel.findFacture(id)) {
+    throw conflict('Ce paiement a une facture : il ne peut pas être désactivé.');
+  }
+  await changer('paiement', id, false);
+}
 
+// Un paiement validé compte de nouveau dans l'encaissé : refusé si l'échéance a été repayée entre-temps
 async function reactiverPaiement(id) {
-  await dependanceService.verifierPaiement(id, { ignorer: 'paiement_actif' });
-  await changer('paiement', id, true);
+  const { id_echeance } = await dependanceService.verifierPaiement(id, { ignorer: 'paiement_actif' });
+
+  await avecTransaction(async (connection) => {
+    await paiementModel.verrouillerEcheance(id_echeance, connection);
+    const paiement = await paiementModel.getPaiementPourControle(id, connection);
+    if (!paiement) throw notFound(`${LIBELLES.paiement.introuvable}.`);
+    if (paiement.etat) throw conflict(LIBELLES.paiement.deja[true]);
+
+    if (paiement.statut === paiementModel.STATUTS_PAIEMENT.VALIDE) {
+      const echeance = await paiementModel.getEcheanceAvecSituation(id_echeance, connection);
+      if (!echeance) throw notFound('Échéance introuvable.');
+      const resteAPayer = paiementModel.resteAPayer(echeance);
+      if (Number(paiement.montant) > resteAPayer) {
+        throw conflict(`Ce paiement dépasse le reste à payer (${formatMontant(resteAPayer)}) : il ne peut pas être réactivé.`);
+      }
+    }
+    await dependanceModel.changerEtat('paiement', id, true, connection);
+  });
 }
 
 // Document administratif : ne dépend de rien (le fichier reste sur le disque)

@@ -64,6 +64,10 @@ export const ENDPOINTS = {
 
   REACTIONS_SUPPORT: (id: number | string) => `/supports/${id}/reactions`,
 
+  // Commentaire de fin de formation (obligatoire pour l'attestation)
+  FORMATEURS_A_COMMENTER: '/mes-formateurs-a-commenter',
+  COMMENTER_FORMATEUR: (idInscription: number | string) => `/inscriptions/${idInscription}/commentaire-formateur`,
+
   // Mon dossier : pièces obligatoires de l'étudiant connecté (consulter, déposer, remplacer)
   MON_DOSSIER: '/mon-dossier',
 

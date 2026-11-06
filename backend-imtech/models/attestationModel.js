@@ -15,6 +15,7 @@ async function getInscriptionsTerminees({ depuisJours = null } = {}) {
       AND DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`;
   const sql = `
     SELECT i.id_inscription, i.id_formation, i.note_presentation,
+           EXISTS (SELECT 1 FROM formateur_note fn WHERE fn.id_inscription = i.id_inscription) AS formateur_commente,
            u.prenom AS etudiant_prenom, u.nom AS etudiant_nom,
            f.nom AS formation_nom, f.id_utilisateur AS id_formateur,
            CONCAT(fo.prenom, ' ', fo.nom) AS formateur,

@@ -4,7 +4,7 @@ import { PERIODE_TOUT, requetePeriode } from '../utils/periodes'
 
 // Avis des étudiants sur les formateurs, calculé par l'API à partir des réactions sur leurs supports,
 // en ne comptant que les réactions données pendant la période { debut, fin } (voir utils/periodes)
-export function useAvisFormateurs(periode = PERIODE_TOUT) {
+export function useAvisFormateurs(periode = PERIODE_TOUT, version = 0) {
   const { debut, fin } = periode
   const [formateurs, setFormateurs] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -23,7 +23,7 @@ export function useAvisFormateurs(periode = PERIODE_TOUT) {
       })
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
-  }, [debut, fin])
+  }, [debut, fin, version])
 
   return { formateurs, isLoading, error }
 }

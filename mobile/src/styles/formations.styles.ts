@@ -155,6 +155,18 @@ export const createFormationsListStyles = ({
     },
     autresFormationsTexte: { color: t.accent, fontSize: f.sm, fontWeight: '700' },
 
+    commentaireAttendu: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: t.warningSoft,
+      borderRadius: 12,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+      marginBottom: 10,
+    },
+    commentaireAttenduTexte: { flex: 1, color: t.textMain, fontSize: f.sm, fontWeight: '700' },
+
     searchBox: {
       flexDirection: 'row',
       alignItems: 'center',

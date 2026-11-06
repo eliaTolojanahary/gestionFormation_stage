@@ -47,6 +47,11 @@ WHERE p.id_paiement = ? AND p.etat = true
   return rows[0];
 }
 
+async function findFacture(id_paiement, connection = db) {
+  const [rows] = await connection.query('SELECT numero_facture, fichier_pdf FROM facture WHERE id_paiement = ?', [id_paiement]);
+  return rows[0] || null;
+}
+
 async function insertFacture(id_paiement, numeroFacture, cheminRelatif) {
   await db.query(
     `INSERT INTO facture (id_paiement, numero_facture, date_emission, fichier_pdf) VALUES (?, ?, NOW(), ?)`,
@@ -69,6 +74,11 @@ async function findInscriptionPourAttestation(id_inscription) {
   `;
   const [rows] = await db.query(sql, [id_inscription]);
   return rows[0];
+}
+
+async function findAttestation(id_inscription) {
+  const [rows] = await db.query('SELECT uuid_verification, fichier_pdf FROM attestation WHERE id_inscription = ?', [id_inscription]);
+  return rows[0] || null;
 }
 
 async function insertAttestation(id_inscription, uuid, dateDelivrance, cheminRelatif) {
@@ -190,6 +200,6 @@ async function getDocuments(etat = 'actif') {
 module.exports = {
   getTousDocuments, compterTousDocuments,
   findInscriptionPourFiche, findPaiementPourFacture, insertFacture,
-  findInscriptionPourAttestation, insertAttestation, findAttestationParUuid,insertDocument,
-getDocuments
+  findInscriptionPourAttestation, findAttestation, insertAttestation, findAttestationParUuid,insertDocument,
+getDocuments, findFacture
 };

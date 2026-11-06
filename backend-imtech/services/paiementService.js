@@ -1,9 +1,11 @@
 // Service des paiements : règles de saisie (étudiant / personnel), validation par l'Accueil
 // et récapitulatif des paiements d'un étudiant.
 const paiementModel = require('../models/paiementModel');
+const documentModel = require('../models/documentModel');
 const notifService = require('./notifService');
 const dependanceService = require('./dependanceService');
 const documentService = require('./documentService');
+const { avecTransaction } = require('../utils/transaction');
 const { ROLES } = require('../config/roles');
 const { badRequest, forbidden, notFound, conflict } = require('../utils/errors');
 const { formatMontant } = require('../utils/format');
@@ -58,53 +60,66 @@ async function recupererPaiement(id_paiement, auteur) {
  * - Personnel : paiement validé directement, partiel autorisé, plafonné au reste à payer.
  */
 async function enregistrerPaiement({ id_echeance, id_mode_paiement, montant, reference_virement }, auteur) {
-  // Personnel : message clair si l'échéance ou ce dont elle dépend est désactivé
-  // (pour un étudiant, après le contrôle de propriété : on ne révèle rien d'une autre échéance)
-  if (!estEtudiant(auteur)) await dependanceService.verifierEcheance(id_echeance);
-  const echeance = await paiementModel.getEcheanceAvecSituation(id_echeance);
-  if (!echeance) throw notFound('Échéance introuvable.');
+  await controlerAccesEcheance(id_echeance, auteur);
 
-  // Seuls les paiements validés comptent dans ce qui a déjà été payé
-  const resteAPayer = Number(echeance.montant_prevu) - Number(echeance.montant_valide);
-  if (resteAPayer <= 0) throw conflict('Cette échéance est déjà réglée.');
+  // Échéance verrouillée : le reste à payer ne peut pas changer entre sa lecture et l'insertion
+  const id_paiement = await avecTransaction(async (connection) => {
+    await paiementModel.verrouillerEcheance(id_echeance, connection);
+    const echeance = await paiementModel.getEcheanceAvecSituation(id_echeance, connection);
+    if (!echeance) throw notFound('Échéance introuvable.');
 
+    // Seuls les paiements validés comptent dans ce qui a déjà été payé
+    const resteAPayer = paiementModel.resteAPayer(echeance);
+    if (resteAPayer <= 0) throw conflict('Cette échéance est déjà réglée.');
+
+    if (estEtudiant(auteur)) {
+      if (Number(echeance.nb_en_attente) > 0) {
+        throw conflict('Un paiement est déjà en attente de validation pour cette échéance.');
+      }
+      return paiementModel.insererPaiement({
+        id_echeance,
+        id_mode_paiement,
+        montant: resteAPayer,
+        reference_virement,
+        statut: STATUTS_PAIEMENT.EN_ATTENTE,
+      }, connection);
+    }
+
+    // Personnel : contrôle du montant saisi ; le paiement est validé tout de suite
+    const montantNum = Number(montant);
+    if (!Number.isFinite(montantNum) || montantNum <= 0) {
+      throw badRequest('Le montant doit être un nombre positif.');
+    }
+    if (montantNum > resteAPayer) {
+      throw badRequest(`Le montant dépasse le reste à payer (${resteAPayer}).`);
+    }
+    return paiementModel.insererPaiement({
+      id_echeance,
+      id_mode_paiement,
+      id_utilisateur: auteur?.id ?? null,
+      montant: montantNum,
+      reference_virement,
+      statut: STATUTS_PAIEMENT.VALIDE,
+    }, connection);
+  });
+
+  // Notification et facture après la transaction : l'échéance n'est plus bloquée
+  if (estEtudiant(auteur)) await prevenirPersonnelPaiement(id_paiement);
+  else envoyerFactureAuto(id_paiement, null, auteur?.id);
+  return id_paiement;
+}
+
+// Contrôles avant la transaction, qui lisent sur leur propre connexion.
+// Un étudiant passe d'abord le contrôle de propriété : on ne révèle rien d'une autre échéance.
+async function controlerAccesEcheance(id_echeance, auteur) {
   if (estEtudiant(auteur)) {
+    const echeance = await paiementModel.getEcheanceAvecSituation(id_echeance);
+    if (!echeance) throw notFound('Échéance introuvable.');
     if (Number(echeance.id_etudiant) !== Number(auteur.id_etudiant)) {
       throw forbidden('Cette échéance ne vous appartient pas.');
     }
-    await dependanceService.verifierEcheance(id_echeance);
-    if (Number(echeance.nb_en_attente) > 0) {
-      throw conflict('Un paiement est déjà en attente de validation pour cette échéance.');
-    }
-    const id_paiement = await paiementModel.insererPaiement({
-      id_echeance,
-      id_mode_paiement,
-      montant: resteAPayer,
-      reference_virement,
-      statut: STATUTS_PAIEMENT.EN_ATTENTE,
-    });
-    await prevenirPersonnelPaiement(id_paiement);
-    return id_paiement;
   }
-
-  // Personnel : contrôle du montant saisi ; le paiement est validé tout de suite, facture envoyée
-  const montantNum = Number(montant);
-  if (!Number.isFinite(montantNum) || montantNum <= 0) {
-    throw badRequest('Le montant doit être un nombre positif.');
-  }
-  if (montantNum > resteAPayer) {
-    throw badRequest(`Le montant dépasse le reste à payer (${resteAPayer}).`);
-  }
-
-  const id_paiement = await paiementModel.insererPaiement({
-    id_echeance,
-    id_mode_paiement,
-    montant: montantNum,
-    reference_virement,
-    statut: STATUTS_PAIEMENT.VALIDE,
-  });
-  envoyerFactureAuto(id_paiement, null, auteur?.id);
-  return id_paiement;
+  await dependanceService.verifierEcheance(id_echeance);
 }
 
 // Paiement validé : facture créée et envoyée à l'étudiant (notification + e-mail avec le PDF),
@@ -132,11 +147,39 @@ async function prevenirPersonnelPaiement(id_paiement) {
   }
 }
 
-// Correction d'un paiement par le personnel (mode, montant, référence)
+// Correction d'un paiement par le personnel (mode, montant, référence). Le nouveau montant reste
+// plafonné au reste à payer ; un paiement refusé ne compte pas, son montant n'est pas plafonné.
+// Une facture émise est un document officiel : son montant et son mode ne changent plus.
 async function modifierPaiement(id_paiement, data) {
-  await dependanceService.verifierPaiement(id_paiement);
-  const ok = await paiementModel.updatePaiement(id_paiement, data);
-  if (!ok) throw notFound('Paiement non trouvé.');
+  const { id_echeance } = await dependanceService.verifierPaiement(id_paiement);
+  const montantCorrige = data.montant !== undefined && data.montant !== null;
+  const montantNum = Number(data.montant);
+  if (montantCorrige && (!Number.isFinite(montantNum) || montantNum <= 0)) {
+    throw badRequest('Le montant doit être un nombre positif.');
+  }
+
+  await avecTransaction(async (connection) => {
+    await paiementModel.verrouillerEcheance(id_echeance, connection);
+    const paiement = await paiementModel.getPaiementPourControle(id_paiement, connection);
+    if (!paiement?.etat) throw notFound('Paiement non trouvé.');
+
+    const modeCorrige = data.id_mode_paiement !== undefined && data.id_mode_paiement !== null
+      && Number(data.id_mode_paiement) !== Number(paiement.id_mode_paiement);
+    const factureTouchee = modeCorrige || (montantCorrige && montantNum !== Number(paiement.montant));
+    if (factureTouchee && await documentModel.findFacture(id_paiement, connection)) {
+      throw conflict('Ce paiement a une facture : son montant et son mode ne peuvent plus être modifiés.');
+    }
+
+    if (montantCorrige && paiement.statut !== STATUTS_PAIEMENT.REFUSE) {
+      const echeance = await paiementModel.getEcheanceAvecSituation(id_echeance, connection);
+      if (!echeance) throw notFound('Échéance introuvable.');
+      // Un paiement validé compte déjà dans le payé : son ancien montant est remplacé, pas ajouté
+      const montantExclu = paiement.statut === STATUTS_PAIEMENT.VALIDE ? paiement.montant : 0;
+      const plafond = paiementModel.resteAPayer(echeance, montantExclu);
+      if (montantNum > plafond) throw badRequest(`Le montant dépasse le reste à payer (${plafond}).`);
+    }
+    await paiementModel.updatePaiement(id_paiement, data, connection);
+  });
 }
 
 // Passe un paiement "en_attente" à VALIDE ou REFUSE (une seule fois) et prévient l'étudiant.
@@ -148,7 +191,22 @@ async function traiterPaiementEnAttente(id_paiement, statut, id_auteur = null) {
   if (paiement.statut !== STATUTS_PAIEMENT.EN_ATTENTE) {
     throw conflict('Ce paiement a déjà été traité.');
   }
-  await paiementModel.changerStatutPaiementEnAttente(id_paiement, statut);
+
+  // Pendant l'attente, l'Accueil a pu encaisser cette échéance au guichet : on revérifie le reste à payer
+  await avecTransaction(async (connection) => {
+    await paiementModel.verrouillerEcheance(paiement.id_echeance, connection);
+    if (statut === STATUTS_PAIEMENT.VALIDE) {
+      const echeance = await paiementModel.getEcheanceAvecSituation(paiement.id_echeance, connection);
+      if (!echeance) throw notFound('Échéance introuvable.');
+      const resteAPayer = paiementModel.resteAPayer(echeance);
+      if (Number(paiement.montant) > resteAPayer) {
+        throw conflict(`Ce paiement dépasse le reste à payer (${formatMontant(resteAPayer)}) : refusez-le ou corrigez son montant.`);
+      }
+    }
+    // Deux clics simultanés : seul le premier change le statut
+    const traite = await paiementModel.changerStatutPaiementEnAttente(id_paiement, statut, connection, id_auteur);
+    if (!traite) throw conflict('Ce paiement a déjà été traité.');
+  });
 
   // Prévenir l'étudiant ; un échec de notification n'annule pas la validation.
   // Validé : la notification accompagne la facture envoyée automatiquement.

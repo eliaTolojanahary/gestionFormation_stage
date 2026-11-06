@@ -466,6 +466,34 @@ WHERE DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY) <= CURDATE()
   AND WEEKDAY(DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY)) < 5
   AND MOD(DAYOFYEAR(DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY)) * 7 + a.id_utilisateur * 3, 10) < a.taux;
 
+-- ============================================
+-- 13. COMMENTAIRES SUR LES FORMATEURS (fin de formation, obligatoires pour l'attestation)
+-- ============================================
+-- Écrits la veille de la fin de formation, puis notés sur 10 par l'Accueil ou le Super Admin (NULL = à noter).
+-- Note sur 20 du classement : Tiana, Voahangy, Rivo et Hery ont leurs deux parties ;
+-- Lalaina n'a pas assez de réactions : pas de note sur 20, classement après les autres.
+-- Toky (Développement web), Fano (Réseaux) et Tsiory (Bureautique) n'ont pas encore commenté :
+-- leur attestation reste bloquée (écran mobile « Commenter mon formateur » à montrer).
+INSERT INTO formateur_note (id_utilisateur, id_etudiant, id_inscription, note, commentaire, date_commentaire)
+SELECT f.id_utilisateur, i.id_etudiant, i.id_inscription, c.note, c.commentaire,
+       DATE_SUB(DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY), INTERVAL 1 DAY)
+FROM (
+  SELECT 1 AS id_inscription, 9.00 AS note, 'Explications très claires, toujours disponible pour nos questions.' AS commentaire
+  UNION ALL SELECT 3, 8.50, 'Cours bien organisés et beaucoup d''exercices pratiques. Le rythme était parfois rapide.'
+  UNION ALL SELECT 12, NULL, 'Très pédagogue, j''ai pu écrire mes premiers programmes dès la deuxième semaine.'
+  UNION ALL SELECT 4, 8.00, 'Beaucoup de patience et d''écoute, les supports sont faciles à suivre.'
+  UNION ALL SELECT 5, 7.50, 'Bons cours, mais j''aurais aimé plus d''exemples tirés du monde du travail.'
+  UNION ALL SELECT 9, 8.00, 'J''ai beaucoup progressé sur Word et Excel grâce à ses conseils.'
+  UNION ALL SELECT 14, NULL, 'Les tableaux croisés dynamiques sont enfin clairs pour moi. Merci !'
+  UNION ALL SELECT 7, 3.50, 'Les cours commençaient souvent en retard et les explications étaient difficiles à suivre.'
+  UNION ALL SELECT 6, 9.00, 'Un cours plein de passion qui donne envie de créer. Les retours sur nos travaux sont précis.'
+  UNION ALL SELECT 10, 8.00, 'Très bons conseils sur nos affiches, avec des exercices variés.'
+  UNION ALL SELECT 13, 6.50, 'Bonnes séances pratiques, mais il manquait parfois du matériel pour tout le monde.'
+  UNION ALL SELECT 15, NULL, 'J''ai appris à diagnostiquer les pannes courantes, c''était très concret.'
+) c
+JOIN inscription i ON i.id_inscription = c.id_inscription
+JOIN formation f ON f.id_formation = i.id_formation;
+
 DROP TEMPORARY TABLE seed_inscription;
 DROP TEMPORARY TABLE seed_paiement;
 DROP TEMPORARY TABLE seed_assiduite;

@@ -7,6 +7,8 @@ const jwt = require('jsonwebtoken');
 const app = require('../app');
 const userModel = require('../models/userModel');
 const paiementModel = require('../models/paiementModel');
+const documentModel = require('../models/documentModel');
+const db = require('../config/db');
 const notifService = require('../services/notifService');
 const assistanceModel = require('../models/assistanceModel');
 const classementModel = require('../models/classementModel');
@@ -118,7 +120,12 @@ test("l'accueil valide un paiement en attente", async () => {
   simulerDependances();
   mock.method(paiementModel, 'getPaiementById', async () => ({ id_paiement: 3, statut: 'en_attente' }));
   mock.method(paiementModel, 'changerStatutPaiementEnAttente', async () => true);
+  mock.method(paiementModel, 'getEcheanceAvecSituation', async () => ({ montant_prevu: '50000.00', montant_valide: 0 }));
   mock.method(notifService, 'notifierInApp', async () => {});
+  // Fausse connexion pour avecTransaction (aucune requête SQL réelle)
+  mock.method(db, 'getConnection', async () => ({
+    query: async () => [[]], beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release: () => {},
+  }));
 
   const res = await appel('PUT', '/paiements/3/valider', { token: accueil });
 
@@ -225,6 +232,7 @@ test("un formateur ne peut pas noter un étudiant d'une formation qui n'est pas 
 });
 
 test('le formateur de la formation note la présentation (sur 10 au maximum)', async () => {
+  mock.method(documentModel, 'findAttestation', async () => null);
   sessionActive();
   simulerDependances();
   mock.method(classementModel, 'getInscriptionAvecFormateur', async () => ({ id_inscription: 5, id_formateur: 3 }));
@@ -261,4 +269,12 @@ test("un étudiant ou un formateur ne voit pas l'avis sur les formateurs", async
   sessionActive();
   assert.equal((await appel('GET', '/formateurs/avis', { token: etudiant })).status, 403);
   assert.equal((await appel('GET', '/formateurs/avis', { token: formateur })).status, 403);
+});
+
+test("commentaires sur les formateurs : réservés à l'Accueil et au Super Admin, jamais au formateur", async () => {
+  sessionActive();
+  const lecture = await appel('GET', '/formateurs/commentaires', { token: formateur });
+  const note = await appel('PUT', '/formateurs/commentaires/1/note', { token: formateur, body: { note: 10 } });
+  const classement = await appel('GET', '/formateurs/avis', { token: formateur });
+  assert.deepEqual([lecture.status, note.status, classement.status], [403, 403, 403]);
 });

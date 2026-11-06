@@ -110,3 +110,42 @@ CREATE TABLE IF NOT EXISTS historique_etat (
     date_action DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_historique_element (table_origine, id_origine, date_action)
 );
+
+
+-- ============================================
+-- Une seule facture par paiement — 06/11/2026
+-- ============================================
+CREATE UNIQUE INDEX IF NOT EXISTS uq_facture_paiement ON facture(id_paiement);
+
+
+-- ============================================
+-- Agent qui a saisi ou traité un paiement (NULL : anciens paiements, déclaration pas encore traitée) — 06/11/2026
+-- ============================================
+ALTER TABLE paiement ADD COLUMN IF NOT EXISTS id_utilisateur INT NULL AFTER id_mode_paiement;
+ALTER TABLE paiement ADD CONSTRAINT fk_paiement_utilisateur
+  FOREIGN KEY IF NOT EXISTS (id_utilisateur) REFERENCES utilisateur(id_utilisateur);
+
+
+-- ============================================
+-- Une seule attestation par inscription — 06/11/2026
+-- ============================================
+CREATE UNIQUE INDEX IF NOT EXISTS uq_attestation_inscription ON attestation(id_inscription);
+
+
+-- ============================================
+-- Commentaire de fin de formation sur le formateur, noté sur 10 — 06/11/2026
+-- ============================================
+CREATE TABLE IF NOT EXISTS formateur_note (
+    id_note INT AUTO_INCREMENT PRIMARY KEY,
+    id_utilisateur INT NOT NULL,   -- formateur commenté
+    id_etudiant INT NOT NULL,
+    id_inscription INT NOT NULL,
+    note DECIMAL(4,2) NULL,        -- sur 10, donnée par l'Accueil ou le Super Admin ; NULL = à noter
+    commentaire TEXT NOT NULL,
+    date_commentaire DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_formateur_note_inscription UNIQUE (id_inscription),
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
+    FOREIGN KEY (id_etudiant) REFERENCES etudiant(id_etudiant),
+    FOREIGN KEY (id_inscription) REFERENCES inscription(id_inscription),
+    INDEX idx_formateur_note_classement (id_utilisateur, date_commentaire)
+);
