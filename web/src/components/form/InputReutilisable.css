@@ -29,7 +29,7 @@
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   outline: 0;
   color: var(--text-main);
   background: var(--surface);
@@ -71,7 +71,7 @@
 .form-field input[type='file'] {
   padding: 6px;
   border: 1px dashed var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   background: var(--page-bg);
   font-size: var(--fs-xs);          /* ⭐ la police du champ reste petite */
@@ -88,7 +88,7 @@
   margin-right: 10px;
   padding: 6px 12px;
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--on-accent);
   background: var(--accent);
   font: inherit;

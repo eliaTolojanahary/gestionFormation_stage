@@ -16,7 +16,7 @@ const EMPTY_FORM = { nom: '', description: '', engagement_formateur: '', tarif: 
 function FormationForm({ user, formationId, onBack, onSaved }) {
   const isEdit = Boolean(formationId)
   const { getFormation, createFormation, updateFormation, updateFormationImage } = useFormation()
-  const { users, isLoading: usersLoading } = useUser()
+  const { users, isLoading: usersLoading } = useUser('actif', { role: 'Formateur' })
   const [form, setForm] = useState({ ...EMPTY_FORM, id_utilisateur: user?.id_utilisateur || user?.id || '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(isEdit)
@@ -83,7 +83,6 @@ function FormationForm({ user, formationId, onBack, onSaved }) {
 
   // Liste déroulante des formateurs (le formateur n'est plus modifiable une fois la formation créée)
   const formateurOptions = users
-    .filter((item) => item.role_nom === 'Formateur')
     .map((item) => ({ 
       value: item.id_utilisateur, 
       label: `${item.prenom || ''} ${item.nom || ''}`.trim() || item.email 

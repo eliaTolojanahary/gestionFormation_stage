@@ -1,5 +1,5 @@
 // hooks/use-notification.ts
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { apiRequest } from '../utils/api';
 
@@ -41,15 +41,27 @@ export interface EmailPayload {
   [key: string]: any;
 }
 
+/** Totaux renvoyés par le serveur (toutes / non lues) */
+export interface CompteurNotifications {
+  total: number;
+  nonLues: number;
+}
+
+// Nombre de notifications chargées par page (bouton « Notifications précédentes »)
+const LIMITE = 10;
+// Fréquence de la recherche de nouvelles notifications et du compteur de la cloche
+const INTERVALLE_NOUVELLES = 10 * 1000;
+
 // ─────────────────────────────────────────────
 // Compteur de la cloche (barre d'onglets)
-// Rafraîchi au montage, toutes les minutes, au retour au premier plan, au changement
+// Rafraîchi au montage, toutes les 10 s, au retour au premier plan, au changement
 // d'onglet et dès qu'un écran lit / supprime une notification (rafraichirCloche).
+// Seul le nombre est demandé au serveur (GET /notifications/compteur), pas la liste.
 // ─────────────────────────────────────────────
 const abonnesCloche = new Set<() => void>();
 let attenteCloche: ReturnType<typeof setTimeout> | undefined;
 
-// Regroupe les appels rapprochés (« Tout marquer comme lu » = une lecture par notification)
+// Regroupe les appels rapprochés (plusieurs lectures de suite)
 export function rafraichirCloche() {
   clearTimeout(attenteCloche);
   attenteCloche = setTimeout(() => abonnesCloche.forEach((charger) => charger()), 300);
@@ -68,9 +80,8 @@ export function useNombreNonLues() {
     let actif = true;
     async function charger() {
       try {
-        const data = await apiRequest('/notifications', { method: 'GET' });
-        const liste: Notification[] = data?.data ?? [];
-        if (actif) setNombre(liste.filter((n) => !n.lu).length);
+        const data = await apiRequest('/notifications/compteur', { method: 'GET' });
+        if (actif) setNombre(data?.data?.nonLues ?? 0);
       } catch {
         // compteur inchangé (hors ligne, session expirée...)
       }
@@ -78,7 +89,9 @@ export function useNombreNonLues() {
 
     charger();
     abonnesCloche.add(charger);
-    const intervalle = setInterval(charger, 60 * 1000);
+    const intervalle = setInterval(() => {
+      if (AppState.currentState === 'active') charger();
+    }, INTERVALLE_NOUVELLES);
     const abonnement = AppState.addEventListener('change', (etat) => {
       if (etat === 'active') charger();
     });
@@ -95,24 +108,44 @@ export function useNombreNonLues() {
 
 // ─────────────────────────────────────────────
 // Hook
-// Notifications de l'utilisateur connecté (chargées au montage), lecture et suppression.
+// Notifications de l'utilisateur connecté : les LIMITE plus récentes au montage, les
+// précédentes à la demande, les nouvelles ajoutées en haut toutes les 10 s et au retour
+// au premier plan. Lecture et suppression.
 // Les fonctions d'envoi appellent des routes réservées au personnel : un étudiant
 // recevra une erreur 403 s'il les utilise.
 // ─────────────────────────────────────────────
 export function useNotification() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [compteur, setCompteur] = useState<CompteurNotifications>({ total: 0, nonLues: 0 });
+  const [encorePlus, setEncorePlus] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPlus, setIsLoadingPlus] = useState(false);
   const [error, setError] = useState('');
 
-  // ─── Récupérer toutes les notifications ───
+  // Liste courante lue par l'intervalle (sa fonction garderait sinon la liste du premier rendu)
+  const listeRef = useRef<Notification[]>(notifications);
+  listeRef.current = notifications;
+
+  function lireListe(params: Record<string, number>) {
+    const query = Object.entries(params).map(([cle, valeur]) => `${cle}=${valeur}`).join('&');
+    return apiRequest(`/notifications?${query}`, { method: 'GET' });
+  }
+
+  function lireCompteur(data: any) {
+    if (data?.meta) setCompteur({ total: data.meta.total, nonLues: data.meta.nonLues });
+  }
+
+  // ─── Première page : les LIMITE plus récentes ───
   async function getNotifications(): Promise<Notification[]> {
     setIsLoading(true);
     setError('');
 
     try {
-      const data = await apiRequest('/notifications', { method: 'GET' });
+      const data = await lireListe({ limite: LIMITE });
       const liste: Notification[] = data?.data ?? [];
       setNotifications(liste);
+      setEncorePlus(Boolean(data?.meta?.encorePlus));
+      lireCompteur(data);
       return liste;
     } catch (err: any) {
       setError(err?.message || 'Impossible de charger les notifications.');
@@ -122,17 +155,77 @@ export function useNotification() {
     }
   }
 
+  // ─── Page suivante : plus anciennes que la dernière affichée, ajoutées en bas ───
+  async function chargerPlusAnciennes() {
+    const derniere = listeRef.current[listeRef.current.length - 1];
+    if (!derniere) return;
+    setIsLoadingPlus(true);
+
+    try {
+      const data = await lireListe({ limite: LIMITE, avant: derniere.id_notification });
+      const liste: Notification[] = data?.data ?? [];
+      setNotifications((current) => [...current, ...liste]);
+      setEncorePlus(Boolean(data?.meta?.encorePlus));
+      lireCompteur(data);
+    } catch (err: any) {
+      setError(err?.message || 'Impossible de charger les notifications précédentes.');
+    } finally {
+      setIsLoadingPlus(false);
+    }
+  }
+
+  // ─── Nouvelles : plus récentes que la première affichée, ajoutées en haut ───
+  // Silencieux en cas d'erreur (nouvel essai au prochain passage).
+  async function chargerNouvelles() {
+    const premiere = listeRef.current[0];
+    if (!premiere) {
+      await getNotifications();
+      return;
+    }
+
+    try {
+      const data = await lireListe({ apres: premiere.id_notification });
+      const nouvelles: Notification[] = data?.data ?? [];
+      if (nouvelles.length) {
+        setNotifications((current) => {
+          const dejaAffichees = new Set(current.map((n) => n.id_notification));
+          return [...nouvelles.filter((n) => !dejaAffichees.has(n.id_notification)), ...current];
+        });
+      }
+      lireCompteur(data);
+    } catch {
+      // ignoré
+    }
+  }
+
   // ─── Marquer une notification comme lue ───
   async function lireNotification(id: number | string) {
     const result = await apiRequest(`/notifications/${id}/lu`, {
       method: 'PUT',
     });
 
+    const etaitNonLue = listeRef.current.some((n) => n.id_notification === Number(id) && !n.lu);
     setNotifications((current) =>
       current.map((n) =>
         n.id_notification === Number(id) ? { ...n, lu: true } : n
       )
     );
+    if (etaitNonLue) {
+      setCompteur((current) => ({ ...current, nonLues: Math.max(current.nonLues - 1, 0) }));
+    }
+
+    rafraichirCloche();
+    return result;
+  }
+
+  // ─── Tout marquer comme lu, y compris les notifications pas encore chargées ───
+  async function lireToutesNotifications() {
+    const result = await apiRequest('/notifications/lu-tout', {
+      method: 'PUT',
+    });
+
+    setNotifications((current) => current.map((n) => ({ ...n, lu: true })));
+    setCompteur((current) => ({ ...current, nonLues: 0 }));
 
     rafraichirCloche();
     return result;
@@ -144,9 +237,16 @@ export function useNotification() {
       method: 'DELETE',
     });
 
+    const supprimee = listeRef.current.find((n) => n.id_notification === Number(id));
     setNotifications((current) =>
       current.filter((n) => n.id_notification !== Number(id))
     );
+    if (supprimee) {
+      setCompteur((current) => ({
+        total: Math.max(current.total - 1, 0),
+        nonLues: supprimee.lu ? current.nonLues : Math.max(current.nonLues - 1, 0),
+      }));
+    }
 
     rafraichirCloche();
     return result;
@@ -177,18 +277,38 @@ export function useNotification() {
     });
   }
 
-  // ─── Charger la liste au montage ───
+  // ─── Charger la première page au montage ───
   useEffect(() => {
     getNotifications();
      
   }, []);
 
+  // ─── Nouvelles notifications toutes les 10 s, et tout de suite au retour au premier plan ───
+  useEffect(() => {
+    const intervalle = setInterval(() => {
+      if (AppState.currentState === 'active') chargerNouvelles();
+    }, INTERVALLE_NOUVELLES);
+    const abonnement = AppState.addEventListener('change', (etat) => {
+      if (etat === 'active') chargerNouvelles();
+    });
+    return () => {
+      clearInterval(intervalle);
+      abonnement.remove();
+    };
+  }, []);
+
   return {
     notifications,
+    compteur,
+    encorePlus,
     isLoading,
+    isLoadingPlus,
     error,
     getNotifications,
+    chargerPlusAnciennes,
+    chargerNouvelles,
     lireNotification,
+    lireToutesNotifications,
     deleteNotification,
     envoyerNotifInApp,
     envoyerEmail,

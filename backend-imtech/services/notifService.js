@@ -2,7 +2,7 @@
 // Chaque e-mail envoyé est aussi tracé en base.
 const notifModel = require('../models/notifModel');
 const userModel = require('../models/userModel');
-const { STAFF } = require('../config/roles');
+const { ROLES, STAFF } = require('../config/roles');
 const { envoyerEmail } = require('../utils/mailer');
 
 // Notification visible dans l'application (cloche / page Notifications)
@@ -36,6 +36,18 @@ async function notifierEmailAvecPieceJointe(id_utilisateur, email, sujet, conten
   });
 }
 
+// Coordonnées de la personne qui envoie un e-mail (signature, nom d'expéditeur, adresse de réponse) :
+// l'utilisateur connecté qui a fait l'action. Sans auteur (envoi automatique du serveur, ex. attestation
+// à la fin de la formation), c'est le premier compte Accueil actif qui signe. null si aucun n'est trouvé.
+async function expediteurDe(id_utilisateur) {
+  let id = id_utilisateur;
+  if (!id) [id] = await userModel.findIdsByRoles([ROLES.ACCUEIL]);
+  if (!id) return null;
+  const user = await userModel.findUserById(id);
+  if (!user) return null;
+  return { prenom: user.prenom, nom: user.nom, email: user.email, telephone: user.telephone, role: user.role_nom };
+}
+
 // Notification in-app à tout le personnel d'accueil (Accueil + Super Admin)
 async function notifierPersonnel(message) {
   const ids = await userModel.findIdsByRoles(STAFF);
@@ -46,14 +58,16 @@ async function notifierPersonnel(message) {
 // Notification in-app + e-mail à un étudiant.
 // L'in-app part toujours ; un échec d'e-mail (Gmail indisponible...) n'est pas bloquant :
 // la fonction renvoie { emailEnvoye: false } pour que l'interface puisse le signaler.
-async function notifierEtudiant({ id_utilisateur, email, message, sujet, contenuHtml, pieceJointe }) {
+// id_auteur : utilisateur qui fait l'action ; il signe l'e-mail (voir expediteurDe).
+async function notifierEtudiant({ id_utilisateur, email, message, sujet, contenuHtml, pieceJointe, id_auteur }) {
   await notifModel.insertNotificationInApp(id_utilisateur, message);
   if (!email) return { emailEnvoye: false };
   try {
+    const expediteur = await expediteurDe(id_auteur);
     if (pieceJointe) {
-      await notifierEmailAvecPieceJointe(id_utilisateur, email, sujet, contenuHtml, pieceJointe.chemin, pieceJointe.nom);
+      await notifierEmailAvecPieceJointe(id_utilisateur, email, sujet, contenuHtml, pieceJointe.chemin, pieceJointe.nom, expediteur);
     } else {
-      await notifierEmail(id_utilisateur, email, sujet, contenuHtml);
+      await notifierEmail(id_utilisateur, email, sujet, contenuHtml, expediteur);
     }
     return { emailEnvoye: true };
   } catch (error) {
@@ -64,12 +78,33 @@ async function notifierEtudiant({ id_utilisateur, email, message, sujet, contenu
 
 // Les fonctions suivantes filtrent toujours par id_utilisateur :
 // on ne peut lire / supprimer que ses propres notifications
-async function listerNotifications(id_utilisateur) {
-  return await notifModel.notifFindByUtilisateur(id_utilisateur);
+// Une page de notifications + les totaux. On demande une ligne de plus que la limite :
+// si elle existe, il reste des notifications plus anciennes (encorePlus).
+async function listerNotifications(id_utilisateur, { avant, apres, nonLues, limite } = {}) {
+  const [lignes, compteur] = await Promise.all([
+    notifModel.notifFindByUtilisateur(id_utilisateur, {
+      avant, apres, nonLues, limite: limite ? limite + 1 : undefined,
+    }),
+    notifModel.countByUtilisateur(id_utilisateur),
+  ]);
+
+  const encorePlus = Boolean(limite) && lignes.length > limite;
+  return {
+    notifications: encorePlus ? lignes.slice(0, limite) : lignes,
+    meta: { encorePlus, ...compteur },
+  };
+}
+
+async function compterNotifications(id_utilisateur) {
+  return await notifModel.countByUtilisateur(id_utilisateur);
 }
 
 async function marquerCommeLue(id_notification, id_utilisateur) {
   return await notifModel.updateLu(id_notification, id_utilisateur);
+}
+
+async function marquerToutCommeLu(id_utilisateur) {
+  return await notifModel.updateToutLu(id_utilisateur);
 }
 
 async function supprimerNotification(id_notification, id_utilisateur) {
@@ -114,6 +149,7 @@ async function notifierCommentaireFormateur({ idDestinataire, idSupport, auteur 
 }
 
 module.exports = {
+  expediteurDe,
   notifierPersonnel,
   notifierEtudiant,
   notifierMention,
@@ -123,6 +159,8 @@ module.exports = {
   notifierEmail,
   notifierEmailAvecPieceJointe,
   listerNotifications,
+  compterNotifications,
   marquerCommeLue,
+  marquerToutCommeLu,
   supprimerNotification,
 };

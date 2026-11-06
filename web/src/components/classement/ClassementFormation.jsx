@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
+import Icon from '../icon/Icon'
 import Avatar from '../avatar/Avatar'
 import { useClassement } from '../../hooks/useClassement'
 import './ClassementFormation.css'
 
 // Le formateur note la présentation sur 10 ; les 10 autres points sont calculés par le système
 const NOTE_PRESENTATION_MAX = 10
-const POINTS_MAX = 5
 
 function formatNote(note) {
   return note === null || note === undefined ? '—' : Number(note).toLocaleString('fr-FR')
@@ -18,6 +18,17 @@ function niveauNote(note) {
   return 'faible'
 }
 
+// Points retirés : « 0 » ou « −2 » (vrai signe moins)
+const formatMalus = (points) => (points < 0 ? `−${-points}` : '0')
+
+// Détail du paiement : « 1 en retard, 1 non réglée »
+function detailPaiement(etudiant) {
+  const parties = []
+  if (etudiant.nb_payees_en_retard) parties.push(`${etudiant.nb_payees_en_retard} en retard`)
+  if (etudiant.nb_non_reglees) parties.push(`${etudiant.nb_non_reglees} non réglée${etudiant.nb_non_reglees > 1 ? 's' : ''}`)
+  return parties.join(', ')
+}
+
 // Une ligne du classement : rang, étudiant (présence en jours), paiement, présence, note système,
 // saisie de la présentation et note finale. Sur petit écran, chaque ligne devient une carte (data-label).
 function LigneClassement({ etudiant, onEnregistrer }) {
@@ -28,10 +39,7 @@ function LigneClassement({ etudiant, onEnregistrer }) {
 
   // Le bouton Enregistrer n'est actif que si la saisie diffère de la note enregistrée
   const modifiee = saisie.trim() !== (noteActuelle === '' ? '' : String(noteActuelle))
-  const presenceMax = etudiant.points_presence === POINTS_MAX
-  const tauxPresence = etudiant.jours_requis
-    ? Math.min(100, Math.round((etudiant.nb_presences / etudiant.jours_requis) * 100))
-    : 0
+  const presenceSansMalus = etudiant.points_presence === 0
 
   // valeur '' = effacer la note de présentation
   async function enregistrer(valeur) {
@@ -69,15 +77,16 @@ function LigneClassement({ etudiant, onEnregistrer }) {
       </td>
       <td data-label="Paiement">
         <span className={`classement-pastille ${etudiant.paiement_regulier ? 'atteint' : 'manque'}`}>
-          {etudiant.paiement_regulier ? '✓ Régulier' : '✗ En retard'} · {etudiant.points_paiement}/{POINTS_MAX}
+          <Icon name={etudiant.paiement_regulier ? 'check' : 'x'} className="icon-inline" />{' '}
+          {etudiant.paiement_regulier ? 'À temps' : detailPaiement(etudiant)} · {formatMalus(etudiant.points_paiement)}
         </span>
       </td>
       <td data-label="Présence">
-        <div className="classement-presence" title={`${tauxPresence} % des jours de cours`}>
+        <div className="classement-presence" title={`${etudiant.taux_presence} % des jours de cours`}>
           <span className="classement-barre">
-            <span className={presenceMax ? 'atteint' : ''} style={{ width: `${tauxPresence}%` }} />
+            <span className={presenceSansMalus ? 'atteint' : ''} style={{ width: `${etudiant.taux_presence}%` }} />
           </span>
-          <small>{etudiant.points_presence}/{POINTS_MAX}</small>
+          <small>{etudiant.taux_presence} % · {formatMalus(etudiant.points_presence)}</small>
         </div>
       </td>
       <td data-label="Système" className="classement-chiffre">
@@ -155,9 +164,15 @@ function ClassementFormation({ formations }) {
         <div>
           <h2>Classement et notes d'attestation</h2>
           <p>
-            Note sur 20. Le système calcule 10 points : paiement (5 si régulier, sinon 2) et présence
-            sur l'application (2 sous la moitié des jours de cours, 3 à partir de la moitié, 5 si présent
-            jusqu'à 2 semaines avant la fin). Vous attribuez les 10 autres points selon la présentation.
+            Note sur 20. Note système sur 10 : chaque étudiant part de 10 et perd des points.
+            Présence sur l'application : 0 à partir de 90 % des jours de cours, −1 à partir de 75 %,
+            −2 à partir de 50 %, −4 en dessous. Paiement : −1 par échéance payée en retard (réglée le
+            jour suivant), −2 par échéance non réglée (pas réglée le jour suivant), −4 au plus.
+            Vous attribuez les 10 autres points selon la présentation.
+          </p>
+          <p className="muted-text">
+            Exemple : présence 80 % (−1) et une échéance payée en retard (−1) donnent 10 − 1 − 1 = 8/10 ;
+            avec 7/10 en présentation, la note d'attestation est 15/20.
           </p>
         </div>
         <select value={formationActive} onChange={(event) => setIdFormation(event.target.value)}>

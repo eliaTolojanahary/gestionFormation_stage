@@ -101,7 +101,7 @@ async function handleSubmit(event) {
   if (isLoading) {
     return (
       <main className="etudiant-page">
-        <Header user={user} activeItem="Etudiants" />
+        <Header user={user} activeItem="Étudiants" />
         <p>Chargement...</p>
       </main>
     )
@@ -109,7 +109,7 @@ async function handleSubmit(event) {
 
   return (
     <main className="etudiant-page">
-      <Header user={user} activeItem="Etudiants" />
+      <Header user={user} activeItem="Étudiants" />
 
       <div className="page-heading">
         <div>

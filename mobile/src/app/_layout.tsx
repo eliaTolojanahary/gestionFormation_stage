@@ -24,6 +24,7 @@ function AppStack() {
         <Stack.Screen name="login" />
         <Stack.Screen name="decouvrir" />
         <Stack.Screen name="paiements" />
+        <Stack.Screen name="dossier" />
         <Stack.Screen name="assistance" />
         <Stack.Screen name="parametres" />
         <Stack.Screen name="lecteur" />

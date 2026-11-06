@@ -10,10 +10,10 @@ const echeanceModel = require('../models/echeanceModel');
 const paiementModel = require('../models/paiementModel');
 const inscriptionModel = require('../models/inscriptionModel');
 const vitrineModel = require('../models/vitrineModel');
-const notifModel = require('../models/notifModel');
 const parametreModel = require('../models/parametreModel');
 const notifService = require('../services/notifService');
 const inscriptionService = require('../services/inscriptionService');
+const { simulerDependances } = require('./simulerDependances');
 const { verifierDemande, inscriptionEnLigne, modifierFondVitrine, reinitialiserFondVitrine } = require('../services/vitrineService');
 
 afterEach(() => mock.restoreAll());
@@ -29,7 +29,7 @@ function simulerTransaction() {
 
 const demande = (formations) => ({
   nom: 'Rabe', prenom: 'Lova', email: 'Lova@Mail.mg', telephone: '0340000000',
-  mot_de_passe: 'motdepasse', id_mode_paiement: 2, reference_virement: 'VIR-42', formations,
+  mot_de_passe: 'motdepasse', confirmation_mot_de_passe: 'motdepasse', id_mode_paiement: 2, reference_virement: 'VIR-42', formations,
 });
 
 // ─── Vérification du formulaire ─────────────
@@ -38,6 +38,7 @@ test('formulaire : champs requis, mot de passe de 8 caractères, 1 à 4 tranches
   assert.throws(() => verifierDemande({ ...demande([{ id_formation: 1 }]), nom: '' }), /nom/);
   assert.throws(() => verifierDemande({ ...demande([{ id_formation: 1 }]), email: 'pas-un-mail' }), /e-mail/);
   assert.throws(() => verifierDemande({ ...demande([{ id_formation: 1 }]), mot_de_passe: 'court' }), /8 caractères/);
+  assert.throws(() => verifierDemande({ ...demande([{ id_formation: 1 }]), confirmation_mot_de_passe: 'autre' }), /ne correspondent pas/);
   assert.throws(() => verifierDemande(demande([])), /au moins une formation/);
   assert.throws(() => verifierDemande(demande([{ id_formation: 1, nombre_tranches: 5 }])), /tranches/);
 });
@@ -67,7 +68,8 @@ test('inscription à 2 formations : 2 inscriptions « en ligne » et 2 premiers 
   const payer = mock.method(paiementModel, 'insererPaiement', async () => 1);
   mock.method(inscriptionModel, 'getIdUtilisateurByEtudiant', async () => 30);
   const personnel = mock.method(notifService, 'notifierPersonnel', async () => 2);
-  mock.method(notifModel, 'insertNotificationInApp', async () => {});
+  mock.method(inscriptionModel, 'getInscriptionById', async (id) => ({ nom_formation: `Formation ${id}` }));
+  const accuse = mock.method(notifService, 'notifierEtudiant', async () => ({ emailEnvoye: true }));
 
   const resultat = await inscriptionEnLigne(demande([{ id_formation: 1, nombre_tranches: 2 }, { id_formation: 2 }]));
 
@@ -80,6 +82,34 @@ test('inscription à 2 formations : 2 inscriptions « en ligne » et 2 premiers 
   assert.equal(payer.mock.calls[1].arguments[0].id_echeance, 1010);
   assert.equal(resultat.total_premier_paiement, 100000);
   assert.equal(personnel.mock.callCount(), 1);
+  // Accusé de réception envoyé à l'étudiant, avec les deux formations
+  const envoi = accuse.mock.calls[0].arguments[0];
+  assert.equal(envoi.email, 'lova@mail.mg');
+  assert.match(envoi.contenuHtml, /Formation 100/);
+  assert.match(envoi.contenuHtml, /Formation 101/);
+});
+
+test('inscription avec les pièces jointes : enregistrées dans le dossier, Accueil prévenu du dossier complet', async () => {
+  simulerTransaction();
+  mock.method(userModel, 'findUserByEmail', async () => undefined);
+  mock.method(vitrineModel, 'modePaiementExiste', async () => true);
+  const compte = mock.method(etudiantModel, 'insertUtilisateurEtEtudiant', async () => 7);
+  mock.method(inscriptionService, 'creerInscriptionDans', async () => 100);
+  mock.method(echeanceModel, 'getEcheancesByInscription', async () => [{ id_echeance: 1, montant_prevu: '50000.00' }]);
+  mock.method(paiementModel, 'insererPaiement', async () => 1);
+  mock.method(inscriptionModel, 'getIdUtilisateurByEtudiant', async () => 30);
+  const personnel = mock.method(notifService, 'notifierPersonnel', async () => 2);
+  mock.method(inscriptionModel, 'getInscriptionById', async () => ({ nom_formation: 'Web' }));
+  mock.method(notifService, 'notifierEtudiant', async () => ({ emailEnvoye: true }));
+
+  const pieces = {
+    photo_1: 'etudiants/p1.jpg', photo_2: 'etudiants/p2.jpg',
+    photocopie_cin: 'etudiants/cin.pdf', certificat_residence: 'etudiants/cr.jpg',
+  };
+  await inscriptionEnLigne({ ...demande([{ id_formation: 1 }]), pieces });
+
+  assert.equal(compte.mock.calls[0].arguments[1].photocopie_cin, 'etudiants/cin.pdf');
+  assert.match(personnel.mock.calls[0].arguments[0], /Dossier complet/);
 });
 
 test('e-mail déjà utilisé : 409, rien n\'est créé', async () => {
@@ -94,6 +124,11 @@ test('e-mail déjà utilisé : 409, rien n\'est créé', async () => {
 
 test('validation d\'une inscription en ligne : le paiement déclaré est validé, pas de second paiement', async () => {
   simulerTransaction();
+  simulerDependances({ origine: 'en_ligne' });
+  mock.method(etudiantModel, 'getEtudiantById', async () => ({
+    photo_1: 'etudiants/p1.jpg', photo_2: 'etudiants/p2.jpg',
+    photocopie_cin: 'etudiants/cin.pdf', certificat_residence: 'etudiants/cr.jpg',
+  }));
   mock.method(echeanceModel, 'getEcheancesByInscription', async () => [{ id_echeance: 5, montant_prevu: 50000 }]);
   mock.method(inscriptionModel, 'setInscriptionValidee', async () => true);
   mock.method(paiementModel, 'getPaiementEnAttenteEcheance', async () => ({ id_paiement: 9 }));
@@ -102,9 +137,39 @@ test('validation d\'une inscription en ligne : le paiement déclaré est validé
 
   const resultat = await inscriptionService.validerInscription(3, 1, 'REF');
 
-  assert.deepEqual(resultat, { id_inscription: 3, id_paiement: 9 });
+  assert.deepEqual(resultat, { id_inscription: 3, id_paiement: 9, pieces_manquantes: [] });
   assert.equal(valider.mock.callCount(), 1);
   assert.equal(inserer.mock.callCount(), 0);
+});
+
+test('inscription en ligne, dossier incomplet : validation refusée (409) avec les pièces manquantes', async () => {
+  simulerTransaction();
+  simulerDependances({ origine: 'en_ligne' });
+  mock.method(etudiantModel, 'getEtudiantById', async () => ({ photo_1: 'etudiants/p1.jpg', photo_2: 'etudiants/p2.jpg' }));
+  const valider = mock.method(inscriptionModel, 'setInscriptionValidee', async () => true);
+
+  await assert.rejects(inscriptionService.validerInscription(3, 1, 'REF'), (error) => {
+    assert.equal(error.status, 409);
+    assert.match(error.message, /Photocopie de la CIN, Certificat de résidence/);
+    return true;
+  });
+  assert.equal(valider.mock.callCount(), 0);
+});
+
+test('inscription faite à l\'Accueil : validée même si le dossier est incomplet, pièces manquantes signalées', async () => {
+  simulerTransaction();
+  simulerDependances({ origine: 'accueil' });
+  mock.method(etudiantModel, 'getEtudiantById', async () => ({ photo_1: 'etudiants/p1.jpg', photo_2: 'etudiants/p2.jpg' }));
+  mock.method(echeanceModel, 'getEcheancesByInscription', async () => [{ id_echeance: 5, montant_prevu: 50000 }]);
+  mock.method(inscriptionModel, 'setInscriptionValidee', async () => true);
+  mock.method(paiementModel, 'getPaiementEnAttenteEcheance', async () => null);
+  mock.method(paiementModel, 'insererPaiement', async () => 10);
+
+  const resultat = await inscriptionService.validerInscription(3, 1, 'REF');
+
+  assert.deepEqual(resultat, {
+    id_inscription: 3, id_paiement: 10, pieces_manquantes: ['Photocopie de la CIN', 'Certificat de résidence'],
+  });
 });
 
 // ─── Fond du bandeau « Découvrir » ──────────

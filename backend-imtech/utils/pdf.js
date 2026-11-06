@@ -4,6 +4,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { formatMontant } = require('./format');
 
 const DOSSIER_DOCUMENTS = path.join(__dirname, '..', 'uploads', 'documents');
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logoImtech.png'); 
@@ -125,7 +126,7 @@ async function genererFichePDF(donnees, nomFichier) {
 
   y += 50;
   ligneInfo(doc, 70, y, 'Formation', donnees.formation_nom); y += 26;
-  ligneInfo(doc, 70, y, 'Tarif', `${formatMontant(donnees.tarif)} Ar`);
+  ligneInfo(doc, 70, y, 'Tarif', formatMontant(donnees.tarif));
 
   dessinerPiedDePage(doc, `IMTECH INFO — Fiche générée le ${formatDate(new Date())} — Document à usage administratif`);
 
@@ -248,7 +249,7 @@ async function genererFacturePDF(donnees, nomFichier) {
       y + 14
     )
     .text(
-      `${formatMontant(donnees.montant)} Ar`,
+      formatMontant(donnees.montant),
       tableX + tableW - 100,
       y + 14,
       {
@@ -266,7 +267,7 @@ async function genererFacturePDF(donnees, nomFichier) {
     .fillColor(COULEURS.primaire)
     .text('Total payé', tableX + 260, y)
     .text(
-      `${formatMontant(donnees.montant)} Ar`,
+      formatMontant(donnees.montant),
       tableX + tableW - 100,
       y,
       {
@@ -284,7 +285,7 @@ async function genererFacturePDF(donnees, nomFichier) {
     .fillColor(COULEURS.gris)
     .text('Reste à payer', tableX + 260, y)
     .text(
-      `${formatMontant(donnees.reste_a_payer)} Ar`,
+      formatMontant(donnees.reste_a_payer),
       tableX + tableW - 100,
       y,
       {
@@ -376,11 +377,6 @@ function formatDate(date) {
   if (!date) return '-';
   const d = new Date(date);
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
-}
-
-// Ex. 150000 -> "150 000"
-function formatMontant(montant) {
-  return Number(montant || 0).toLocaleString('fr-FR');
 }
 
 module.exports = { genererFichePDF, genererFacturePDF, genererAttestationPDF };

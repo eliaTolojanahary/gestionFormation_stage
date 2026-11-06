@@ -49,7 +49,9 @@ export const ENDPOINTS = {
 
   FORMATIONS: '/formations',
   ETUDIANT_FORMATIONS: (id: number | string) => `/etudiants/${id}/formations`,
+  SUPPORTS: '/supports',
   SUPPORTS_FORMATION: (id: number | string) => `/formations/${id}/supports`,
+  COMMENTAIRES_FORMATION: (id: number | string) => `/formations/${id}/commentaires`,
   SUPPORT_DETAIL: (id: number | string) => `/supports/${id}`,
   COMMENTAIRES_SUPPORT: (id: number | string) => `/supports/${id}/commentaires`,
   AJOUT_COMMENTAIRE: '/commentaires',
@@ -62,10 +64,18 @@ export const ENDPOINTS = {
 
   REACTIONS_SUPPORT: (id: number | string) => `/supports/${id}/reactions`,
 
+  // Mon dossier : pièces obligatoires de l'étudiant connecté (consulter, déposer, remplacer)
+  MON_DOSSIER: '/mon-dossier',
+
   // Recherche globale (formations et supports de l'étudiant)
   RECHERCHE: '/recherche',
 
   // Vitrine publique (sans connexion)
   VITRINE: '/public/vitrine',
+  FORMATIONS_PUBLIQUES: '/public/formations',
+  FORMATEURS_PUBLICS: '/public/formateurs',
   INSCRIPTION_EN_LIGNE: '/public/inscriptions',
+  // Étudiant connecté : autres formations, et inscription à une ou plusieurs
+  FORMATIONS_DISPONIBLES: (idEtudiant: number | string) => `/etudiants/${idEtudiant}/formations-disponibles`,
+  INSCRIPTIONS_ETUDIANT: (idEtudiant: number | string) => `/etudiants/${idEtudiant}/inscriptions`,
 };

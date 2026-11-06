@@ -1,6 +1,7 @@
 // Controller des réactions (j'aime, etc.) sur les supports de cours.
 const reactionService = require('../services/reactionService');
 const { notFound } = require('../utils/errors');
+const { lirePeriode } = require('../utils/periode');
 
 // GET /supports/:id/reactions
 async function listerReactionsSupportController(req, res) {
@@ -25,9 +26,9 @@ async function retirerReaction(req, res) {
   res.json({ status: 'success', message: 'Réaction retirée.' });
 }
 
-// GET /formateurs/avis : formateurs classés selon les réactions reçues sur leurs supports
+// GET /formateurs/avis?debut=&fin= : formateurs classés selon les réactions reçues sur leurs supports
 async function avisFormateursController(req, res) {
-  const formateurs = await reactionService.avisFormateurs();
+  const formateurs = await reactionService.avisFormateurs(lirePeriode(req.query));
   res.json({ status: 'success', data: formateurs });
 }
 

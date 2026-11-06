@@ -43,13 +43,19 @@ export function useDocument() {
     }
   }
 
-  // Supprime un document administratif ou un support selon son type, puis le retire de la liste
+  // Désactive un document administratif ou un support selon son type, puis le retire de la liste
   async function deleteDoc(id, type) {
     const path = type === 'Administratif' ? `/documents/${id}` : `/supports/${id}`
     const result = await apiRequest(path, { method: 'DELETE' })
 
     setDocuments((current) => current.filter((document) => document.id_document !== Number(id)))
     return result
+  }
+
+  // Réactive un document administratif ou un support désactivé (filtre « Désactivés »)
+  function reactiverDoc(id, type) {
+    const path = type === 'Administratif' ? `/documents/${id}/reactiver` : `/supports/${id}/reactiver`
+    return apiRequest(path, { method: 'PUT' })
   }
 
   // Génère l'attestation (avec la note) et l'envoie à l'étudiant : notification in-app + e-mail avec le PDF
@@ -82,11 +88,12 @@ export function useDocument() {
     }
   }
 
-  async function getDocuments() {
+  // etat : 'actif' (défaut), 'inactif' ou 'tous'
+  async function getDocuments(etat = 'actif') {
     setIsLoading(true)
     setError('')
     try {
-      const result = await apiRequest('/documents', { method: 'GET' })
+      const result = await apiRequest(etat === 'actif' ? '/documents' : `/documents?etat=${etat}`, { method: 'GET' })
       setDocuments(result.documents || [])
       return result.documents || []
     } catch (requestError) {
@@ -114,10 +121,11 @@ export function useDocument() {
     }
   }
 
-  // Supports de cours d'une formation
-  async function getSupports(idFormation) {
+  // Supports de cours d'une formation (etat : 'actif' par défaut, 'inactif' ou 'tous')
+  async function getSupports(idFormation, etat = 'actif') {
     try {
-      const result = await apiRequest(`/formations/${idFormation}/supports`)
+      const chemin = `/formations/${idFormation}/supports`
+      const result = await apiRequest(etat === 'actif' ? chemin : `${chemin}?etat=${etat}`)
       return result.data || []
     } catch (requestError) {
       setError(requestError.message || 'Impossible de récupérer les supports.')
@@ -144,7 +152,7 @@ export function useDocument() {
   return {
     fiche, factures, attestations, documents, isLoading, error,
     getFiche, getFacture, getAttestation, envoyerAttestation,
-    getDocuments, uploadDocuments, deleteDoc,
+    getDocuments, uploadDocuments, deleteDoc, reactiverDoc,
     getSupports, uploadSupport,
   }
 }

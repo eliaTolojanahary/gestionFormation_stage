@@ -1,7 +1,8 @@
 
-// Icônes SVG de l'application, ex. <Icon name="bell" />.
+// Icônes SVG de l'application, ex. <Icon name="bell" />. Pas d'emoji dans l'interface (sauf les réactions).
 // Chaque icône est un tracé SVG (attribut d) ; nom inconnu -> icône "grid".
-function Icon({ name }) {
+// className="icon-inline" : icône à la taille du texte, dans une phrase ou un bouton.
+function Icon({ name, className = '' }) {
   const paths = {
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
     users: 'M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-3A3.5 3.5 0 0 0 6 18.5V20M11 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM17 8a3 3 0 0 1 0 6M18 15h1a3 3 0 0 1 3 3v2',
@@ -25,10 +26,18 @@ function Icon({ name }) {
     sun: 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4M16.5 12a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z',
     moon: 'M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z',
     check: 'm5 12 4 4L19 6',
+    x: 'M6 6l12 12M18 6 6 18',
+    link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+    quote: 'M5 7h5v5c0 3-1.5 5-4.5 6M14 7h5v5c0 3-1.5 5-4.5 6',
     cash: 'M3 6h18v12H3zM7 12h.01M17 12h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+    home: 'M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10',
+    cap: 'M2 9l10-5 10 5-10 5L2 9ZM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6',
+    clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3 2',
+    history: 'M3 12a9 9 0 1 0 2.6-6.4M3 4v4h4M12 7v5l3 2',
+    clipboard: 'M9 4h6v3H9zM9 5H6v16h12V5h-3M9 12h6M9 16h4',
     trash: 'M3 6h18M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1M19 6l-1 13.5a2 2 0 0 1-2 1.9H8a2 2 0 0 1-2-1.9L5 6M10 11v5.5M14 11v5.5',
   }
-  return <svg className="icon" viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name] || paths.grid} /></svg>
+  return <svg className={`icon ${className}`.trim()} viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name] || paths.grid} /></svg>
 }
 
 export default Icon

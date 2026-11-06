@@ -1,7 +1,17 @@
 // Model des inscriptions. `etat` = inscription non supprimée, `valide` = inscription validée
 // par le personnel (premier paiement reçu).
 const db = require('../config/db');
-const { motifLike, clauseLimite } = require('../utils/pagination');
+const { clauseLimite } = require('../utils/pagination');
+const { conditionEtudiantOuFormation } = require('../utils/recherche');
+const { conditionEtat } = require('../utils/etat');
+const { PIECES_FOURNIES, PIECES_DOSSIER, CHAMPS_DOSSIER } = require('../config/dossier');
+
+// Statut calculé (pas de colonne) : une inscription est « reussi » dès que son id est présent
+// dans attestation, sinon « en_cours ». Elle reste active : ses montants comptent toujours.
+const ATTESTATION_DELIVREE = (alias = 'i') =>
+  `EXISTS (SELECT 1 FROM attestation a WHERE a.id_inscription = ${alias}.id_inscription)`;
+const STATUT_INSCRIPTION = (alias = 'i') =>
+  `CASE WHEN ${ATTESTATION_DELIVREE(alias)} THEN 'reussi' ELSE 'en_cours' END`;
 
 // Les fonctions qui acceptent `connection` peuvent participer à une transaction (voir utils/transaction.js).
 
@@ -64,24 +74,31 @@ async function findInscriptionAvecTarif(id_inscription, connection = db) {
 }
 
 // Inscriptions actives avec l'étudiant et la formation
-// Filtres de la liste : recherche (étudiant ou formation), validée ou non, origine (accueil / en_ligne)
-function filtresInscriptions({ recherche, valide, origine } = {}) {
-  const conditions = ['i.etat = true'];
+// Filtres de la liste : recherche (étudiant ou formation), validée ou non, statut (en_cours / reussi),
+// origine (accueil / en_ligne), dossier de l'étudiant (complet / incomplet), état (actif par défaut)
+function filtresInscriptions({ recherche, valide, statut, origine, dossier, etat } = {}) {
+  const conditions = [conditionEtat('i.etat', etat)].filter(Boolean);
   const params = [];
   if (recherche) {
-    const motif = motifLike(recherche);
-    conditions.push(`(u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ? OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR f.nom LIKE ?)`);
-    params.push(motif, motif, motif, motif, motif);
+    const condition = conditionEtudiantOuFormation('i.id_etudiant', 'i.id_formation', recherche);
+    conditions.push(condition.sql);
+    params.push(...condition.params);
   }
   if (valide !== undefined) {
     conditions.push('i.valide = ?');
     params.push(valide);
   }
+  if (statut) {
+    conditions.push(statut === 'reussi' ? ATTESTATION_DELIVREE() : `NOT ${ATTESTATION_DELIVREE()}`);
+  }
   if (origine) {
     conditions.push('i.origine = ?');
     params.push(origine);
   }
-  return { where: conditions.join(' AND '), params };
+  if (dossier) {
+    conditions.push(`${PIECES_FOURNIES('e')} ${dossier === 'complet' ? '=' : '<'} ${PIECES_DOSSIER.length}`);
+  }
+  return { where: conditions.join(' AND ') || '1 = 1', params };
 }
 
 const FROM_INSCRIPTIONS = `
@@ -90,12 +107,18 @@ const FROM_INSCRIPTIONS = `
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
     JOIN formation f ON i.id_formation = f.id_formation`;
 
-// Inscriptions, les plus récentes d'abord ; `pagination` = page demandée (ou null : toutes)
+// Inscriptions à valider d'abord, puis les plus récentes ; `pagination` = page demandée (ou null : toutes).
+// L'index idx_inscription_liste (valide, date_inscription DESC, id_inscription DESC) donne cet ordre.
 async function getAllInscriptions(filtres = {}, pagination = null) {
   const { where, params } = filtresInscriptions(filtres);
   const limite = clauseLimite(pagination);
   const sql = `
     SELECT i.id_inscription, i.date_inscription, i.etat, i.valide, i.origine,
+           ${STATUT_INSCRIPTION()} AS statut,
+           -- Étudiant ou formation désactivés : affiché dans la liste, les actions sont refusées
+           e.etat AS etudiant_actif, f.etat AS formation_active,
+           -- Dossier de l'étudiant : pièces fournies sur ${PIECES_DOSSIER.length} (validation en ligne bloquée sinon)
+           ${PIECES_FOURNIES('e')} AS pieces_fournies, ${PIECES_DOSSIER.length} AS pieces_total,
            e.id_etudiant, u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
            u.nom AS nom_etudiant, u.prenom AS prenom_etudiant,
            f.id_formation, f.nom AS nom_formation,
@@ -110,22 +133,30 @@ async function getAllInscriptions(filtres = {}, pagination = null) {
              ORDER BY ec.date_echeance, p.id_paiement LIMIT 1) AS montant_declare
     ${FROM_INSCRIPTIONS}
     WHERE ${where}
-    ORDER BY i.date_inscription DESC, i.id_inscription DESC${limite.sql}
+    ORDER BY i.valide ASC, i.date_inscription DESC, i.id_inscription DESC${limite.sql}
   `;
   const [rows] = await db.query(sql, [...params, ...limite.params]);
   return rows;
 }
 
-// Nombre d'inscriptions correspondant aux mêmes filtres (total de la pagination)
+// Nombre d'inscriptions correspondant aux mêmes filtres (total de la pagination).
+// Seul le filtre « dossier » lit la fiche étudiant ; sinon on compte sur la seule table inscription
+// (chaque inscription a son étudiant et sa formation).
 async function compterInscriptions(filtres = {}) {
   const { where, params } = filtresInscriptions(filtres);
-  const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${FROM_INSCRIPTIONS} WHERE ${where}`, params);
+  const depuis = filtres.dossier ? 'FROM inscription i JOIN etudiant e ON i.id_etudiant = e.id_etudiant' : 'FROM inscription i';
+  const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${depuis} WHERE ${where}`, params);
   return Number(total);
 }
 
 async function getInscriptionById(id_inscription) {
   const sql = `
-    SELECT i.*, u.nom AS nom_etudiant, u.prenom AS prenom_etudiant, f.nom AS nom_formation
+    SELECT i.*, ${STATUT_INSCRIPTION()} AS statut,
+           u.nom AS nom_etudiant, u.prenom AS prenom_etudiant, f.nom AS nom_formation,
+           e.etat AS etudiant_actif, f.etat AS formation_active,
+           ${PIECES_FOURNIES('e')} AS pieces_fournies, ${PIECES_DOSSIER.length} AS pieces_total,
+           -- Pièces du dossier (détail : lesquelles sont fournies ou manquantes)
+           ${CHAMPS_DOSSIER.map((c) => `e.${c}`).join(', ')}
     FROM inscription i
     JOIN etudiant e ON i.id_etudiant = e.id_etudiant
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
@@ -136,14 +167,9 @@ async function getInscriptionById(id_inscription) {
   return rows[0];
 }
 
-// Suppression logique (etat = false)
-async function deleteInscription(id_inscription) {
-  const [result] = await db.query('UPDATE inscription SET etat = false WHERE id_inscription = ?', [id_inscription]);
-  return result.affectedRows > 0;
-}
-
 module.exports = {
   inscriptionActiveExiste, getIdUtilisateurByEtudiant, findFormationActive,
   insertInscription, setInscriptionValidee, findInscriptionAvecTarif,
-  getAllInscriptions, compterInscriptions, getInscriptionById, deleteInscription
+  getAllInscriptions, compterInscriptions, getInscriptionById,
+  STATUT_INSCRIPTION,
 };

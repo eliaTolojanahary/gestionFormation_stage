@@ -1,11 +1,38 @@
 // Controller des supports de cours (texte mis en forme et / ou fichier déposé par le formateur).
 const supportService = require('../services/supportService');
 const { exigerChamps } = require('../utils/errors');
+const { lireEtat } = require('../utils/etat');
+const { ROLES } = require('../config/roles');
+const { TRIS_SUPPORT, EXTENSIONS_TYPE } = require('../models/supportModel');
+const { lirePagination, lireCurseur, reponsePaginee, reponseCurseur, reponseListe, texteRecherche } = require('../utils/pagination');
 
-// GET /formations/:id/supports
+// GET /formations/:id/supports, du plus récent au plus ancien.
+// ?limite=5&avant=<id_support> : une page + { curseur } (mobile) ; sinon toute la liste.
 async function listerSupportsFormationController(req, res) {
-  const supports = await supportService.listerSupportsFormation(req.params.id);
-  res.json({ status: 'success', data: supports });
+  // ?etat=inactif|tous (page Documents) : jamais pour un étudiant
+  const etat = lireEtat(req.query, req.user.role !== ROLES.ETUDIANT);
+  const curseur = lireCurseur(req.query);
+  const resultat = await supportService.listerSupportsFormation(req.params.id, etat, curseur);
+  if (!curseur) return res.json({ status: 'success', data: resultat });
+  res.json(reponseCurseur(resultat, curseur, 'id_support'));
+}
+
+// GET /supports : supports visibles par l'utilisateur, toutes formations confondues.
+// ?page=&limite= (sinon toute la liste), ?recherche=, ?id_formation=, ?id_formateur=,
+// ?type=texte|pdf|image|audio|video, ?tri=recents|anciens|titre ; valeurs inconnues ignorées.
+async function listerSupportsController(req, res) {
+  const { type, tri } = req.query;
+  const filtres = {
+    recherche: texteRecherche(req.query.recherche),
+    id_formation: Number.parseInt(req.query.id_formation, 10) || undefined,
+    id_formateur: Number.parseInt(req.query.id_formateur, 10) || undefined,
+    type: type === 'texte' || EXTENSIONS_TYPE[type] ? type : undefined,
+    tri: TRIS_SUPPORT[tri] ? tri : 'recents',
+  };
+  const pagination = lirePagination(req.query);
+  const resultat = await supportService.listerSupports(filtres, pagination, req.user);
+  if (!pagination) return res.json(reponseListe(resultat.lignes));
+  res.json(reponsePaginee(resultat, pagination));
 }
 
 // GET /supports/:id
@@ -70,11 +97,12 @@ async function envoyerSupportController(req, res) {
 // DELETE /supports/:id (Formateur ou Super Admin)
 async function deleteSupportController(req, res) {
   await supportService.supprimerSupport(req.params.id, req.user);
-  res.json({ status: 'success', message: 'Support supprimé.' });
+  res.json({ status: 'success', message: 'Support désactivé.' });
 }
 
 module.exports = {
   listerSupportsFormationController,
+  listerSupportsController,
   detailSupportController,
   creerSupportController,
   listerSupportsProgrammesController,

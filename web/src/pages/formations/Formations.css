@@ -8,8 +8,8 @@
 
 .formation-status-badge {
   padding: 3px 8px;
-  border-radius: 10px;
-  font-size: 8px;
+  border-radius: var(--radius);
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -34,9 +34,29 @@
 .formation-couverture-apercu {
   width: 120px;
   height: 150px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--line);
   object-fit: cover;
+}
+
+/* Couverture dans le tableau (vignette) et la page détail (grande) */
+.formation-couverture-vignette {
+  display: block;
+  width: 48px;
+  height: 60px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  object-fit: cover;
+  font-weight: 700;
+}
+
+.formation-couverture-vignette.grande {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  max-height: 360px;
+  margin-bottom: 14px;
+  font-size: 2.5rem;
 }
 
 .formation-couverture-vide {

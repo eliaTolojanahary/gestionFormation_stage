@@ -1,7 +1,11 @@
 // Controller des étudiants (compte utilisateur + dossier avec pièces justificatives).
 const etudiantService = require('../services/etudiantService');
 const { exigerChamps } = require('../utils/errors');
-const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
+const { lirePagination, texteRecherche, reponsePaginee, reponseListe } = require('../utils/pagination');
+const { lireEtat } = require('../utils/etat');
+const { ROLES, STAFF } = require('../config/roles');
+const { CHAMPS_DOSSIER } = require('../config/dossier');
+const { cheminsUploades, supprimerFichiersRecus } = require('../utils/fichiersUpload');
 
 // Transforme req.files (multer .fields) en { champ: 'dossier/nom-fichier' } à enregistrer en base.
 // "photo" (photo de profil) va dans utilisateurs/, les pièces justificatives dans etudiants/
@@ -15,11 +19,17 @@ function cheminsFichiers(files) {
 }
 
 // GET /etudiants
-// Query : ?recherche= (nom, e-mail, téléphone) ; ?page=&limite= pour une liste paginée
+// Query : ?recherche= (nom, e-mail, téléphone) ; ?page=&limite= pour une liste paginée.
+// Formateur : seulement les étudiants de ses formations.
 async function listerEtudiants(req, res) {
   const pagination = lirePagination(req.query);
-  const resultat = await etudiantService.listerEtudiants({ recherche: texteRecherche(req.query.recherche) }, pagination);
-  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
+  const filtres = {
+    recherche: texteRecherche(req.query.recherche),
+    etat: lireEtat(req.query, STAFF.includes(req.user.role)),
+  };
+  if (req.user.role === ROLES.FORMATEUR) filtres.id_formateur = req.user.id;
+  const resultat = await etudiantService.listerEtudiants(filtres, pagination);
+  res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
 // GET /etudiants/:id
@@ -67,4 +77,28 @@ async function deleteEtudiantController(req, res) {
   res.json({ status: 'success', message: 'Étudiant désactivé.' });
 }
 
-module.exports = { listerEtudiants, detailEtudiant, formationsEtudiant, creerEtudiantController, updateEtudiantController, deleteEtudiantController };
+// GET /mon-dossier (Étudiant) : pièces du dossier de l'étudiant connecté
+async function monDossier(req, res) {
+  const dossier = await etudiantService.lireDossier(req.user.id_etudiant);
+  res.json({ status: 'success', data: dossier });
+}
+
+// PUT /mon-dossier (Étudiant) : multipart, un fichier par pièce déposée ou remplacée
+// (photo_1, photo_2, photocopie_cin, certificat_residence)
+async function deposerPieces(req, res) {
+  try {
+    const dossier = await etudiantService.deposerPieces(
+      req.user.id_etudiant,
+      cheminsUploades(req.files, 'etudiants', CHAMPS_DOSSIER)
+    );
+    res.json({ status: 'success', message: dossier.complet ? 'Dossier complet.' : 'Pièces enregistrées.', data: dossier });
+  } catch (error) {
+    await supprimerFichiersRecus(req.files);
+    throw error;
+  }
+}
+
+module.exports = {
+  listerEtudiants, detailEtudiant, formationsEtudiant, creerEtudiantController, updateEtudiantController,
+  deleteEtudiantController, monDossier, deposerPieces,
+};

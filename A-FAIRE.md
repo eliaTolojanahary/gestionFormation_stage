@@ -1,24 +1,66 @@
-# À faire — état au 11/10/2026 (soir)
+# À faire — état au 26/10/2026
 
 Note actuelle : **8/10** (structure backend 8,5 · sécurité 8 · tests 7,5 · structure web / mobile 7,5 ·
 scalabilité 7 · documentation 9,5). Audit du matin : 7/10.
 
-Documents à jour :
-- [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md) : **seul support de référence** (mémoire, soutenance) ;
-  l'historique des évolutions, les failles et les bugs corrigés sont en §12 (`MODIFICATIONS.md` supprimé).
+Documents à jour (référence : `FLUX-APPLICATION.md`, les autres renvoient à ses parties) :
+- [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md) : **document de reprise** (§1 en une minute, §2 démarrer,
+  §3 organisation du code, §4 parcours A → Z de l'inscription à l'attestation, §5 modules, §6 tâches
+  automatiques, §7 règles, §8 base, §9 pièges déjà rencontrés, §10 reste à faire).
+- [`backend-imtech/api.md`](backend-imtech/api.md) : toutes les routes et leurs droits.
+- [`FLUX-MEMOIRE.md`](FLUX-MEMOIRE.md) : support de rédaction du mémoire (plan du mémoire).
 - [`SCENARIOS-TESTS.md`](SCENARIOS-TESTS.md) : un scénario par fonctionnalité + parcours de soutenance ⭐.
+- [`paiement Mvola.md`](paiement%20Mvola.md) : plan d'intégration du paiement MVola (flux §10).
 - [`CHEAT-SHEET.md`](CHEAT-SHEET.md) : aide-mémoire du projet, sans IA (démarrage, ajout d'une fonctionnalité, requêtes, dépannage).
 - [`cheat-sheets/`](cheat-sheets/) : aide-mémoires généraux `node.md`, `react.md` (+ React Native), `mysql.md`.
+
+Dans ce fichier, « flux §N » = partie N de `FLUX-APPLICATION.md`, « mémoire §N » = `FLUX-MEMOIRE.md`.
 
 ---
 
 ## 1. Améliorations
 
+### ✅ Fait le 26/10/2026
+- [x] `README.md` à la racine (présentation, captures, démarrage) et `.gitignore` racine complété
+      (`uploads/`, builds, journaux). **Reste à faire soi-même** : `git rm -r --cached uploads` (les PDF
+      d'étudiants sont encore suivis par git).
+- [x] Montants affichés « 3 160 000 Ar » partout (web, mobile, PDF, e-mails, notifications) — flux §7
+- [x] Vitrine mobile : vrais contacts d'IMTECH (site web, Facebook, e-mail) — flux §4 étape 1
+- [x] Couverture des formations dans le tableau et la fiche (web) — flux §5 Formations
+- [x] Mobile, mode sombre : icônes aux couleurs du thème, couleur principale éclaircie — flux §5 Apparence
+- [x] Désactiver / réactiver (étudiants, formations, inscriptions, échéances, paiements, documents et
+      supports), filtre « État », message clair quand un élément parent est désactivé — flux §5 Éléments
+      désactivés, §7
+- [x] Facture envoyée automatiquement à l'étudiant à chaque validation de paiement (flux étape 5) et
+      bouton **Annuler** dans le bandeau vert après une désactivation (flux §7)
+- [x] **Journal d'activité** : menu Journal (tableau Utilisateur / Action / Élément / Horaire, recherche,
+      filtre, export) et bloc « Activité récente » du tableau de bord (5 dernières, toutes les 30 s) —
+      flux §5 ; table `journal_activite` (`alter.sql` exécuté sur la base locale) ; 135 tests
+- [x] Données de démo du journal (25 activités, `donneesTest.sql` §12, `reinit.sql` les vide) ; montants des
+      notifications de démo en « Ar ». `base.sql` réparé : il échouait sur une base neuve (flux §9)
+
+### ✅ Fait le 25/10/2026 — ergonomie (pour un utilisateur non informaticien)
+- [x] Erreurs réseau et erreurs sans message traduites en français (web et mobile, `apiRequest`) — flux §3, §9
+- [x] Fenêtre de confirmation de l'appli à la place des 13 `window.confirm`, avec le nom de ce qui est
+      concerné ; bouton rouge pour supprimer / refuser / désactiver — flux §7
+- [x] Bandeau vert de réussite après enregistrement, suppression, validation de paiement — flux §7
+- [x] Menu : accents (« Étudiants », « Paramètres ») et une icône différente par entrée
+- [x] Web sur écran de moins de 900 px : menu automatiquement réduit aux icônes — flux §5 Apparence
+- [x] Bouton « Réduire le menu » retiré de la barre latérale (l'option reste dans Paramètres → Apparence)
+- [x] Mobile, connexion : lien « Découvrir nos formations » centré et séparé du bouton
+
+### 1.0 Ergonomie encore possible
+- [ ] Mobile, « Mot de passe oublié ? » : afficher le vrai contact du support IMTECH
+      (aujourd'hui « Contactez le support IMTECH. ») : e-mail `im.techinfo.mdg@gmail.com` connu,
+      numéro de téléphone / WhatsApp à demander (à mettre aussi dans `IMTECH_WHATSAPP` pour la vitrine).
+- [ ] Une phrase d'explication sous le titre des pages au vocabulaire métier (Supports programmés,
+      Échéances, Sessions actives).
+
 ### ✅ Fait le 11/10/2026
-- [x] Pagination côté serveur (étudiants, paiements, inscriptions, échéances) — flux §2.2.16
-- [x] Limite des essais de connexion et de « mot de passe oublié » — flux §2.2.1
-- [x] Une adresse par fiche (web) — flux §2.2.16
-- [x] Recherche globale sur le mobile (loupe de l'en-tête) — flux §2.2.15
+- [x] Pagination côté serveur (étudiants, paiements, inscriptions, échéances) — flux §5 Listes
+- [x] Limite des essais de connexion et de « mot de passe oublié » — flux §4 étape 4
+- [x] Une adresse par fiche (web) — flux §5 Listes
+- [x] Recherche globale sur le mobile (loupe de l'en-tête) — flux §5 Recherche
 - [x] `Parametres.jsx` découpé (531 → 80 lignes) et `DashboardLayout.jsx` (415 → 144)
 - [x] Documentation : flux = seul support, scénarios refaits, cheat sheet
 
@@ -29,9 +71,10 @@ Documents à jour :
 - [ ] **`helmet`** sur le backend (en-têtes de sécurité HTTP) : 10 min.
 - [ ] Découper les gros écrans mobiles : `mobile/src/app/(tabs)/index.tsx` (569 lignes : carte
       paiement, supports, commentaires), `mobile/src/app/parametres.tsx` (409).
-- [ ] Corriger les avertissements ESLint : **15 web**, **14 mobile** (surtout `exhaustive-deps`).
+- [ ] Corriger ESLint : web **1 erreur** (`hooks/useNotification.js:25`, ref lue pendant le rendu) et
+      **21 avertissements** ; mobile **14** (surtout `exhaustive-deps`).
 
-### 1.2 Seulement si l'application grandit (à présenter comme perspectives, flux §3.3)
+### 1.2 Seulement si l'application grandit (à présenter comme perspectives : mémoire §3.3, flux §10)
 - [ ] Plusieurs serveurs : compteurs d'essais et tâches automatiques dans Redis / un processus dédié.
 - [ ] Fichiers uploadés : stockage objet (S3, Cloudinary…) au lieu du disque local `uploads/`.
 - [ ] Hébergement en ligne en HTTPS + intégration continue (tests et lint à chaque push).
@@ -52,21 +95,28 @@ Pas encore testés à la main (nouveautés du 11/10) :
 - [ ] **T4** Apparence : mode sombre partout, Paramètres après découpage, fond de la vitrine
 - [ ] **F1 / F3 / F4** Espace formateur, supports programmés, tableau des notes
 - [ ] **M1** Découvrir (fond plein écran) ; lecteur : retour sans avertissement « GO_BACK »
+- [ ] **T5** Ergonomie (25/10) : confirmations, bandeau de réussite, backend arrêté, fenêtre < 900 px, lien vitrine mobile
+- [ ] **T6** Désactiver / réactiver et éléments dépendants (26/10)
+- [x] Journal d'activité retiré (26/10) ; attestations envoyées automatiquement à la date de fin
+- [ ] **T4** étapes 4-5 : mobile en mode sombre (icônes, boutons, bandeaux) ; **M1** étape 5 : contacts de la vitrine
+- [ ] **A3** étape 4 : couverture dans le tableau des formations ; montants « … Ar » sur le tableau de bord et les PDF
 
 Puis répéter le **parcours ⭐** en entier, chronomètre en main (≈ 20 min).
 
 ---
 
 ## 3. Préparer la soutenance
-- [ ] Relire le flux : §2.1.2 (conception, droits), §2.2 (modules : page → action → métier → base), §2.3 (états), §2.4 (problèmes), §3.3 (évolutions), annexe A (sécurité).
-- [ ] Exporter 3 ou 4 schémas Mermaid en image pour le mémoire (<https://mermaid.live>) :
-      connexion (§2.2.1), paiement (§2.2.6), note d'attestation (§2.2.11), pagination (§2.2.16).
+- [ ] Relire `FLUX-APPLICATION.md` §4 (parcours A → Z : ce qu'on montre en démo) et §7 (règles).
+- [ ] Relire le mémoire : §2.1.2 (conception, droits), §2.2 (modules : page → action → métier → base), §2.3 (états), §2.4 (problèmes), §3.3 (évolutions), annexe A (sécurité).
+- [ ] Exporter les schémas Mermaid du mémoire en image (<https://mermaid.live>) : Gantt (Figure 1),
+      architecture (Figure 2), cas d'utilisation (Figure 3), MCD (Figure 4), séquence d'un paiement
+      (Figure 9, §2.2.2), séquence de la connexion (Figure 15, §2.2.4).
 - [ ] Préparer les réponses aux questions du jury (fin de `SCENARIOS-TESTS.md`).
 - [ ] Le jour J : base de démo rechargée, IP du PC vérifiée (`ipconfig`), `CHEAT-SHEET.md` ouvert.
 
 ---
 
-## 4. Transformer l'application mobile en APK (Android) — configuration faite le 13/10, build à lancer (flux §2.4)
+## 4. Transformer l'application mobile en APK (Android) — configuration faite le 13/10, build à lancer (`.env` mobile : flux §2)
 
 ### 4.1 Préparer le projet
 - [x] **`app.json`** : vrai nom et identifiant Android (aujourd'hui `"name": "mobile"`)
@@ -122,7 +172,26 @@ eas build -p android --profile preview
 
 ## 5. Commit (à faire soi-même)
 
-Fichiers **non suivis** à ajouter :
+Fichiers **non suivis** à ajouter (26/10) :
+- Racine : `README.md`, `paiement Mvola.md`
+- Backend : `controllers/journalController.js`, `models/journalModel.js`, `services/journalService.js`,
+  `middlewares/journalMiddleware.js`, `tests/journal.test.js`, `controllers/etatController.js`, `models/dependanceModel.js`, `services/dependanceService.js`,
+  `services/etatService.js`, `utils/etat.js`, `utils/format.js`, `tests/etat.test.js`,
+  `tests/simulerDependances.js` (et les tests `logo`, `motDePasseOublie`, `notifications`)
+- Web : `src/pages/journal/`, `src/components/dashboard/ActivitesRecentes.*`, `src/components/etat/`, `src/components/retour/`, `src/utils/etat.js`, `src/utils/format.js`,
+  `src/pages/formations/CouvertureFormation.jsx`, `src/hooks/useLogo.js`, `src/pages/parametres/ImageParametre.jsx`
+- Mobile : `src/components/voir-plus.tsx`, `src/hooks/use-affichage-progressif.ts`,
+  `src/styles/components/voir-plus.styles.ts`
+
+Avant le commit : `git rm -r --cached uploads` (données personnelles, désormais ignorées).
+Messages proposés :
+- `feat: désactiver / réactiver avec filtre « État » et contrôle des éléments dépendants`
+- `feat: montants « 150 000 Ar » partout, contacts de la vitrine, couverture des formations (web)`
+- `fix(mobile): icônes et couleur principale lisibles en mode sombre`
+- `feat: journal d'activité (page Journal + activité récente du tableau de bord)`
+- `docs: README, flux, scénarios et cheat sheet à jour`
+
+Anciens fichiers non suivis (11/10), s'ils ne sont pas encore commités :
 - Web : `src/pages/parametres/OngletApparence.jsx`, `OngletSecurite.jsx`, `FormulaireMotDePasse.jsx`,
   `src/utils/appareil.js`
 - Mobile : `src/components/recherche/`, `src/hooks/use-recherche.ts`,
@@ -151,8 +220,8 @@ Démo de soutenance : **en local**. Objectif ici : qu'un développeur d'IMTECH i
 - `base.sql` contient déjà les tables de `alter2.sql` (`presence`, `alerte_envoyee`, `parametre_application`).
 
 ### À faire
-- [ ] **`README.md` à la racine** (manquant) = guide d'installation. Les README de `web/` et
-      `mobile/` sont ceux des modèles Vite / Expo, à remplacer ou supprimer. Contenu :
+- [ ] **`README.md` à la racine** (manquant) = guide d'installation, à partir de flux §2 (les README
+      de `web/` et `mobile/` renvoient maintenant au flux). Contenu :
   - prérequis : Node (version), MySQL 8, compte Expo pour l'APK ;
   - ordre d'installation : base → backend → web → mobile ;
   - variables de chaque `.env.example` à remplir (surtout `JWT_SECRET`, `EMAIL_USER` /
@@ -163,7 +232,7 @@ Démo de soutenance : **en local**. Objectif ici : qu'un développeur d'IMTECH i
     serveur, à sauvegarder avec la base ;
   - le mobile : mettre l'URL HTTPS de leur API dans `eas.json`, retirer `usesCleartextTraffic`
     de `app.json`, relancer `eas build`.
-- [ ] **Ordre des scripts SQL** à clarifier (dans le README ou un en-tête de `base.sql`) :
+- [ ] **Ordre des scripts SQL** à clarifier (dans le README ou un en-tête de `base.sql` ; tableau des fichiers : flux §2) :
   - nouvelle installation = `base.sql` seul ; `alter.sql` / `alter2.sql` = uniquement pour une
     base créée avant le 10/10 (vérifier que `base.sql` contient bien aussi `alter.sql`, DATE → DATETIME) ;
   - `base.sql` n'a ni `CREATE DATABASE` ni `USE`, alors que les autres scripts font

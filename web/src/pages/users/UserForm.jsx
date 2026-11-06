@@ -18,7 +18,7 @@ const ROLE_OPTIONS = [
 // En modification, le mot de passe est facultatif : laissé vide, il n'est pas changé.
 function UserForm({ user, userId, onBack, onSaved }) {
   const isEdit = Boolean(userId)
-  const { getUser, createUser, updateUser } = useUser()
+  const { getUser, createUser, updateUser } = useUser('actif', { charger: false })
   const [form, setForm] = useState(EMPTY_FORM)
   const [isLoading, setIsLoading] = useState(isEdit)
   const [isSaving, setIsSaving] = useState(false)

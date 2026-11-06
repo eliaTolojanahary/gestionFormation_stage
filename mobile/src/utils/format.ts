@@ -87,10 +87,10 @@ export function getFileUrl(path?: string | null): string | null {
   if (
     path.startsWith('http://') ||
     path.startsWith('https://') ||
-    path.startsWith('blob:') ||      // ⬅️ web (React Native Web / ImagePicker)
-    path.startsWith('data:') ||      // ⬅️ base64
-    path.startsWith('file:') ||      // ⬅️ natif (iOS/Android) — file:///...
-    path.startsWith('content:')      // ⬅️ Android content://
+    path.startsWith('blob:') ||      // web (React Native Web / ImagePicker)
+    path.startsWith('data:') ||      // base64
+    path.startsWith('file:') ||      // natif (iOS/Android) — file:///...
+    path.startsWith('content:')      // Android content://
   ) {
     return path;
   }
@@ -104,8 +104,8 @@ export function getFileUrl(path?: string | null): string | null {
   return token ? `${url}?token=${encodeURIComponent(token)}` : url;
 }
 
-// Ex. 150000 -> "150 000 MGA" (espace tous les 3 chiffres, arrondi à l'unité)
-export function formatMontant(montant: number, devise = 'MGA'): string {
+// Ex. 150000 -> "150 000 Ar" (espace tous les 3 chiffres, arrondi à l'unité)
+export function formatMontant(montant: number, devise = 'Ar'): string {
   const n = Math.round(Number(montant) || 0)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -169,7 +169,7 @@ export function formatDate(value?: string | null): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC',
+    // Fuseau du téléphone : le serveur enregistre l'heure locale (Madagascar)
   }).format(date);
 }
 

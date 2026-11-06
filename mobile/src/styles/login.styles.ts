@@ -89,4 +89,7 @@ export const createLoginStyles = ({
       justifyContent: 'center',
     },
     submitBtnText: { color: t.onAccent, fontSize: f.lg - 0.5, fontWeight: '700' },
+    // Lien vers la vitrine, séparé du bouton « Se connecter »
+    vitrineBtn: { alignSelf: 'center', marginTop: 20, paddingVertical: 6 },
+    vitrineText: { fontSize: f.sm, color: t.textMuted, textAlign: 'center' },
   });

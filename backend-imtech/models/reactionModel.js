@@ -1,6 +1,7 @@
 // Model des réactions sur les supports (une réaction maximum par utilisateur et par support).
 const db = require('../config/db');
 const { ROLES } = require('../config/roles');
+const { conditionPeriode, paramsPeriode } = require('../utils/periode');
 
 // Réactions d'un support avec leur type (nom, icône) et leur auteur
 async function getReactionsBySupport(id_support) {
@@ -47,8 +48,9 @@ async function deleteReaction(id_support, id_utilisateur) {
   return result.affectedRows > 0;
 }
 
-// Pour chaque formateur actif : nombre de supports publiés et réactions reçues par type
-async function getReactionsParFormateur() {
+// Pour chaque formateur actif : nombre de supports publiés et réactions reçues par type,
+// en ne comptant que les réactions données pendant la période { debut, fin } (null = depuis le début)
+async function getReactionsParFormateur(periode = {}) {
   const [rows] = await db.query(
     `SELECT u.id_utilisateur, u.nom, u.prenom, u.photo,
             COUNT(DISTINCT s.id_support) AS nb_supports,
@@ -59,11 +61,11 @@ async function getReactionsParFormateur() {
      FROM utilisateur u
      JOIN role ro ON ro.id_role = u.id_role
      LEFT JOIN support s ON s.id_utilisateur = u.id_utilisateur AND s.etat = true AND s.statut = 'publie'
-     LEFT JOIN reaction r ON r.id_support = s.id_support
+     LEFT JOIN reaction r ON r.id_support = s.id_support AND ${conditionPeriode('r.date_reaction')}
      LEFT JOIN type_reaction tr ON tr.id_type_reaction = r.id_type_reaction
      WHERE ro.nom = ? AND u.etat = true
      GROUP BY u.id_utilisateur, u.nom, u.prenom, u.photo`,
-    [ROLES.FORMATEUR]
+    [...paramsPeriode(periode), ROLES.FORMATEUR]
   );
   return rows;
 }

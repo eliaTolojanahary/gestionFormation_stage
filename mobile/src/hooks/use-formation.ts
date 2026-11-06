@@ -11,6 +11,7 @@ export interface Formation {
   duree?: string;
   duree_jours?: number;
   etat?: boolean;
+  id_formateur?: number;
   prenom_formateur?: string;
   nom_formateur?: string;
   progression?: number;
@@ -21,6 +22,8 @@ export interface Formation {
   date_inscription?: string;
   // false tant que l'Accueil n'a pas validé l'inscription (ex. inscription en ligne)
   valide?: boolean | number;
+  // 'reussi' dès que l'attestation est délivrée
+  statut?: 'en_cours' | 'reussi';
 }
 
 // Formations de l'étudiant connecté et détail d'une formation

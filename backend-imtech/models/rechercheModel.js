@@ -1,10 +1,14 @@
 // Model de la recherche globale (barre de recherche du web et de l'application mobile).
-// Chaque fonction renvoie au plus `limite` résultats ; `motif` est déjà de la forme "%texte%".
+// Chaque fonction renvoie au plus `limite` résultats ; `motif` est déjà de la forme "%texte%",
+// `texte` est le texte tapé (personnes : index plein texte, voir utils/recherche.js).
 const db = require('../config/db');
+const { STATUT_INSCRIPTION } = require('./inscriptionModel');
+const { conditionUtilisateur, conditionEtudiantOuFormation } = require('../utils/recherche');
 
 // Étudiants actifs (nom, prénom, nom complet, e-mail, téléphone).
 // idFormateur : seulement les étudiants inscrits à une de ses formations (avec la formation)
-async function chercherEtudiants(motif, limite, idFormateur = null) {
+async function chercherEtudiants(texte, limite, idFormateur = null) {
+  const personne = conditionUtilisateur('u.id_utilisateur', texte);
   const [rows] = await db.query(
     `SELECT DISTINCT e.id_etudiant, u.nom, u.prenom, u.email, u.photo,
             ${idFormateur ? 'f.id_formation, f.nom AS nom_formation' : 'NULL AS id_formation, NULL AS nom_formation'}
@@ -12,12 +16,10 @@ async function chercherEtudiants(motif, limite, idFormateur = null) {
      JOIN utilisateur u ON u.id_utilisateur = e.id_utilisateur
      ${idFormateur ? `JOIN inscription i ON i.id_etudiant = e.id_etudiant AND i.etat = true
      JOIN formation f ON f.id_formation = i.id_formation AND f.etat = true AND f.id_utilisateur = ?` : ''}
-     WHERE e.etat = true
-       AND (u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ?
-            OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR u.email LIKE ? OR u.telephone LIKE ?)
+     WHERE e.etat = true AND ${personne.sql}
      ORDER BY u.nom, u.prenom
      LIMIT ?`,
-    [...(idFormateur ? [idFormateur] : []), motif, motif, motif, motif, motif, motif, limite]
+    [...(idFormateur ? [idFormateur] : []), ...personne.params, limite]
   );
   return rows;
 }
@@ -37,35 +39,33 @@ async function chercherFormations(motif, limite, idFormateur = null) {
 }
 
 // Inscriptions actives, retrouvées par l'étudiant ou la formation
-async function chercherInscriptions(motif, limite) {
+async function chercherInscriptions(texte, limite) {
+  const condition = conditionEtudiantOuFormation('i.id_etudiant', 'i.id_formation', texte);
   const [rows] = await db.query(
     `SELECT i.id_inscription, i.date_inscription, u.nom, u.prenom, f.nom AS nom_formation
      FROM inscription i
      JOIN etudiant e ON e.id_etudiant = i.id_etudiant
      JOIN utilisateur u ON u.id_utilisateur = e.id_utilisateur
      JOIN formation f ON f.id_formation = i.id_formation
-     WHERE i.etat = true
-       AND (u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ?
-            OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR f.nom LIKE ?)
+     WHERE i.etat = true AND ${condition.sql}
      ORDER BY i.date_inscription DESC
      LIMIT ?`,
-    [motif, motif, motif, motif, motif, limite]
+    [...condition.params, limite]
   );
   return rows;
 }
 
 // Comptes du personnel et des étudiants (Super Admin)
-async function chercherUtilisateurs(motif, limite) {
+async function chercherUtilisateurs(texte, limite) {
+  const personne = conditionUtilisateur('u.id_utilisateur', texte);
   const [rows] = await db.query(
     `SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.photo, r.nom AS role
      FROM utilisateur u
      JOIN role r ON r.id_role = u.id_role
-     WHERE u.etat = true
-       AND (u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ?
-            OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR u.email LIKE ?)
+     WHERE u.etat = true AND ${personne.sql}
      ORDER BY u.nom, u.prenom
      LIMIT ?`,
-    [motif, motif, motif, motif, motif, limite]
+    [...personne.params, limite]
   );
   return rows;
 }
@@ -87,7 +87,7 @@ async function chercherSupports(motif, limite, idFormateur) {
 // Formations auxquelles l'étudiant est inscrit (application mobile) ; valide = inscription validée
 async function chercherFormationsEtudiant(motif, limite, idEtudiant) {
   const [rows] = await db.query(
-    `SELECT f.id_formation, f.nom, f.duree, i.valide
+    `SELECT f.id_formation, f.nom, f.duree, i.valide, ${STATUT_INSCRIPTION()} AS statut
      FROM formation f
      JOIN inscription i ON i.id_formation = f.id_formation AND i.etat = true AND i.id_etudiant = ?
      WHERE f.etat = true AND (f.nom LIKE ? OR f.description LIKE ?)

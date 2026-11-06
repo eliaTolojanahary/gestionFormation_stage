@@ -1,133 +1,106 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useState } from 'react'
 import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import SearchFilterBar from '../../components/form/Filter'
 import Pagination from '../../components/pagination/Pagination'
 import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
+import BarreSelection from '../../components/tableau/BarreSelection'
 import Avatar from '../../components/avatar/Avatar'
+import { useRetour } from '../../components/retour/useRetour'
 import { useEtudiant } from '../../hooks/useEtudiant'
-import { useFormation } from '../../hooks/useFormation'
 import { useListePaginee } from '../../hooks/useListePaginee'
+import { useSelection, useActionsGroupees } from '../../hooks/useSelection'
+import { ETATS, ETAT_DEFAUT, filtreEtat } from '../../utils/etat'
 import './Etudiants.css'
 
-const PAR_PAGE = 20
-
-// Liste des étudiants avec recherche (nom, e-mail, téléphone).
-// Super Admin / Accueil : tous les étudiants, paginés côté serveur (GET /etudiants?page=) ;
-// Formateur : seulement ceux de ses formations (liste courte, paginée dans le navigateur).
-// Seul le Super Admin voit les boutons Créer / Modifier / Supprimer.
+// Liste des étudiants avec recherche (nom, e-mail, téléphone), paginée côté serveur (GET /etudiants?page=).
+// Super Admin / Accueil : tous les étudiants ; Formateur : le serveur ne renvoie que ceux de ses formations.
+// Seul le Super Admin voit les boutons Créer / Modifier / Désactiver / Réactiver ;
+// le filtre « État » montre les étudiants désactivés (actifs par défaut).
+// Super Admin : sélection multiple (clic sur les lignes) pour désactiver ou réactiver en une fois.
 function Etudiants({ user, onCreate, onDetail, onEdit }) {
-  const { deleteEtudiant } = useEtudiant()
-  const { formations, isLoading: formationsLoading, getEtudiants } = useFormation()
-
-  const [formateurStudents, setFormateurStudents] = useState([])
-  const [formateurLoading, setFormateurLoading] = useState(false)
-  const [formateurError, setFormateurError] = useState('')
+  const { deleteEtudiant, reactiverEtudiant } = useEtudiant()
+  const { confirmer, notifier } = useRetour()
 
   const [search, setSearch] = useState('')
-  const [pageFormateur, setPageFormateur] = useState(1)
+  const [etat, setEtat] = useState(ETAT_DEFAUT)
   const [actionError, setActionError] = useState('')
 
-  const userId = user?.id_utilisateur || user?.id
   const isFormateur = user?.role === 'Formateur'
   const canManage = user?.role === 'Super Admin'
 
-  // Personnel : page demandée au serveur. Le formateur ne voit que les étudiants de ses formations,
-  // chargés formation par formation ci-dessus : pas de requête paginée (chemin null)
-  const liste = useListePaginee(isFormateur ? null : '/etudiants', { recherche: search.trim() })
+  const liste = useListePaginee('/etudiants', {
+    recherche: search.trim(),
+    etat: isFormateur ? undefined : ETATS[etat],
+  })
 
-  // ---- Charger les étudiants du formateur (une formation à la fois) ----
-  useEffect(() => {
-    if (!isFormateur) return
+  const selection = useSelection(liste.lignes, 'id_etudiant')
+  const groupe = useActionsGroupees({ selection, apres: liste.recharger, setErreur: setActionError })
+  const actifs = selection.selection.filter((s) => s.etat)
+  const inactifs = selection.selection.filter((s) => !s.etat)
 
-    const mesFormations = formations.filter(
-      (f) => Number(f.id_utilisateur) === Number(userId)
-    )
-
-    if (mesFormations.length === 0) {
-      setFormateurStudents([])
-      return
-    }
-
-    let annule = false
-
-    async function chargerEtudiants() {
-      setFormateurLoading(true)
-      setFormateurError('')
-
-      // Un étudiant inscrit à plusieurs formations du formateur n'est ajouté qu'une fois
-      const etudiantsVus = new Set()
-      const tousLesEtudiants = []
-
-      try {
-        for (const formation of mesFormations) {
-          const liste = await getEtudiants(formation.id_formation)
-
-          for (const etudiant of liste || []) {
-            if (!etudiantsVus.has(etudiant.id_etudiant)) {
-              etudiantsVus.add(etudiant.id_etudiant)
-              tousLesEtudiants.push(etudiant)
-            }
-          }
-        }
-
-        if (!annule) setFormateurStudents(tousLesEtudiants)
-      } catch (err) {
-        if (!annule) setFormateurError(err.message || 'Impossible de charger vos étudiants.')
-      } finally {
-        if (!annule) setFormateurLoading(false)
-      }
-    }
-
-    chargerEtudiants()
-
-    return () => { annule = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFormateur, formations.length, userId])
-
-  // ---- Formateur : recherche et pagination dans le navigateur ----
-  const etudiantsFormateur = useMemo(() => {
-    const texteRecherche = search.trim().toLowerCase()
-    return formateurStudents.filter((student) =>
-      [student.nom, student.prenom, student.email, student.telephone]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(texteRecherche)
-    )
-  }, [formateurStudents, search])
-
-  // ---- Données affichées selon le rôle ----
-  const pagesFormateur = Math.max(1, Math.ceil(etudiantsFormateur.length / PAR_PAGE))
-  const pageCourante = isFormateur ? Math.min(pageFormateur, pagesFormateur) : liste.page
-  const vue = isFormateur
-    ? {
-        lignes: etudiantsFormateur.slice((pageCourante - 1) * PAR_PAGE, pageCourante * PAR_PAGE),
-        total: etudiantsFormateur.length,
-        pages: pagesFormateur,
-        limite: PAR_PAGE,
-        setPage: setPageFormateur,
-        isLoading: formationsLoading || formateurLoading,
-        error: formateurError,
-      }
-    : liste
+  const actionsGroupees = [
+    {
+      libelle: 'Désactiver',
+      danger: true,
+      nombre: actifs.length,
+      onClick: () => groupe.lancer({
+        lignes: actifs,
+        confirmation: {
+          titre: 'Désactiver les étudiants',
+          message: `${actifs.length} étudiant(s) seront désactivés. Vous pourrez les réactiver avec le filtre « Désactivés ».`,
+          bouton: 'Désactiver',
+          danger: true,
+        },
+        action: (s) => deleteEtudiant(s.id_etudiant),
+        succes: (n) => `${n} étudiant(s) désactivé(s)`,
+      }),
+    },
+    {
+      libelle: 'Réactiver',
+      succes: true,
+      nombre: inactifs.length,
+      onClick: () => groupe.lancer({
+        lignes: inactifs,
+        action: (s) => reactiverEtudiant(s.id_etudiant),
+        succes: (n) => `${n} étudiant(s) réactivé(s)`,
+      }),
+    },
+  ]
 
   function changerRecherche(valeur) {
     setSearch(valeur)
-    setPageFormateur(1)
   }
 
   function handleReset() {
     changerRecherche('')
+    setEtat(ETAT_DEFAUT)
   }
 
   async function handleDelete(student) {
-    const confirmation = window.confirm(`Supprimer ${student.prenom} ${student.nom} ?`)
-    if (!confirmation) return
+    const ok = await confirmer({
+      titre: "Désactiver l'étudiant",
+      message: `${student.prenom} ${student.nom} sera désactivé. Vous pourrez le réactiver avec le filtre « Désactivés ».`,
+      bouton: 'Désactiver',
+      danger: true,
+    })
+    if (!ok) return
 
     try {
       setActionError('')
       await deleteEtudiant(student.id_etudiant)
+      notifier('Étudiant désactivé', { annuler: () => handleReactiver(student) })
+      liste.recharger()
+    } catch (err) {
+      setActionError(err.message)
+    }
+  }
+
+  async function handleReactiver(student) {
+    try {
+      setActionError('')
+      await reactiverEtudiant(student.id_etudiant)
+      notifier('Étudiant réactivé')
       liste.recharger()
     } catch (err) {
       setActionError(err.message)
@@ -146,11 +119,22 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
 
   function renderStatut(student) {
     const classe = student.etat ? 'actif' : 'inactif'
-    const texte = student.etat ? 'Actif' : 'Inactif'
+    const texte = student.etat ? 'Actif' : 'Désactivé'
     return <span className={`student-status ${classe}`}>{texte}</span>
   }
 
   function renderActions(student) {
+    // Désactivé : seule action possible, le réactiver
+    if (!student.etat) {
+      return canManage ? (
+        <div className="table-actions">
+          <button type="button" className="row-action success-action" onClick={() => handleReactiver(student)}>
+            Réactiver
+          </button>
+        </div>
+      ) : null
+    }
+
     return (
       <div className="table-actions">
         {/* ✅ Callback au lieu de navigate() */}
@@ -176,7 +160,7 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
               className="row-action danger-action"
               onClick={() => handleDelete(student)}
             >
-              Supprimer
+              Désactiver
             </button>
           </>
         )}
@@ -188,14 +172,14 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
     { key: 'name', header: 'Etudiant', render: renderNom, exportValue: (s) => `${s.prenom} ${s.nom}` },
     { key: 'email', header: 'Email' },
     { key: 'telephone', header: 'Téléphone' },
-    { key: 'etat', header: 'Statut', render: renderStatut, exportValue: (s) => (s.etat ? 'Actif' : 'Inactif') },
+    { key: 'etat', header: 'Statut', render: renderStatut, exportValue: (s) => (s.etat ? 'Actif' : 'Désactivé') },
     { key: 'actions', header: 'Actions', render: renderActions },
   ]
 
-  const titre = isFormateur ? 'Mes étudiants' : 'Etudiants'
+  const titre = isFormateur ? 'Mes étudiants' : 'Étudiants'
   const sousTitre = isFormateur
-    ? `${formateurStudents.length} étudiant(s) dans vos formations`
-    : `${vue.total} étudiant(s) correspondant(s)`
+    ? `${liste.total} étudiant(s) dans vos formations`
+    : `${liste.total} étudiant(s) correspondant(s)`
 
   const messageVide = isFormateur
     ? 'Aucun étudiant dans vos formations.'
@@ -203,7 +187,7 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
 
   return (
     <section className="students-main">
-      <Header user={user} activeItem="Etudiants" />
+      <Header user={user} activeItem="Étudiants" />
 
       <div className="students-heading">
         <div>
@@ -212,13 +196,8 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
         </div>
 
         <div className="heading-actions">
-          {/* Personnel : toute la liste filtrée (pas seulement la page) ; formateur : ses étudiants filtrés */}
-          <BoutonExportCSV
-            columns={columns}
-            lignes={etudiantsFormateur}
-            charger={isFormateur ? undefined : liste.toutesLesLignes}
-            nomFichier="etudiants"
-          />
+          {/* Toute la liste filtrée (pas seulement la page) */}
+          <BoutonExportCSV columns={columns} charger={liste.toutesLesLignes} nomFichier="etudiants" />
           {canManage && (
             <button
               type="button"
@@ -237,18 +216,24 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
           searchValue={search}
           onSearchChange={changerRecherche}
           searchPlaceholder="Rechercher un nom, un e-mail, un téléphone..."
+          filters={isFormateur ? [] : [filtreEtat(etat, setEtat)]}
           onReset={handleReset}
         />
 
-        {(vue.error || actionError) && <p className="form-error">{vue.error || actionError}</p>}
+        {(liste.error || actionError) && <p className="form-error">{liste.error || actionError}</p>}
 
-        {vue.isLoading ? (
+        {canManage && (
+          <BarreSelection selection={selection} actions={actionsGroupees} enCours={groupe.enCours} libelle="étudiant(s)" />
+        )}
+
+        {liste.isLoading ? (
           <p className="students-loading">Chargement des étudiants...</p>
         ) : (
           <Tableau
             columns={columns}
-            rows={vue.lignes}
+            rows={liste.lignes}
             rowKey="id_etudiant"
+            selection={canManage ? selection : null}
             emptyMessage={messageVide}
             wrapperClassName="students-table-wrap"
             className="students-table"
@@ -256,11 +241,11 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
         )}
 
         <Pagination
-          page={pageCourante}
-          pages={vue.pages}
-          total={vue.total}
-          limite={vue.limite}
-          onChange={vue.setPage}
+          page={liste.page}
+          pages={liste.pages}
+          total={liste.total}
+          limite={liste.limite}
+          onChange={liste.setPage}
           libelle="étudiant(s)"
         />
       </article>

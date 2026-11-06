@@ -94,36 +94,36 @@ function formatNotification(notification) {
 }
 
 // Page Notifications : onglets Toutes / Non lues, marquer comme lu (un clic sur la ligne suffit),
-// tout marquer comme lu, supprimer.
+// tout marquer comme lu, supprimer. Les 20 plus récentes sont chargées, les précédentes à la
+// demande ; les nouvelles apparaissent seules (vérification toutes les 10 s, voir useNotification).
 function Notifications({ user }) {
+  const [filter, setFilter] = useState('Toutes')
+
   const {
     notifications,
+    compteur,
+    encorePlus,
     isLoading,
+    isLoadingPlus,
     error,
+    chargerPlusAnciennes,
     lireNotification,
+    lireToutesNotifications,
     deleteNotification
-  } = useNotification()
+  } = useNotification({ nonLues: filter === 'Non lues' })
 
-  const [filter, setFilter] = useState('Toutes')
   // Met à jour le badge de la cloche (DashboardLayout) après une lecture / suppression
   const rafraichirCloche = useProfile()?.rafraichirNotifs || (() => {})
 
-  const unreadNotifications = notifications.filter(
-    (notification) => !notification.lu
-  )
-
+  // Dans l'onglet « Non lues », une notification lue disparaît tout de suite.
+  // `lu` vient de MySQL (0 / 1) : on teste donc !lu, pas lu === false.
   const visible =
     filter === 'Non lues'
-      ? unreadNotifications
+      ? notifications.filter((notification) => !notification.lu)
       : notifications
 
   async function markAllRead() {
-    await Promise.all(
-      unreadNotifications.map(
-        (notification) =>
-          lireNotification(notification.id_notification)
-      )
-    )
+    await lireToutesNotifications()
     rafraichirCloche()
   }
 
@@ -158,7 +158,7 @@ function Notifications({ user }) {
           className="secondary-button"
           type="button"
           onClick={markAllRead}
-          disabled={!unreadNotifications.length}
+          disabled={!compteur.nonLues}
         >
           <Icon name="check" />
           Tout marquer comme lu
@@ -177,8 +177,8 @@ function Notifications({ user }) {
 
             <span>
               {item === 'Non lues'
-                ? unreadNotifications.length
-                : notifications.length}
+                ? compteur.nonLues
+                : compteur.total}
             </span>
           </button>
         ))}
@@ -265,6 +265,19 @@ function Notifications({ user }) {
           )
         })}
       </div>
+
+      {encorePlus && notifications.length > 0 && (
+        <button
+          className="secondary-button notification-plus"
+          type="button"
+          onClick={chargerPlusAnciennes}
+          disabled={isLoadingPlus}
+        >
+          {isLoadingPlus
+            ? 'Chargement...'
+            : 'Voir les notifications précédentes'}
+        </button>
+      )}
 
       {!isLoading && !visible.length && (
         <div className="empty-state">

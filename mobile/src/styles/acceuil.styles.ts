@@ -1,6 +1,7 @@
 // styles/acceuil.styles.ts
 import { StyleSheet } from 'react-native';
 import type { ThemeTokens } from '@/context/SettingsContext';
+import { hexToRgba } from '@/constants/theme';
 
 /** Styles de la page d'accueil — tokens d'apparence */
 export const createAccueilStyles = ({
@@ -75,19 +76,19 @@ export const createAccueilStyles = ({
       marginBottom: 10,
     },
     badgeEnCours: {
-      backgroundColor: 'rgba(255, 255, 255, 0.22)',
+      backgroundColor: hexToRgba(t.onAccent, 0.22),
       borderRadius: 8,
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
     badgeEnCoursText: {
-      color: '#FFFFFF',
+      color: t.onAccent,
       fontSize: f.xs,
       fontWeight: '800',
       letterSpacing: 0.5,
     },
-    heroTitle: { color: '#FFFFFF', fontSize: f.lg + 1, fontWeight: '800', lineHeight: 22 },
-    heroTrainer: { color: 'rgba(255, 255, 255, 0.85)', fontSize: f.xs, marginTop: 6 },
+    heroTitle: { color: t.onAccent, fontSize: f.lg + 1, fontWeight: '800', lineHeight: 22 },
+    heroTrainer: { color: hexToRgba(t.onAccent, 0.85), fontSize: f.xs, marginTop: 6 },
 
     // ─── Carte paiement ─────────────────────
     payCard: {

@@ -4,5 +4,5 @@
   display: flex;
   color: var(--text-main);
   background: var(--page-bg);
-  font-size: 12px;
+  font-size: var(--fs-md);
 }

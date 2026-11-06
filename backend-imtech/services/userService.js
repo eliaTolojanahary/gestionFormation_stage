@@ -2,11 +2,21 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const userModel = require('../models/userModel');
+const etatService = require('./etatService');
 const { ROLES } = require('../config/roles');
-const { notFound } = require('../utils/errors');
+const { notFound, badRequest } = require('../utils/errors');
 
-async function listerUtilisateurs() {
-  return await userModel.findAllUsers();
+// Durée de validité du code de réinitialisation envoyé par e-mail
+const DUREE_CODE_MINUTES = 30;
+
+// pagination { page, limite, offset } : une page + le total ; null : toute la liste
+async function listerUtilisateurs(filtres = {}, pagination = null) {
+  if (!pagination) return await userModel.findAllUsers(filtres);
+  const [lignes, total] = await Promise.all([
+    userModel.findAllUsers(filtres, pagination),
+    userModel.compterUsers(filtres),
+  ]);
+  return { lignes, total };
 }
 
 async function recupererUtilisateur(id) {
@@ -40,8 +50,7 @@ async function modifierUtilisateur(id, { nom, prenom, email, telephone, id_role,
 
 // Supprime le compte et coupe immédiatement toutes ses sessions
 async function supprimerUtilisateur(id) {
-  const ok = await userModel.deleteUser(id);
-  if (!ok) throw notFound('Utilisateur introuvable.');
+  await etatService.desactiverUtilisateur(id);
   await userModel.deactivateAllSessions(id);
 }
 
@@ -52,16 +61,19 @@ async function demanderReinitialisation(email) {
   if (!user) return null; // le controller renvoie un message neutre dans tous les cas
 
   const token = crypto.randomBytes(32).toString('hex');
-  const dateExpiration = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-  await userModel.insertResetToken(user.id_utilisateur, token, dateExpiration);
-  return { token, email: user.email, prenom: user.prenom };
+  await userModel.insertResetToken(user.id_utilisateur, token, DUREE_CODE_MINUTES);
+  return { token, email: user.email, prenom: user.prenom, nom: user.nom };
 }
 
 // Applique le nouveau mot de passe si le code est valide (non expiré, non utilisé),
-// puis marque le code comme utilisé pour qu'il ne serve qu'une fois
+// puis marque le code comme utilisé pour qu'il ne serve qu'une fois.
+// Code refusé : erreur 400 avec la raison (incorrect, déjà utilisé ou expiré).
 async function reinitialiserMotDePasse(token, nouveauMotDePasse) {
-  const resetEntry = await userModel.findValidResetToken(token);
-  if (!resetEntry) return false;
+  // Un copier-coller depuis l'e-mail peut ajouter des espaces ou un retour à la ligne
+  const resetEntry = await userModel.findResetToken(String(token).trim());
+  if (!resetEntry) throw badRequest('Code incorrect : vérifiez que vous avez collé le code complet du dernier e-mail reçu.');
+  if (resetEntry.utilise) throw badRequest('Ce code a déjà été utilisé. Demandez-en un nouveau.');
+  if (Number(resetEntry.expire)) throw badRequest(`Ce code a expiré (il est valable ${DUREE_CODE_MINUTES} minutes). Demandez-en un nouveau.`);
 
   const hash = await bcrypt.hash(nouveauMotDePasse, 10);
   await userModel.updatePasswordHash(resetEntry.id_utilisateur, hash);

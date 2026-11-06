@@ -16,12 +16,13 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { createLoginStyles } from '@/styles/login.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 
 // Écran de connexion. Après succès, on remplace l'écran par les onglets
 // (replace : le bouton retour ne ramène pas à la connexion).
 // Seuls les rôles autorisés sur mobile peuvent se connecter (voir use-auth.ts).
 export default function LoginScreen() {
+  const { palette } = useSettings();
   const router = useRouter();
   const styles = useThemedStyles(createLoginStyles);
   const { login, isLoading, error } = useAuth();
@@ -68,7 +69,7 @@ export default function LoginScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Adresse e-mail</Text>
               <View style={styles.inputWrapper}>
-                <Mail size={18} color="#8E9AA8" style={{ marginRight: 10 }} />
+                <Mail size={18} color={palette.textMuted} style={{ marginRight: 10 }} />
                 <TextInput
                   style={styles.input}
                   placeholder="exemple@imtech.info"
@@ -85,7 +86,7 @@ export default function LoginScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Mot de passe</Text>
               <View style={styles.inputWrapper}>
-                <Lock size={18} color="#8E9AA8" style={{ marginRight: 10 }} />
+                <Lock size={18} color={palette.textMuted} style={{ marginRight: 10 }} />
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"
@@ -97,14 +98,14 @@ export default function LoginScreen() {
                   editable={!isLoading}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 4 }}>
-                  {showPassword ? <Eye size={18} color="#8E9AA8" /> : <EyeOff size={18} color="#8E9AA8" />}
+                  {showPassword ? <Eye size={18} color={palette.textMuted} /> : <EyeOff size={18} color={palette.textMuted} />}
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Message d'erreur inline (plus discret que Alert) */}
             {error ? (
-              <Text style={{ color: '#E53935', fontSize: 12.5, marginBottom: 12, textAlign: 'center' }}>
+              <Text style={{ color: palette.danger, fontSize: 12.5, marginBottom: 12, textAlign: 'center' }}>
                 {error}
               </Text>
             ) : null}
@@ -124,7 +125,7 @@ export default function LoginScreen() {
               activeOpacity={0.85}
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={palette.onAccent} />
               ) : (
                 <Text style={styles.submitBtnText}>Se connecter</Text>
               )}
@@ -132,10 +133,12 @@ export default function LoginScreen() {
 
             {/* Personne non inscrite : vitrine des formations et inscription en ligne */}
             <TouchableOpacity
-              style={styles.forgotBtn}
+              style={styles.vitrineBtn}
               onPress={() => router.push('/decouvrir' as any)}
             >
-              <Text style={styles.forgotText}>Pas encore inscrit ? Découvrir nos formations</Text>
+              <Text style={styles.vitrineText}>
+                Pas encore inscrit ? <Text style={styles.forgotText}>Découvrir nos formations</Text>
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

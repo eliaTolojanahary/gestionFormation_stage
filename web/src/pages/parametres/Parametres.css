@@ -39,7 +39,7 @@
   gap: 9px;
   padding: calc(var(--density-pad) * 0.85) var(--density-pad);
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   background: transparent;
   font: inherit;
@@ -87,7 +87,7 @@
   width: 100%;
   padding: calc(var(--density-pad) * 0.8);
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   outline: 0;
   color: var(--text-main);
   background: var(--surface);
@@ -156,7 +156,7 @@
   gap: 5px;
   padding: calc(var(--density-pad) * 0.55) calc(var(--density-pad) * 0.75);
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   background: var(--surface);
   font: inherit;
@@ -231,7 +231,7 @@
   height: 44px;
   object-fit: contain;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
 }
 

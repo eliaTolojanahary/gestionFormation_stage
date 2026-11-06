@@ -9,7 +9,7 @@ import { createDetailHeaderStyles } from '@/styles/components/detail-header.styl
 import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 import {
   ChevronLeft, EllipsisVertical, X, Search,
-  Wallet, LifeBuoy, Settings, ChevronRight,
+  Wallet, LifeBuoy, Settings, ChevronRight, FolderOpen,
 } from 'lucide-react-native';
 import { RechercheGlobale } from '@/components/recherche/recherche-globale';
 
@@ -35,7 +35,7 @@ interface DetailHeaderProps {
 }
 
 // Barre du haut des écrans secondaires : bouton retour, titre, recherche globale 🔍 et menu "⋮"
-// (Paiement, Assistance, Paramètres par défaut)
+// (Paiement, Mon dossier, Assistance, Paramètres par défaut)
 export function DetailHeader({ title, onBack, menuItems, recherche = true }: DetailHeaderProps) {
   const styles = useThemedStyles(createDetailHeaderStyles);
   const { palette } = useSettings();
@@ -43,13 +43,19 @@ export function DetailHeader({ title, onBack, menuItems, recherche = true }: Det
   const [rechercheVisible, setRechercheVisible] = useState(false);
   const router = useRouter();
 
-  // Menu par défaut : historique paiement, assistance, paramètres
+  // Menu par défaut : historique paiement, dossier (pièces à déposer), assistance, paramètres
   const defaultItems: MenuItem[] = [
     {
       key: 'historique paiement',
       label: 'Paiement',
       icon: Wallet,
       onPress: () => router.push('/paiements' as any),
+    },
+    {
+      key: 'dossier',
+      label: 'Mon dossier',
+      icon: FolderOpen,
+      onPress: () => router.push('/dossier' as any),
     },
     {
       key: 'assistance',
@@ -137,7 +143,7 @@ export function DetailHeader({ title, onBack, menuItems, recherche = true }: Det
                 style={styles.menuCloseBtn}
                 onPress={() => setMenuVisible(false)}
               >
-                <X size={18} color="#5A6E85" />
+                <X size={18} color={palette.textMuted} />
               </TouchableOpacity>
             </View>
 

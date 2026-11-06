@@ -1,17 +1,20 @@
 import { useRef, useState } from 'react'
 import Avatar from '../avatar/Avatar'
-import { chargerEtudiants, nomMention } from '../../utils/mentions'
+import { chercherEtudiants, nomMention, retenirMention } from '../../utils/mentions'
 
-const NB_SUGGESTIONS = 6
+const DELAI_FRAPPE = 200 // ms sans frappe avant d'interroger le serveur
 
 // Champ de commentaire : pour le formateur (ou le Super Admin), taper « @ » propose les étudiants
-// de la formation ; sinon c'est un champ texte simple (un étudiant répond, il ne mentionne pas).
+// de la formation (cherchés par le serveur d'après le texte tapé après « @ ») ; sinon c'est un champ
+// texte simple (un étudiant répond, il ne mentionne pas).
 function ChampMention({ value, onChange, peutMentionner, idFormation, ...props }) {
   const champ = useRef(null)
   const [etudiants, setEtudiants] = useState([])
   // Recherche en cours : texte tapé après « @ » et sa position ; null = liste fermée
   const [recherche, setRecherche] = useState(null)
   const [actif, setActif] = useState(0)
+  const minuteur = useRef(null)
+  const derniereDemande = useRef(0)
 
   function detecterMention(texte, curseur) {
     const avant = texte.slice(0, curseur)
@@ -19,7 +22,14 @@ function ChampMention({ value, onChange, peutMentionner, idFormation, ...props }
     if (!trouve) return setRecherche(null)
     setRecherche({ texte: trouve[1].toLowerCase(), debut: curseur - trouve[0].length, fin: curseur })
     setActif(0)
-    chargerEtudiants(idFormation).then(setEtudiants).catch(() => setEtudiants([]))
+    // Seule la réponse de la dernière frappe est gardée
+    window.clearTimeout(minuteur.current)
+    const demande = ++derniereDemande.current
+    minuteur.current = window.setTimeout(() => {
+      chercherEtudiants(idFormation, trouve[1])
+        .then((liste) => { if (demande === derniereDemande.current) setEtudiants(liste) })
+        .catch(() => { if (demande === derniereDemande.current) setEtudiants([]) })
+    }, DELAI_FRAPPE)
   }
 
   function changer(event) {
@@ -27,11 +37,10 @@ function ChampMention({ value, onChange, peutMentionner, idFormation, ...props }
     if (peutMentionner) detecterMention(event.target.value, event.target.selectionStart)
   }
 
-  const suggestions = recherche
-    ? etudiants.filter((e) => nomMention(e).toLowerCase().includes(recherche.texte)).slice(0, NB_SUGGESTIONS)
-    : []
+  const suggestions = recherche ? etudiants : []
 
   function choisir(etudiant) {
+    retenirMention(idFormation, etudiant)
     const insertion = `@${nomMention(etudiant)} `
     const texte = value.slice(0, recherche.debut) + insertion + value.slice(recherche.fin)
     onChange(texte)

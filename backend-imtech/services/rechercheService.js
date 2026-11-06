@@ -16,6 +16,7 @@ async function rechercher(texte, user) {
   const vide = { etudiants: [], formations: [], inscriptions: [], utilisateurs: [], supports: [] };
   if (q.length < LONGUEUR_MIN) return vide;
 
+  // motif LIKE : formations et supports (tables limitées au rôle) ; q : personnes (index plein texte)
   const motif = motifLike(q);
 
   if (user.role === ROLES.ETUDIANT) {
@@ -30,7 +31,7 @@ async function rechercher(texte, user) {
 
   if (user.role === ROLES.FORMATEUR) {
     const [etudiants, formations, supports] = await Promise.all([
-      rechercheModel.chercherEtudiants(motif, PAR_GROUPE, user.id),
+      rechercheModel.chercherEtudiants(q, PAR_GROUPE, user.id),
       rechercheModel.chercherFormations(motif, PAR_GROUPE, user.id),
       rechercheModel.chercherSupports(motif, PAR_GROUPE, user.id),
     ]);
@@ -38,10 +39,10 @@ async function rechercher(texte, user) {
   }
 
   const [etudiants, formations, inscriptions, utilisateurs] = await Promise.all([
-    rechercheModel.chercherEtudiants(motif, PAR_GROUPE),
+    rechercheModel.chercherEtudiants(q, PAR_GROUPE),
     rechercheModel.chercherFormations(motif, PAR_GROUPE),
-    rechercheModel.chercherInscriptions(motif, PAR_GROUPE),
-    user.role === ROLES.SUPER_ADMIN ? rechercheModel.chercherUtilisateurs(motif, PAR_GROUPE) : [],
+    rechercheModel.chercherInscriptions(q, PAR_GROUPE),
+    user.role === ROLES.SUPER_ADMIN ? rechercheModel.chercherUtilisateurs(q, PAR_GROUPE) : [],
   ]);
   return { ...vide, etudiants, formations, inscriptions, utilisateurs };
 }

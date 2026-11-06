@@ -3,7 +3,8 @@
 const paiementService = require('../services/paiementService');
 const { ROLES } = require('../config/roles');
 const { exigerChamps } = require('../utils/errors');
-const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
+const { lirePagination, texteRecherche, reponsePaginee, reponseListe } = require('../utils/pagination');
+const { lireEtat } = require('../utils/etat');
 
 // GET /paiements?statut=... : un étudiant ne reçoit que ses propres paiements
 // Query : ?statut= (en_attente / valide / refuse), ?mode= (nom du mode), ?recherche= (étudiant ou
@@ -14,9 +15,11 @@ async function listerPaiementsController(req, res) {
     statut: req.query.statut || undefined,
     mode: texteRecherche(req.query.mode) || undefined,
     recherche: texteRecherche(req.query.recherche),
+    // Un étudiant ne voit jamais les paiements désactivés
+    etat: lireEtat(req.query, req.user.role !== ROLES.ETUDIANT),
   };
   const resultat = await paiementService.listerPaiements(req.user, filtres, pagination);
-  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
+  res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
 // POST /paiements : paiement d'une échéance
@@ -49,13 +52,13 @@ async function updatePaiementController(req, res) {
 
 // PUT /paiements/:id/valider : le paiement en attente est compté dans les sommes payées
 async function validerPaiementController(req, res) {
-  const paiement = await paiementService.validerPaiement(req.params.id);
+  const paiement = await paiementService.validerPaiement(req.params.id, req.user.id);
   res.json({ status: 'success', message: 'Paiement validé.', data: paiement });
 }
 
 // PUT /paiements/:id/refuser
 async function refuserPaiementController(req, res) {
-  const paiement = await paiementService.refuserPaiement(req.params.id);
+  const paiement = await paiementService.refuserPaiement(req.params.id, req.user.id);
   res.json({ status: 'success', message: 'Paiement refusé.', data: paiement });
 }
 

@@ -5,7 +5,8 @@ import { Clock } from 'lucide-react-native';
 import { Formation } from '@/hooks/use-formation';
 import { formatDateFr } from '@/utils/format';
 import { createFormationBlockStyles } from '@/styles/components/formation-block.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useSettings, useThemedStyles } from '@/context/SettingsContext';
+import { hexToRgba } from '@/constants/theme';
 
 interface Props {
   formation: Formation | null;
@@ -22,6 +23,7 @@ export function FormationBlock({
   dateInscription,
 }: Props) {
   const styles = useThemedStyles(createFormationBlockStyles);
+  const { palette } = useSettings();
   return (
     <View style={styles.hero}>
       <View style={styles.heroTopRow}>
@@ -35,7 +37,7 @@ export function FormationBlock({
 
         {formation?.duree_jours ? (
           <View style={styles.heroPill}>
-            <Clock size={12} color="rgba(255,255,255,0.78)" />
+            <Clock size={12} color={hexToRgba(palette.onAccent, 0.78)} />
             <Text style={styles.heroPillText}>
               {formation.duree_jours} jour
               {formation.duree_jours > 1 ? 's' : ''}

@@ -1,10 +1,16 @@
 // Model des échéances (tranches de paiement prévues pour une inscription).
 const db = require('../config/db');
 const { PAIEMENT_VALIDE, PAIEMENT_ACTIF } = require('./paiementModel');
-const { motifLike, clauseLimite } = require('../utils/pagination');
+const { clauseLimite } = require('../utils/pagination');
+const { conditionEtudiantOuFormation } = require('../utils/recherche');
+const { conditionEtat } = require('../utils/etat');
+const { conditionPeriode, paramsPeriode } = require('../utils/periode');
 
 // Les constantes ci-dessous sont des morceaux de SQL réutilisés dans plusieurs requêtes
 // (paramètre `alias` = alias de la table echeance dans la requête).
+
+// Les sommes de paiements d'une échéance sont lues entièrement dans l'index
+// idx_paiement_echeance_somme (id_echeance, etat, statut, montant), sans lire la table paiement.
 
 // Montant envoyé par l'étudiant sur une échéance (validé + en attente de validation)
 const MONTANT_ENVOYE = (alias = 'e') => `COALESCE((
@@ -12,12 +18,20 @@ const MONTANT_ENVOYE = (alias = 'e') => `COALESCE((
   WHERE pa.id_echeance = ${alias}.id_echeance AND ${PAIEMENT_ACTIF('pa')}
 ), 0)`;
 
+// Montant validé par l'Accueil sur une échéance
+const MONTANT_VALIDE = (alias = 'e') => `COALESCE((
+  SELECT SUM(pv.montant) FROM paiement pv
+  WHERE pv.id_echeance = ${alias}.id_echeance AND ${PAIEMENT_VALIDE('pv')}
+), 0)`;
+
 // Statut d'une échéance (un paiement envoyé compte, même pas encore validé) :
 //   VERT  : payée, ou date encore loin (plus de 2 jours)
 //   JAUNE : J-2, J-1 ou le jour J  → l'Accueil est notifié et peut envoyer un rappel
 //   ROUGE : date dépassée
 // Règle unique, utilisée par la page Échéances ET par l'alerte automatique envoyée à l'Accueil.
-const ECHEANCE_PROCHE = (alias = 'e') => `DATEDIFF(${alias}.date_echeance, CURDATE()) BETWEEN 0 AND 2`;
+// Écrite sur la colonne seule (pas de DATEDIFF) pour que l'index sur date_echeance serve.
+const ECHEANCE_PROCHE = (alias = 'e') =>
+  `${alias}.date_echeance BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 2 DAY)`;
 
 // Insertion groupée : `values` est un tableau de lignes [id_inscription, id_tranche, montant, date, genere_auto, etat]
 async function insertEcheances(connection, values) {
@@ -38,16 +52,23 @@ async function getEcheancesByInscription(id_inscription, connection = db) {
   return rows;
 }
 
-// Toutes les échéances actives pour la page Échéances : montant payé (validé), reste à payer,
-// montant en attente de validation et statut de couleur (VERT / JAUNE / ROUGE)
 // Couleur de suivi d'une échéance (même règle que la page Échéances) :
 // VERT = payée (paiements envoyés >= montant) ou encore loin, ROUGE = en retard, JAUNE = J-2 à J
-const STATUT_ECHEANCE = `CASE
-        WHEN ${MONTANT_ENVOYE()} >= e.montant_prevu THEN 'VERT'
-        WHEN CURDATE() > e.date_echeance THEN 'ROUGE'
-        WHEN ${ECHEANCE_PROCHE()} THEN 'JAUNE'
+// `envoye` = expression du montant envoyé (déjà calculé : colonne d'une sous-requête)
+const STATUT_ECHEANCE = (alias = 'e', envoye = MONTANT_ENVOYE(alias)) => `CASE
+        WHEN ${envoye} >= ${alias}.montant_prevu THEN 'VERT'
+        WHEN CURDATE() > ${alias}.date_echeance THEN 'ROUGE'
+        WHEN ${ECHEANCE_PROCHE(alias)} THEN 'JAUNE'
         ELSE 'VERT'
       END`;
+
+// Filtre par couleur : même règle que STATUT_ECHEANCE, mais la condition sur la date vient
+// d'abord. Elle utilise l'index : seules les échéances candidates voient leurs paiements sommés.
+const CONDITION_STATUT = {
+  ROUGE: `e.date_echeance < CURDATE() AND ${MONTANT_ENVOYE()} < e.montant_prevu`,
+  JAUNE: `${ECHEANCE_PROCHE()} AND ${MONTANT_ENVOYE()} < e.montant_prevu`,
+  VERT: `(e.date_echeance > DATE_ADD(CURDATE(), INTERVAL 2 DAY) OR ${MONTANT_ENVOYE()} >= e.montant_prevu)`,
+};
 
 const FROM_ECHEANCES = `
     FROM echeance e
@@ -56,52 +77,67 @@ const FROM_ECHEANCES = `
     JOIN utilisateur u ON et.id_utilisateur = u.id_utilisateur
     JOIN formation f ON i.id_formation = f.id_formation`;
 
-// Filtres de la liste : recherche (étudiant ou formation), couleur de suivi (VERT / JAUNE / ROUGE)
-function filtresEcheances({ recherche, statut } = {}) {
-  const conditions = ['e.etat = true'];
+// Filtres de la liste : recherche (étudiant ou formation), couleur de suivi (VERT / JAUNE / ROUGE),
+// état de l'échéance (actif par défaut), période sur la date d'échéance (tableau de bord)
+function filtresEcheances({ recherche, statut, etat, periode } = {}) {
+  const conditions = [conditionEtat('e.etat', etat)].filter(Boolean);
   const params = [];
   if (recherche) {
-    const motif = motifLike(recherche);
-    conditions.push(`(u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ? OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR f.nom LIKE ?)`);
-    params.push(motif, motif, motif, motif, motif);
+    const condition = conditionEtudiantOuFormation('i.id_etudiant', 'i.id_formation', recherche);
+    conditions.push(condition.sql);
+    params.push(...condition.params);
   }
   if (statut) {
-    conditions.push(`${STATUT_ECHEANCE} = ?`);
-    params.push(statut);
+    conditions.push(CONDITION_STATUT[statut] || '1 = 0'); // couleur inconnue : aucune échéance
   }
-  return { where: conditions.join(' AND '), params };
+  if (periode && (periode.debut || periode.fin)) {
+    conditions.push(conditionPeriode('e.date_echeance'));
+    params.push(...paramsPeriode(periode));
+  }
+  return { where: conditions.join(' AND ') || '1 = 1', params };
 }
 
 // Échéances avec montant payé / restant et couleur de suivi, par date ;
-// `pagination` = page demandée (ou null : toutes)
+// `pagination` = page demandée (ou null : toutes).
+// La sous-requête `page` choisit d'abord les lignes (parcours de l'index sur date_echeance,
+// arrêt après `limite`), les montants ne sont ensuite calculés que pour ces lignes.
 async function getAllEcheances(filtres = {}, pagination = null) {
   const { where, params } = filtresEcheances(filtres);
   const limite = clauseLimite(pagination);
   const sql = `
-    SELECT
-      e.id_echeance, e.id_inscription, e.montant_prevu, e.date_echeance,
-      e.etat AS echeance_active, e.date_dernier_rappel,
-      u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
-      u.nom AS etudiant_nom, u.prenom AS etudiant_prenom,
-      f.nom AS formation_nom,
-      IFNULL(SUM(p.montant), 0) AS montant_paye,
-      (e.montant_prevu - IFNULL(SUM(p.montant), 0)) AS reste_a_payer,
-      ${MONTANT_ENVOYE()} - IFNULL(SUM(p.montant), 0) AS montant_en_attente,
-      ${STATUT_ECHEANCE} AS statut_paiement
-    ${FROM_ECHEANCES}
-    LEFT JOIN paiement p ON e.id_echeance = p.id_echeance AND ${PAIEMENT_VALIDE()}
-    WHERE ${where}
-    GROUP BY e.id_echeance
-    ORDER BY e.date_echeance ASC, e.id_echeance ASC${limite.sql}
+    SELECT page.*,
+      page.montant_prevu - page.montant_paye AS reste_a_payer,
+      page.montant_envoye - page.montant_paye AS montant_en_attente,
+      ${STATUT_ECHEANCE('page', 'page.montant_envoye')} AS statut_paiement
+    FROM (
+      SELECT
+        e.id_echeance, e.id_inscription, e.montant_prevu, e.date_echeance,
+        e.etat AS echeance_active, e.date_dernier_rappel,
+        i.etat AS inscription_active, et.etat AS etudiant_actif, f.etat AS formation_active,
+        u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
+        u.nom AS etudiant_nom, u.prenom AS etudiant_prenom,
+        f.nom AS formation_nom,
+        ${MONTANT_VALIDE()} AS montant_paye,
+        ${MONTANT_ENVOYE()} AS montant_envoye
+      ${FROM_ECHEANCES}
+      WHERE ${where}
+      ORDER BY e.date_echeance ASC, e.id_echeance ASC${limite.sql}
+    ) page
+    ORDER BY page.date_echeance ASC, page.id_echeance ASC
   `;
   const [rows] = await db.query(sql, [...params, ...limite.params]);
-  return rows;
+  return rows.map(({ montant_envoye, ...ligne }) => ligne);
 }
 
-// Nombre d'échéances correspondant aux mêmes filtres (total de la pagination)
+// Nombre d'échéances correspondant aux mêmes filtres (total de la pagination).
+// Chaque échéance a son inscription, son étudiant et sa formation : seule la recherche lit
+// l'inscription, sinon on compte sur la seule table echeance.
 async function compterEcheances(filtres = {}) {
   const { where, params } = filtresEcheances(filtres);
-  const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${FROM_ECHEANCES} WHERE ${where}`, params);
+  const depuis = filtres.recherche
+    ? 'FROM echeance e JOIN inscription i ON e.id_inscription = i.id_inscription'
+    : 'FROM echeance e';
+  const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${depuis} WHERE ${where}`, params);
   return Number(total);
 }
 
@@ -123,10 +159,7 @@ async function getEcheancePourRappel(id_echeance) {
   const sql = `
     SELECT e.id_echeance, e.montant_prevu, e.date_echeance,
            u.id_utilisateur, u.email, u.nom, u.prenom, f.nom AS formation_nom,
-           e.montant_prevu - COALESCE((
-             SELECT SUM(p.montant) FROM paiement p
-             WHERE p.id_echeance = e.id_echeance AND ${PAIEMENT_VALIDE()}
-           ), 0) AS reste_a_payer,
+           e.montant_prevu - ${MONTANT_VALIDE()} AS reste_a_payer,
            e.montant_prevu - ${MONTANT_ENVOYE()} AS reste_non_envoye
     FROM echeance e
     JOIN inscription i ON i.id_inscription = e.id_inscription
@@ -147,6 +180,7 @@ async function marquerRappelEnvoye(id_echeance) {
 module.exports = {
   ECHEANCE_PROCHE,
   MONTANT_ENVOYE,
+  MONTANT_VALIDE,
   insertEcheances, getEcheancesByInscription, getAllEcheances, compterEcheances, updateEcheance,
   getEcheancePourRappel, marquerRappelEnvoye,
 };

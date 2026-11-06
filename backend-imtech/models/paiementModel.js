@@ -1,7 +1,9 @@
 // Model des paiements. Un paiement porte sur une échéance et a un statut :
 // en_attente (envoyé par l'étudiant) -> valide ou refuse (décision de l'Accueil).
 const db = require('../config/db');
-const { motifLike, clauseLimite } = require('../utils/pagination');
+const { clauseLimite } = require('../utils/pagination');
+const { conditionEtudiantOuFormation } = require('../utils/recherche');
+const { conditionEtat } = require('../utils/etat');
 
 const STATUTS_PAIEMENT = Object.freeze({
   EN_ATTENTE: 'en_attente',
@@ -22,6 +24,7 @@ const PAIEMENT_ACTIF = (alias = 'p') => `${alias}.etat = true AND ${alias}.statu
 const SELECT_PAIEMENT_DETAILLE = `
   SELECT p.id_paiement, p.id_echeance, p.id_mode_paiement, p.montant,
     p.date_paiement, p.reference_virement, p.statut, p.etat,
+    e.etat AS echeance_active, i.etat AS inscription_active, et.etat AS etudiant_actif, f.etat AS formation_active,
     mp.nom AS mode_paiement, e.id_inscription, e.montant_prevu, e.date_echeance,
     i.id_etudiant, i.id_formation,
     u.id_utilisateur AS id_utilisateur_etudiant, u.email AS email_etudiant,
@@ -56,11 +59,10 @@ async function getPaiementById(id_paiement) {
   return rows[0] || null;
 }
 
-// Filtres optionnels : { id_etudiant, statut }
 // Filtres de la liste : étudiant (rôle Étudiant), statut, mode de paiement (nom), recherche
-// dans le nom de l'étudiant ou de la formation
-function filtresPaiements({ id_etudiant, statut, mode, recherche } = {}) {
-  const conditions = ['p.etat = true'];
+// dans le nom de l'étudiant ou de la formation, état du paiement (actif par défaut)
+function filtresPaiements({ id_etudiant, statut, mode, recherche, etat } = {}) {
+  const conditions = [conditionEtat('p.etat', etat)].filter(Boolean);
   const params = [];
   if (id_etudiant) {
     conditions.push('i.id_etudiant = ?');
@@ -71,18 +73,19 @@ function filtresPaiements({ id_etudiant, statut, mode, recherche } = {}) {
     params.push(statut);
   }
   if (mode) {
-    conditions.push('mp.nom = ?');
+    conditions.push('p.id_mode_paiement IN (SELECT id_mode_paiement FROM mode_paiement WHERE nom = ?)');
     params.push(mode);
   }
   if (recherche) {
-    const motif = motifLike(recherche);
-    conditions.push(`(u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ? OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR f.nom LIKE ?)`);
-    params.push(motif, motif, motif, motif, motif);
+    const condition = conditionEtudiantOuFormation('i.id_etudiant', 'i.id_formation', recherche);
+    conditions.push(condition.sql);
+    params.push(...condition.params);
   }
-  return { where: conditions.join(' AND '), params };
+  return { where: conditions.join(' AND ') || '1 = 1', params };
 }
 
-// Paiements détaillés, du plus récent au plus ancien ; `pagination` = page demandée (ou null : tous)
+// Paiements détaillés, du plus récent au plus ancien ; `pagination` = page demandée (ou null : tous).
+// L'index idx_paiement_date (date_paiement, id_paiement), lu à l'envers, donne cet ordre.
 async function getAllPaiements(filtres = {}, pagination = null) {
   const { where, params } = filtresPaiements(filtres);
   const limite = clauseLimite(pagination);
@@ -93,10 +96,16 @@ async function getAllPaiements(filtres = {}, pagination = null) {
   return rows;
 }
 
-// Nombre de paiements correspondant aux mêmes filtres (total de la pagination)
+// Nombre de paiements correspondant aux mêmes filtres (total de la pagination).
+// L'inscription n'est lue que pour les filtres étudiant et recherche ; sinon on compte sur la seule
+// table paiement (ex. badge « en attente » : index sur statut).
 async function compterPaiements(filtres = {}) {
   const { where, params } = filtresPaiements(filtres);
-  const depuis = SELECT_PAIEMENT_DETAILLE.slice(SELECT_PAIEMENT_DETAILLE.indexOf('FROM paiement p'));
+  const depuis = filtres.id_etudiant || filtres.recherche
+    ? `FROM paiement p
+       JOIN echeance e ON p.id_echeance = e.id_echeance
+       JOIN inscription i ON e.id_inscription = i.id_inscription`
+    : 'FROM paiement p';
   const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${depuis} WHERE ${where}`, params);
   return Number(total);
 }

@@ -3,21 +3,114 @@
 // statut 'publie' : visible par les étudiants ; 'programme' : brouillon, publié automatiquement
 // à date_envoi_prevue (voir services/supportProgrammeService.js).
 const db = require('../config/db');
+const { conditionEtat } = require('../utils/etat');
+const { clauseCurseur, clauseLimite } = require('../utils/pagination');
+const { motifPleinTexte, conditionFormation } = require('../utils/recherche');
 
 const STATUTS_SUPPORT = Object.freeze({ PROGRAMME: 'programme', PUBLIE: 'publie' });
 
+// Colonnes d'un support publié affiché dans une liste, avec sa formation et son auteur
+const COLONNES_LISTE = `
+  s.id_support, s.id_formation, s.titre, s.contenu, s.fichier, s.date_publication, s.etat,
+  f.nom AS nom_formation, f.id_utilisateur AS id_formateur,
+  u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo AS prof_photo, s.id_utilisateur
+`;
+
 // Supports publiés d'une formation, du plus récent au plus ancien, avec le formateur
-async function getSupportsByFormation(id_formation) {
+// etat : 'actif' (défaut), 'inactif' ou 'tous' (page Documents du web)
+// curseur { limite, avant } : une page (limite + 1 lignes, voir utils/pagination.js) ; null : tout
+async function getSupportsByFormation(id_formation, etat = 'actif', curseur = null) {
+  const conditionSupport = conditionEtat('s.etat', etat);
+  const page = clauseCurseur(curseur, { table: 'support', alias: 's', date: 'date_publication', id: 'id_support' });
   const sql = `
-    SELECT s.id_support, s.id_formation, s.titre, s.contenu, s.fichier, s.date_publication, f.nom AS nom_formation, u.nom AS prof_nom, u.prenom AS prof_prenom, u.photo as prof_photo, s.id_utilisateur
+    SELECT ${COLONNES_LISTE}
     FROM support s
     JOIN utilisateur u ON s.id_utilisateur = u.id_utilisateur
     JOIN formation f ON f.id_formation=s.id_formation
-    WHERE s.id_formation = ? AND s.etat = true AND s.statut = '${STATUTS_SUPPORT.PUBLIE}'
-    ORDER BY s.date_publication DESC
+    WHERE s.id_formation = ?${conditionSupport ? ` AND ${conditionSupport}` : ''} AND s.statut = '${STATUTS_SUPPORT.PUBLIE}'${page.where}
+    ORDER BY s.date_publication DESC, s.id_support DESC${page.limite}
   `;
-  const [rows] = await db.query(sql, [id_formation]);
+  const [rows] = await db.query(sql, [id_formation, ...page.whereParams, ...page.limiteParams]);
   return rows;
+}
+
+async function compterSupportsByFormation(id_formation, etat = 'actif') {
+  const conditionSupport = conditionEtat('s.etat', etat);
+  const [rows] = await db.query(
+    `SELECT COUNT(*) AS total FROM support s
+     WHERE s.id_formation = ?${conditionSupport ? ` AND ${conditionSupport}` : ''} AND s.statut = '${STATUTS_SUPPORT.PUBLIE}'`,
+    [id_formation]
+  );
+  return Number(rows[0].total);
+}
+
+// Extensions de chaque type de pièce jointe (mêmes règles que typeFichier côté web)
+const EXTENSIONS_TYPE = Object.freeze({
+  pdf: ['pdf'],
+  image: ['png', 'jpg', 'jpeg', 'webp', 'gif'],
+  audio: ['mp3', 'm4a', 'aac', 'ogg', 'wav', 'oga'],
+  video: ['mp4', 'webm', 'mov'],
+});
+
+const TRIS_SUPPORT = Object.freeze({
+  recents: 's.date_publication DESC, s.id_support DESC',
+  anciens: 's.date_publication ASC, s.id_support ASC',
+  titre: 's.titre ASC, s.id_support ASC',
+});
+
+// Supports publiés et actifs, avec recherche et filtres :
+//   id_etudiant  : seulement les formations où son inscription est active et validée
+//   id_formateur : seulement les formations qu'il anime
+//   id_formation, recherche (titre, formation, texte), type ('texte' = sans fichier, ou EXTENSIONS_TYPE)
+function filtresSupports({ id_etudiant, id_formateur, id_formation, recherche, type } = {}) {
+  const conditions = ['s.etat = true', `s.statut = '${STATUTS_SUPPORT.PUBLIE}'`];
+  const params = [];
+  if (id_etudiant) {
+    conditions.push(`EXISTS (SELECT 1 FROM inscription i WHERE i.id_formation = s.id_formation
+      AND i.id_etudiant = ? AND i.etat = true AND i.valide = true)`);
+    params.push(id_etudiant);
+  }
+  if (id_formateur) { conditions.push('f.id_utilisateur = ?'); params.push(id_formateur); }
+  if (id_formation) { conditions.push('s.id_formation = ?'); params.push(id_formation); }
+  if (recherche) {
+    // Titre et texte : index plein texte ft_support ; nom de la formation : LIKE (petite table)
+    const motif = motifPleinTexte(recherche);
+    const formation = conditionFormation('s.id_formation', recherche);
+    conditions.push(`(${motif ? `s.id_support IN (SELECT rs.id_support FROM support rs
+                       WHERE MATCH(rs.titre, rs.contenu) AGAINST (? IN BOOLEAN MODE)) OR ` : ''}${formation.sql})`);
+    params.push(...(motif ? [motif] : []), ...formation.params);
+  }
+  if (type === 'texte') conditions.push('s.fichier IS NULL');
+  else if (EXTENSIONS_TYPE[type]) {
+    conditions.push("LOWER(SUBSTRING_INDEX(s.fichier, '.', -1)) IN (?)");
+    params.push(EXTENSIONS_TYPE[type]);
+  }
+  return { where: conditions.join(' AND '), params };
+}
+
+// pagination { limite, offset } ou null (toute la liste) ; filtres.tri : clé de TRIS_SUPPORT
+async function getSupports(filtres = {}, pagination = null) {
+  const { where, params } = filtresSupports(filtres);
+  const limite = clauseLimite(pagination);
+  const [rows] = await db.query(
+    `SELECT ${COLONNES_LISTE}
+     FROM support s
+     JOIN utilisateur u ON s.id_utilisateur = u.id_utilisateur
+     JOIN formation f ON f.id_formation = s.id_formation
+     WHERE ${where}
+     ORDER BY ${TRIS_SUPPORT[filtres.tri] || TRIS_SUPPORT.recents}${limite.sql}`,
+    [...params, ...limite.params]
+  );
+  return rows;
+}
+
+async function compterSupports(filtres = {}) {
+  const { where, params } = filtresSupports(filtres);
+  const [rows] = await db.query(
+    `SELECT COUNT(*) AS total FROM support s JOIN formation f ON f.id_formation = s.id_formation WHERE ${where}`,
+    params
+  );
+  return Number(rows[0].total);
 }
 
 // Support publié (un brouillon n'est ni consultable, ni commentable)
@@ -159,12 +252,6 @@ async function getIdsUtilisateursInscrits(id_formation) {
   return rows.map((r) => r.id_utilisateur);
 }
 
-// Suppression logique (etat = false) ; fonctionne aussi sur un brouillon
-async function deleteSupport(id_support) {
-  const [result] = await db.query('UPDATE support SET etat = false WHERE id_support = ?', [id_support]);
-  return result.affectedRows > 0;
-}
-
 // Support (publié ou brouillon) pour vérifier les droits avant suppression
 async function getSupportPourSuppression(id_support) {
   const [rows] = await db.query(
@@ -176,7 +263,12 @@ async function getSupportPourSuppression(id_support) {
 
 module.exports = {
   STATUTS_SUPPORT,
+  TRIS_SUPPORT,
+  EXTENSIONS_TYPE,
   getSupportsByFormation,
+  compterSupportsByFormation,
+  getSupports,
+  compterSupports,
   getSupportById,
   getSupportsProgrammes,
   getSupportProgramme,
@@ -187,6 +279,5 @@ module.exports = {
   marquerAnnonceEnvoyee,
   publierSupport,
   getIdsUtilisateursInscrits,
-  deleteSupport,
   getSupportPourSuppression,
 };

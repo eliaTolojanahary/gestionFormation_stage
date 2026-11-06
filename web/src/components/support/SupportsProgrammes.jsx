@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import EditeurTexte from '../editeur/EditeurTexte'
+import { useRetour } from '../retour/useRetour'
 import { useSupport } from '../../hooks/useSupport'
 import { formatDateHeureLocale, formatRelative, toDatetimeLocal } from '../../utils/time'
 import { ACCEPT_SUPPORT, typeFichier } from '../../utils/texteRiche'
@@ -23,6 +24,7 @@ function LigneProgramme({ support, onChange }) {
   const [dateEnvoi, setDateEnvoi] = useState(toDatetimeLocal(support.date_envoi_prevue))
   const [fichier, setFichier] = useState(null)
   const [erreur, setErreur] = useState('')
+  const { confirmer } = useRetour()
 
   async function executer(action) {
     setErreur('')
@@ -49,13 +51,24 @@ function LigneProgramme({ support, onChange }) {
     })
   }
 
-  function envoyerMaintenant() {
-    if (!window.confirm(`Envoyer « ${support.titre} » maintenant aux étudiants ?`)) return
+  async function envoyerMaintenant() {
+    const ok = await confirmer({
+      titre: 'Envoyer maintenant',
+      message: `« ${support.titre} » sera envoyé tout de suite aux étudiants, sans attendre la date prévue.`,
+      bouton: 'Envoyer',
+    })
+    if (!ok) return
     executer(() => envoyerSupport(support.id_support))
   }
 
-  function supprimer() {
-    if (!window.confirm(`Supprimer le support programmé « ${support.titre} » ?`)) return
+  async function supprimer() {
+    const ok = await confirmer({
+      titre: 'Supprimer le support programmé',
+      message: `« ${support.titre} » ne sera pas envoyé aux étudiants et sera définitivement supprimé.`,
+      bouton: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
     executer(() => deleteSupport(support.id_support))
   }
 

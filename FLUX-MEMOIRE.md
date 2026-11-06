@@ -1,11 +1,11 @@
 # IMTECH INFO — Plateforme de gestion de formation
 ## Second support de rédaction du mémoire (plan `planMemoire.txt`, 35 pages)
 
-> Ce document est le **second support** du mémoire. Le premier,
-> [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md), décrit **toute** l'application (17 modules,
-> 55 tableaux, 23 figures) : c'est la référence complète. Celui-ci suit **exactement le plan
+> Ce document est le **support du mémoire**. Le fonctionnement technique de l'application (démarrage,
+> code, parcours A → Z avec pages, routes et fonctions, modules, règles) est dans
+> [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md), le document de reprise. Celui-ci suit **exactement le plan
 > resserré** de [`planMemoire.txt`](planMemoire.txt) : **35 pages** de l'avant-propos à la
-> bibliographie, **8 tableaux**, **18 figures**, et seulement **4 modules** détaillés.
+> bibliographie, **9 tableaux**, **19 figures**, et seulement **4 modules** détaillés.
 >
 > Chaque partie indique son **nombre de pages visé** (📄). Le texte est déjà à la bonne longueur :
 > on peut le reporter presque tel quel dans le modèle Word, en ajoutant les captures.
@@ -78,9 +78,12 @@
     - [2.2.3 Supports de cours](#223-supports-de-cours)
     - [2.2.4 Utilisateurs et sécurité](#224-utilisateurs-et-sécurité)
   - [2.3 États d'analyse et statistiques](#23-états-danalyse-et-statistiques)
-    - 2.3.1 État : tableau de bord
-    - 2.3.2 Statistique : note d'attestation et classement
-    - 2.3.3 Statistique : avis des étudiants sur les formateurs
+    - 2.3.1 État E1 : indicateurs financiers (tableau de bord)
+    - 2.3.2 État E2 : évolution des encaissements et des inscriptions
+    - 2.3.3 État E3 : notes d'attestation et classement d'une formation
+    - 2.3.4 État E4 : avis des étudiants sur les formateurs
+    - 2.3.5 État E5 : échéances en retard et à rappeler
+    - 2.3.6 Bilan des états
   - [2.4 Problèmes rencontrés et solutions](#24-problèmes-rencontrés-et-solutions)
 - [3 Évaluation du projet et connaissances acquises](#3-évaluation-du-projet-et-connaissances-acquises)
   - 3.1 Bilan pour l'entreprise
@@ -94,6 +97,8 @@
   - Annexe C : Conception affichage : les écrans un par un
   - Annexe D : Conception métier : les données échangées
   - Annexe E : La base de données, expliquée simplement
+  - Annexe F : Requêtes des états d'analyse
+  - Annexe G : Détail des états d'analyse
 
 ---
 
@@ -106,7 +111,8 @@
 - Tableau 5 : Comparaison entre MySQL et PostgreSQL
 - Tableau 6 : Avant le projet, et ce qui posait problème
 - Tableau 7 : Analyse des besoins par utilisateur
-- Tableau 8 : Problèmes rencontrés et solutions
+- Tableau 8 : Catalogue des états produits par l'application
+- Tableau 9 : Problèmes rencontrés et solutions
 
 ## Liste des figures
 
@@ -125,9 +131,11 @@
 - Figure 13 : Liste des sessions
 - Figure 14 : Filigrane et capture d'écran bloquée
 - Figure 15 : Diagramme de séquence de la connexion
-- Figure 16 : Tableau de bord
-- Figure 17 : Tableau des notes et classement d'une formation
-- Figure 18 : Tri des formateurs par compétence
+- Figure 16 : Tableau de bord — indicateurs financiers
+- Figure 17 : Évolution mensuelle des encaissements et formations les plus demandées
+- Figure 18 : Notes et classement d'une formation
+- Figure 19 : Avis des étudiants sur les formateurs
+- Figure 20 : Échéances en retard et à rappeler
 
 ---
 
@@ -205,7 +213,7 @@ message ; et l'étudiant devait se déplacer pour savoir où il en était.
 - un **site web** pour l'équipe (direction, accueil, formateurs) ;
 - une **application mobile** Android pour les étudiants et les visiteurs ;
 - un **serveur** commun, qui applique les règles du centre, crée les PDF et envoie les e-mails ;
-- une base de données de **26 tables**.
+- une base de données de **27 tables**.
 
 **Structure du mémoire.** Le **premier chapitre** présente le projet : objectifs, planning et
 technologies choisies. Le **deuxième** raconte la réalisation : l'analyse de l'existant, la
@@ -403,14 +411,15 @@ commencé à saisir. J'ai donc d'abord décidé **comment les écrans parlent au
 droit de faire quoi** et **où ranger chaque information**.
 
 **Le projet en chiffres.** 23 écrans web, 13 écrans mobiles (+ 4 fenêtres), 86 adresses sur le
-serveur, 26 tables, 4 rôles (+ le visiteur).
+serveur, 27 tables, 4 rôles (+ le visiteur).
 
 ##### 2.1.2.1 Conception affichage
 
 Le projet est fait de trois parties. Le site web et l'application mobile ne parlent **jamais**
 directement à la base : ils passent toujours par le serveur, et toujours par une seule fonction
 (`apiRequest`) qui joint le badge de connexion, envoie la demande et affiche le message d'erreur
-s'il y en a un.
+s'il y en a un, toujours en français compréhensible (« Impossible de joindre le serveur… » plutôt
+qu'un code technique).
 
 ```mermaid
 flowchart LR
@@ -424,7 +433,7 @@ flowchart LR
         MAIL["E-mails"]
         FS[("Fichiers<br/>uploads/")]
     end
-    DB[("Base MySQL<br/>26 tables")]
+    DB[("Base MySQL<br/>27 tables")]
 
     W -- "demande + badge" --> API
     M -- "demande + badge" --> API
@@ -489,12 +498,12 @@ demande, il contrôle **le rôle** (« un étudiant n'a rien à faire ici ») et
 les données** (« un étudiant ne voit que **ses** paiements »). Les règles du centre sont toutes
 écrites au même endroit, dans les **services** du serveur.
 
-🔗 *Tableau complet des droits : `FLUX-APPLICATION.md`, Tableau 11. Données échangées entre
+🔗 *Droits de chaque adresse du serveur : [`backend-imtech/api.md`](backend-imtech/api.md). Données échangées entre
 l'affichage et le serveur (équivalent des DTO) : [Annexe D](#annexe-d--conception-métier--les-données-échangées).*
 
 ##### 2.1.2.3 Modèle conceptuel de données
 
-La base a été dessinée avec la méthode **Merise**. Elle contient **26 tables**, sans vue, sans
+La base a été dessinée avec la méthode **Merise**. Elle contient **27 tables**, sans vue, sans
 procédure stockée ni trigger : toutes les règles restent dans le serveur. Le schéma ci-dessous
 montre les tables principales.
 
@@ -535,7 +544,7 @@ compte + dossier) est enregistré **en tout ou rien**. Le modèle logique comple
 L'application compte une quinzaine de modules. Les modules **dossiers étudiants**,
 **formations**, **documents officiels** (fiche, facture, attestation avec QR code),
 **notifications**, **assistance**, **recherche globale** et **apparence** sont en place mais ne
-sont pas détaillés ici (🔗 `FLUX-APPLICATION.md`, §2.2.2 à §2.2.17). Ce chapitre détaille les
+sont pas détaillés ici (🔗 `FLUX-APPLICATION.md`, parties 4 et 5). Ce chapitre détaille les
 **quatre modules les plus représentatifs** du travail. Pour chacun : **ce qu'il fait**,
 **pourquoi** il est utile, un **scénario clé**, **l'écran**, et pour les plus techniques un
 **diagramme de séquence**.
@@ -546,9 +555,13 @@ sont pas détaillés ici (🔗 `FLUX-APPLICATION.md`, §2.2.2 à §2.2.17). Ce c
 
 **Description.** Une personne **sans compte** qui ouvre l'application arrive sur l'écran
 **Découvrir** : formations disponibles (photo, formateur, prix, durée), formateurs les mieux
-notés, engagements du centre et contacts. Elle peut choisir **une ou plusieurs formations** et
-s'inscrire elle-même : identité, mot de passe, nombre de tranches (1 à 4), moyen de paiement et
-référence. L'**Accueil** confirme ensuite chaque inscription depuis le site.
+notés, engagements du centre et contacts. Formations et formateurs défilent **5 par 5** : les
+suivants arrivent quand on fait glisser jusqu'au bout. Elle peut choisir **une ou plusieurs
+formations** et s'inscrire elle-même : identité, mot de passe, nombre de tranches (1 à 4), moyen
+de paiement et référence. L'**Accueil** confirme ensuite chaque inscription depuis le site.
+Un étudiant **déjà inscrit** peut, depuis l'onglet Formations, ouvrir le même écran (« Voir plus
+de formations ») : il n'y voit que les formations qu'il ne suit pas encore, et s'inscrit sans
+ressaisir son identité ni son dossier.
 
 **Pourquoi.** L'application devient un moyen d'**attirer de nouveaux étudiants** : on peut
 s'inscrire le soir depuis chez soi, sans attendre l'ouverture de l'accueil. Et l'accueil garde
@@ -558,13 +571,20 @@ le contrôle, puisque rien n'est définitif sans sa validation.
 
 1. Mahery ouvre l'application, parcourt la vitrine et ajoute « Développement web » et
    « Python » à sa sélection.
-2. Il remplit le formulaire et choisit de payer en 3 fois par Mobile Money.
+2. Il remplit le formulaire (mot de passe saisi deux fois), choisit de payer en 3 fois par Mobile
+   Money et photographie tout de suite ses pièces (photos d'identité, CIN, certificat de
+   résidence). Il aurait pu choisir « Plus tard » et les déposer après connexion, dans
+   **Mon dossier** (menu ⋮).
 3. Le serveur crée, **en une seule fois (tout ou rien)** : le compte, le dossier, les deux
    inscriptions « en ligne », leurs échéanciers et le premier paiement « en attente ». Il reçoit
    « Inscription envoyée » et le total à payer.
 4. Sur le site, l'accueil filtre les inscriptions sur **« En ligne »**, vérifie le paiement et
    clique **« Valider »** : l'inscription est confirmée, le premier paiement passe à « validé ».
+   Si une pièce manquait, la validation serait refusée avec la liste des pièces à fournir.
 5. Les supports de la formation s'ouvrent pour Mahery.
+6. Trois mois plus tard, Mahery veut aussi « Excel avancé ». Depuis l'onglet Formations, il
+   touche « Voir plus de formations », coche Excel, choisit ses tranches et son paiement : son
+   compte et son dossier existent déjà. L'accueil valide comme d'habitude.
 
 📷 *Figure 5 : Vitrine et inscription — écran Découvrir + fiche d'une formation + formulaire
 (captures mobile ; `Détail formation mobile.png` existe déjà).*
@@ -578,7 +598,17 @@ le contrôle, puisque rien n'est définitif sans sa validation.
   l'accueil : la logique n'est écrite qu'une fois.
 - Tant que l'accueil n'a pas validé, la formation affiche « En attente de validation » et **les
   supports restent fermés**.
-- Garde-fous : e-mail déjà utilisé refusé, mot de passe de 8 caractères minimum, une formation
+- **Pas de validation sans dossier complet** : le serveur sait qu'une inscription vient du
+  mobile grâce à son origine (« en ligne »). Il refuse de la valider tant que les 4 pièces ne
+  sont pas déposées. L'étudiant peut remplacer une pièce à tout moment ; l'accueil est prévenu.
+  Sur le site, les inscriptions à valider s'affichent en premier, un filtre « Dossier » (complet /
+  incomplet) les retrouve et le détail d'une inscription montre les pièces manquantes.
+- **Inscription faite à l'accueil** : jamais bloquée, puisque c'est l'accueil qui complète le
+  dossier. La fenêtre de validation le prévient (« Dossier incomplet (2/4 pièces) ») et le bouton
+  devient « Valider quand même ».
+- Un étudiant déjà inscrit ne peut pas s'inscrire deux fois à la même formation : toute la demande
+  est alors refusée, rien n'est créé.
+- Garde-fous : e-mail déjà utilisé refusé, mot de passe de 8 caractères minimum et saisi deux fois, une formation
   choisie deux fois ne compte qu'une fois, **5 inscriptions par heure** au maximum depuis un même
   appareil.
 - Valider deux fois la même inscription est refusé : on ne paie pas deux fois la première tranche.
@@ -686,7 +716,7 @@ une date précise. Les étudiants inscrits le lisent dans l'application, peuvent
 **Pourquoi.** Les supports sont le travail des formateurs : ils doivent rester chez IMTECH. Les
 mettre dans l'application évite qu'ils circulent par message, les range au même endroit, et
 permet aux étudiants de poser leurs questions juste sous le cours. Les réactions donnent aussi à
-la direction un premier avis sur chaque formateur ([§2.3.3](#233-statistique--avis-des-étudiants-sur-les-formateurs)).
+la direction un premier avis sur chaque formateur ([§2.3.4](#234-état-e4--avis-des-étudiants-sur-les-formateurs)).
 
 **Publication.** Le formateur choisit la formation, écrit le titre et le texte, joint un fichier
 et clique sur **Publier**. Les étudiants inscrits reçoivent une notification. Avant
@@ -732,6 +762,10 @@ heure » reçue sur le téléphone. Le schéma d'états ci-dessus peut accompagn
   refuse les doublons.
 - Qui peut supprimer : le Super Admin tout, le formateur les commentaires de ses formations,
   l'étudiant les siens.
+- **Affichage 5 par 5.** Supports et commentaires arrivent par paquets de 5 : le serveur n'envoie
+  que ce qui s'affiche, et « Voir plus » demande la suite. Avec des milliers de commentaires, le
+  téléphone reste rapide et consomme peu de données. La suite est demandée « à partir du dernier
+  reçu » (et non « page 3 ») : un commentaire publié pendant la lecture ne fait ni doublon ni trou.
 
 📷 *Figure 12 : Commentaires et réactions — fil de commentaires sous un support (réponses
 repliées, mention `@`) et barre de réactions, sur le téléphone.*
@@ -765,7 +799,9 @@ après une déconnexion. Le serveur garde donc la liste des connexions (table `s
 voit ses appareils (navigateur, adresse, date, appareil actuel mis en avant) et peut **déconnecter
 les autres appareils**. Le site et l'application revérifient la connexion chaque minute : les
 autres appareils reviennent à l'écran de connexion en moins d'une minute. Désactiver un compte ou
-changer son mot de passe ferme aussi les autres sessions.
+changer son mot de passe ferme aussi les autres sessions. Un compte désactivé n'est pas effacé :
+le Super Admin le retrouve dans la page Utilisateurs avec le filtre « Désactivés » et peut le
+réactiver (un employé qui revient, une erreur de manipulation).
 
 📷 *Figure 13 : Liste des sessions — Paramètres > Sécurité avec les appareils connectés et le
 bouton « Déconnecter les autres appareils ».*
@@ -841,74 +877,228 @@ sequenceDiagram
 
 ### 2.3 États d'analyse et statistiques
 
-📄 **3 pages**
+📄 **3 pages** (4 au plus avec les captures). Le détail des chiffres, des règles de calcul et des
+vérifications est en [Annexe G](#annexe-g--détail-des-états-danalyse) ; les requêtes SQL en
+[Annexe F](#annexe-f--requêtes-des-états-danalyse).
 
-Ces écrans transforment ce que l'équipe saisit chaque jour en chiffres utiles à la direction.
-Les captures sont à prendre sur les **données de démonstration** (`donneesTest.sql`) et chaque
-figure doit être **commentée** : le modèle de mémoire insiste sur l'explication des chiffres.
+Cette partie montre ce que l'application **rend** à ceux qui la font tourner : ce qu'elle calcule
+à partir des saisies de tous les jours pour aider à **contrôler** (qui doit encore payer ?),
+**suivre** (l'activité progresse-t-elle ?) et **décider** (quel étudiant mérite son attestation,
+quel formateur accompagner ?).
 
-#### 2.3.1 État : tableau de bord
+> **Données fictives.** IMTECH INFO n'autorise pas la diffusion des données de ses étudiants. Les
+> captures et les chiffres viennent du **jeu de démonstration** (`donneesTest.sql` : 10 étudiants,
+> 25 inscriptions sur 7 formations, de juillet à octobre 2026, avec les vrais tarifs du centre),
+> lus **au 26/10/2026**. Sous chaque capture, ajouter la mention :
+> *« Données fictives — reproduction des données réelles non autorisée par l'entreprise. »*
 
-Le tableau de bord (Super Admin, Accueil) réunit les indicateurs principaux :
+*Tableau 8 : Catalogue des états produits par l'application*
 
-| Indicateur | Calcul |
-|---|---|
-| Argent reçu | Total des paiements **validés** |
-| Reste à recevoir | Total des échéances − argent reçu |
-| Paiements en retard | Échéances dont la date est passée et qui ne sont pas entièrement payées |
-| Évolution | Argent reçu par jour, mois ou année (courbe) |
-| Inscriptions | Par mois, et formations les plus demandées |
-| Export | Inscriptions au format CSV (Excel) |
+| N° | Nom de l'état | Utilisateur cible | Question à laquelle il répond | Type | Format |
+|:-:|---|---|---|---|---|
+| **E1** | Indicateurs financiers | Direction (Super Admin), Accueil | Combien avons-nous encaissé, combien reste-t-il à recevoir, et combien d'échéances sont en retard ? | Tableau de bord | Écran |
+| **E2** | Évolution des encaissements et des inscriptions | Direction | Notre activité progresse-t-elle d'un mois à l'autre, et quelles formations attirent le plus ? | Analyse | Écran (courbe, barres) |
+| **E3** | Notes d'attestation et classement d'une formation | Formateur, Direction | Quelle note mérite chaque étudiant, et qui décroche ? | Synthèse | Écran |
+| **E4** | Avis des étudiants sur les formateurs | Direction | Quels formateurs sont appréciés, lesquels faut-il accompagner ? | Synthèse | Écran |
+| E5 | Échéances en retard et à rappeler | Accueil | Qui dois-je relancer aujourd'hui ? | Opérationnel | Écran (rouge / jaune) |
+| E6 | Export des inscriptions | Accueil, Direction | Comment retravailler la liste des inscrits dans Excel ? | Opérationnel | CSV (Excel) |
+| E7 | Fiche d'inscription, facture | Accueil, étudiant | Que l'étudiant a-t-il acheté et payé ? | Opérationnel | PDF |
+| E8 | Attestation de formation | Étudiant, employeur | Cet étudiant a-t-il réellement suivi la formation, avec quelle note ? | Opérationnel | PDF + QR code |
 
-📷 *Figure 16 : Tableau de bord (`dashboard-administrateur.png` existe déjà). À commenter :
-l'argent reçu et ce qui reste, le nombre de retards (dans la démo : Toky et Fano n'ont pas payé
-leur 2ᵉ tranche), la forme de la courbe, la formation la plus demandée.*
+Cinq états sont détaillés ci-dessous : les quatre états d'aide à la décision, E1 à E4, et E5,
+l'état de travail le plus utilisé par l'Accueil. Les fiches de E6 à E8, sur le même plan, sont en
+[Annexe G](#annexe-g--détail-des-états-danalyse) (G.7 à G.9). Chaque fiche suit le même plan : besoin,
+données et calcul, restitution, lecture, vérification.
 
-#### 2.3.2 Statistique : note d'attestation et classement
+#### 2.3.1 État E1 : indicateurs financiers (tableau de bord)
 
-À la fin de la formation, chaque étudiant reçoit une **note sur 20**, écrite sur son attestation.
-La moitié est **calculée par l'application**, l'autre est donnée par le formateur.
+**Besoin.** La direction et l'Accueil veulent savoir chaque matin si l'argent rentre et qui
+relancer. Avant le projet, il fallait recompter le cahier des paiements.
 
-| Partie | Condition | Points |
-|---|---|:-:|
-| **Paiement** | A toujours payé à temps | 5 |
-| | Sinon | 2 |
-| **Présence** | Présent moins de la moitié des jours de cours | +2 |
-| | Au moins la moitié, mais pas jusqu'au bout | +3 |
-| | Présent jusqu'à 2 semaines avant la fin | +5 |
-| = Note calculée | | **/10** |
-| **Présentation** | Donnée par le formateur (10 maximum) | **/10** |
-| = **Note d'attestation** | paiement + présence + présentation | **/20** |
+**Données et calcul.** Tables `paiement` et `echeance`. **Filtre de période** : deux dates
+libres « Du … au … », chacune facultative (sans date : depuis l'ouverture). Ce filtre, en haut du
+tableau de bord, s'applique aussi aux inscriptions de E2 et aux avis de E4 : les trois états sont
+donc toujours lus sur la même période. Le **montant
+encaissé** est la somme des paiements validés **dont la date de paiement** est dans la période. Le
+**reste à encaisser** est calculé sur les échéances **dont la date** est dans la période : leur
+total moins ce qui a déjà été validé sur elles (un paiement en avance ne fausse donc pas le
+calcul). Une échéance de la période est **en retard** quand sa date est passée et que les
+paiements envoyés ne la couvrent pas. Sous les cartes, une barre en trois couleurs détaille ce
+reste en trois montants dont la somme redonne le total : **à venir** (date pas encore arrivée),
+**à valider** (payé par l'étudiant, en attente de l'Accueil) et **en retard**, chacun avec son
+nombre d'échéances.
 
-La **présence** est notée toute seule : un étudiant qui utilise l'application un jour est compté
-présent ce jour-là (une ligne par jour dans la table `presence`). Seuls les jours **du lundi au
-vendredi** comptent, sur le vrai calendrier. Le **classement** trie par note calculée, puis par
-jours de présence ; deux étudiants à égalité ont le même rang. Sans note de présentation,
-l'attestation ne peut pas être créée, et une note de présentation au-dessus de 10 est refusée avec
-un message explicatif.
+📷 *Figure 16 : Tableau de bord — indicateurs financiers au 26/10/2026
+(`dashboard-administrateur.png`).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
 
-📷 *Figure 17 : Tableau des notes et classement d'une formation — Espace formateur
-(`Dashboard formateur.png` existe déjà). À commenter : les écarts de présence (de 3 à 10 jours
-sur 10 dans la démo) et leur effet sur la note finale.*
+**Lecture.** Le centre a encaissé **4 671 667 Ar** et il lui reste **2 698 333 Ar** à recevoir :
+il a déjà reçu plus que ce qu'il attend encore. Ce reste n'est pas un retard : la barre de détail
+montre **1 900 000 Ar** à venir (13 échéances dont la date n'est pas encore arrivée),
+**265 000 Ar** à valider (2 échéances déjà payées depuis le téléphone) et **533 333 Ar** vraiment
+en retard, soit **4 échéances** seulement. L'Accueil n'a donc pas à relancer tout le monde, mais quatre échéances
+(deux étudiants), qu'il retrouve en rouge dans la liste des échéances (E5). Filtré **du 01/07 au
+30/09/2026** (3ᵉ trimestre), le tableau de bord montre **3 096 667 Ar** encaissés et seulement
+**266 667 Ar** restant dus sur les échéances du trimestre, qui correspondent tous à **2 échéances en
+retard** : le trimestre est presque entièrement recouvré.
 
-#### 2.3.3 Statistique : avis des étudiants sur les formateurs
+**Vérification.** Le montant encaissé est égal à la somme des quatre mois de E2. Les trois
+montants du détail redonnent le reste à encaisser (1 900 000 + 265 000 + 533 333 = 2 698 333 Ar).
+Encaissé + reste (7 370 000 Ar) est égal à la somme des tarifs calculée dans Excel sur l'export
+CSV (E6). Les 4 retards sont
+les 4 lignes rouges de E5, et leur montant a été additionné à la main ([Annexe G.2](#annexe-g--détail-des-états-danalyse)).
 
-Les réactions laissées sur les supports donnent un avis sur chaque formateur :
+#### 2.3.2 État E2 : évolution des encaissements et des inscriptions
 
-| Élément | Calcul |
-|---|---|
-| Positives | 👍 + ❤️ + 💡 |
-| % positif | positives ÷ toutes les réactions |
-| **Compétent** | au moins 5 réactions et au moins 60 % de positives |
-| **Non compétent** | au moins 5 réactions et moins de 60 % de positives |
-| **Pas assez d'avis** | moins de 5 réactions : on ne juge pas |
+**Besoin.** La direction veut savoir si le centre **grandit**, et quelles formations ouvrir de
+nouveau ou mettre en avant dans la vitrine.
 
-Le tableau des avis peut être **trié** par type de réaction et **filtré** par avis. Les
-formateurs compétents sont aussi mis en avant dans la vitrine ([§2.2.1](#221-vitrine-et-inscription-de-létudiant)).
+**Données et calcul.** Tables `paiement`, `inscription` et `formation`. L'état contient trois
+graphiques :
+- **Encaissements (barres)** : pour chaque période, la somme des paiements validés. Des boutons
+  au-dessus du graphique choisissent la période : jour, semaine, mois ou année. Chaque barre
+  affiche son montant et, en dessous, l'évolution par rapport à la barre précédente :
+  (mois − mois précédent) ÷ mois précédent.
+- **Inscriptions (courbe)** : pour chaque mois, le nombre d'inscriptions.
+- **Formations les plus suivies** : le nombre d'inscriptions de chaque formation, du plus grand au
+  plus petit ; seules les 5 premières sont affichées.
 
-📷 *Figure 18 : Tri des formateurs par compétence. Dans la démo : Tiana et Voahangy
-« Compétent », Hery « Non compétent », Lalaina « Pas assez d'avis ». À commenter : en dessous de
-5 réactions, on ne juge pas un formateur, pour rester juste.*
+Les deux derniers graphiques suivent le filtre « Du … au … » du tableau de bord : seules les
+inscriptions faites entre ces deux dates sont comptées.
+
+📷 *Figure 17 : Évolution mensuelle des encaissements et formations les plus demandées (choisir la
+vue « mensuel » avant la capture).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+**Lecture.** Les barres des encaissements **montent chaque mois** : 750 000 Ar en juillet, puis
+**+42 %** en août, **+21 %** en septembre et **+23 %** en octobre (1 575 000 Ar au 26), soit
+**4 671 667 Ar** sur la période (« Total période » sous le graphique). La courbe des inscriptions, elle, reste **à peu près plate** (6,
+8, 5 puis 6 par mois) : l'argent augmente sans que les inscriptions augmentent. La hausse vient
+donc des **tranches qui s'accumulent**, chaque étudiant payant en plusieurs fois. Parmi les
+formations, le **Développement web** est la plus suivie (5 inscrits sur 25), devant la
+**Bureautique** et l'**Excel avancé** (4 chacune). Ce sont les formations à rouvrir en priorité et
+à mettre en avant dans la vitrine.
+
+**Vérification.** La somme des quatre mois (à l'ariary près, à cause des centimes des tranches)
+est égale au montant encaissé de E1. Les 25 inscriptions sont égales au nombre de lignes de
+l'export CSV (E6).
+
+#### 2.3.3 État E3 : notes d'attestation et classement d'une formation
+
+**Besoin.** Le formateur doit donner une note sur 20 pour l'attestation, et repérer à temps qui
+décroche. La même règle doit valoir pour tous.
+
+**Données et calcul.** Tables `inscription`, `presence`, `echeance` et `paiement`. **Filtres** :
+la formation (un formateur ne voit que les siennes) ; la période est celle de la formation. La
+note fait 20 points. **10 sont calculés** par l'application : on part de 10, on retire jusqu'à −4
+pour les absences (un étudiant est présent un jour de semaine s'il a utilisé l'application) et
+jusqu'à −4 pour les échéances payées en retard ou non réglées. **Les 10 autres** sont la note de
+présentation donnée par le formateur. Le classement trie par note calculée.
+
+📷 *Figure 18 : Notes et classement de la formation Développement web — espace formateur
+(`Dashboard formateur.png`).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+**Lecture.** Quatre étudiants sur cinq ont 9 ou 10 sur 10 : la formation se passe bien. **Toky**
+tombe à **2/10** : présent 40 % des jours seulement (−4) et deux échéances non réglées (−4). Sa
+note finale est de 8/20. Le formateur sait donc qui appeler : Toky, et non toute la promotion.
+
+**Vérification.** Trois contrôles ont été faits :
+- **Calcul à la main** : la note de Toky a été refaite sans l'application, à partir du barème :
+  10 − 4 (présent 40 % des jours) − 4 (deux échéances non réglées) = 2, la même note qu'à l'écran.
+- **Comparaison avec E1** : les deux échéances non réglées de Toky font partie des 4 échéances en
+  retard du tableau de bord. Les deux états, calculés séparément, sont donc d'accord.
+- **Tests automatiques** : 9 tests (`classement.test.js`) vérifient le barème à chaque
+  modification du code (paliers de présence, retenue de paiement limitée à −4, week-ends,
+  ex æquo).
+
+#### 2.3.4 État E4 : avis des étudiants sur les formateurs
+
+**Besoin.** La direction n'assiste pas aux cours. Elle a besoin d'un premier signal pour savoir
+quel formateur **mettre en avant** dans la vitrine et lequel **accompagner**.
+
+**Données et calcul.** Tables `reaction`, `type_reaction`, `support` et `utilisateur`. **Filtres** :
+par avis, tri par type de réaction et **période** (le filtre « Du … au … » de E1) : seules les réactions
+**données pendant la période** sont comptées, pour voir si un formateur progresse d'un trimestre
+à l'autre. On compte les réactions des étudiants sur
+les supports publiés : 👍 ❤️ 💡 sont positives, 👎 négative. Un formateur est jugé **compétent** avec au moins 5 réactions et au moins
+60 % de positives ; sous 5 réactions, l'application ne juge pas.
+
+📷 *Figure 19 : Avis des étudiants sur les formateurs, triés par compétence.*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+**Lecture.** Trois formateurs sur cinq sont jugés compétents (Tiana en tête : 94 % sur 18
+réactions). **Hery** est le seul jugé non compétent : 5 de ses 7 réactions sont des 👎, soit
+29 % de positif seulement. C'est lui que la direction doit rencontrer en priorité pour revoir ses
+supports. **Lalaina** a 100 % de positif, mais sur 4 réactions seulement : l'application refuse
+de conclure sur si peu d'avis.
+
+**Vérification.** Trois contrôles ont été faits :
+- **Comptage direct dans la base** : une requête de contrôle compte les lignes de la table
+  `reaction` (47 lignes). L'écran donne le même total : 18 + 12 + 6 + 7 + 4 = 47 réactions.
+- **Calcul à la main** : l'avis de Hery a été refait à partir de la règle. Il a 2 réactions
+  positives sur 7, soit 29 %. Il a au moins 5 réactions mais moins de 60 % de positives, donc il est
+  « non compétent », comme à l'écran. Lalaina n'a que 4 réactions, moins de 5 : pas d'avis.
+- **Tests automatiques** : 2 tests (`commentairesReactions.test.js`) vérifient les seuils et
+  l'ordre d'affichage, avec un cas pile à la limite (6 sur 10 = 60 %, jugé compétent).
+
+#### 2.3.5 État E5 : échéances en retard et à rappeler
+
+**Besoin.** Chaque matin, l'Accueil doit savoir **qui relancer aujourd'hui** : ceux dont
+l'échéance arrive (pour éviter le retard) et ceux qui sont déjà en retard (pour récupérer l'argent).
+Avant le projet, il fallait relire le cahier des paiements ligne par ligne.
+
+**Données et calcul.** Tables `echeance`, `paiement`, `inscription`, `formation` et `utilisateur`.
+**Filtres** : couleur, recherche (étudiant ou formation) et **période** « Du … au … » sur la date
+d'échéance. Pour chaque échéance, l'application calcule le **reste** (montant prévu − paiements
+validés) et lui donne une couleur :
+- 🔴 **en retard** : la date est passée et l'échéance n'est pas réglée ;
+- 🟡 **à rappeler** : elle n'est pas réglée et tombe aujourd'hui, demain ou après-demain ;
+- 🟢 **à jour** : elle est réglée, ou sa date est dans plus de 2 jours.
+
+Un paiement envoyé depuis le téléphone mais pas encore validé compte comme réglé pour la couleur :
+on ne relance pas un étudiant qui a déjà payé.
+
+📷 *Figure 20 : Page Échéances au 26/10/2026, filtrée sur « En retard » puis sur « À rappeler »
+(`echeances.png`).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+**Lecture.** Sur **49 échéances**, 4 seulement sont en retard (**8 %**), pour **533 333 Ar** :
+elles concernent **deux étudiants**, Toky et Fanomezantsoa. Ils ont déjà reçu un rappel par e-mail
+le 20/10, sans réponse depuis six jours : l'Accueil doit maintenant les **appeler**. Les
+**3 échéances jaunes** (Tsiory aujourd'hui, Andry et Onja le 28/10, 390 000 Ar en tout) sont à
+rappeler dès ce matin pour qu'elles ne passent pas au rouge. Les 42 autres sont à jour : l'Accueil
+passe donc 5 appels au lieu de relire 49 lignes.
+
+**Vérification.** 32 réglées + 10 à venir + 3 jaunes + 4 rouges = 49 échéances, autant que la
+somme des tranches des 25 inscriptions. Les 4 lignes rouges sont les 4 retards du tableau de bord
+(E1), pour le même montant (150 000 + 150 000 + 116 666,67 + 116 666,66 = 533 333 Ar). Jaunes et
+vertes à venir font 390 000 + 1 510 000 = 1 900 000 Ar, le montant « à venir » de E1 (détail en
+[Annexe G.6](#annexe-g--détail-des-états-danalyse)).
+
+#### 2.3.6 Bilan des états
+
+Ces états répondent à l'objectif n° 7 du projet, **donner des chiffres à la direction**
+([Tableau 1](#11-objectifs-du-projet)), et soutiennent l'objectif n° 3, ne plus rater un paiement.
+
+**Ils se recoupent entre eux**, ce qui a servi à les vérifier : le montant encaissé de E1 est la
+somme des mois de E2, les retards de E1 sont les lignes rouges de E5 et se retrouvent dans les
+notes de E3, et le total facturé
+est égal à la somme de l'export CSV faite dans Excel. Les règles des notes et des avis sont en plus
+contrôlées par 11 tests automatiques, et les filtres de période par 3 autres (détail en
+[Annexe G](#annexe-g--détail-des-états-danalyse)).
+La direction sait désormais combien rentre, qui relancer, quelles formations développer et quels
+formateurs accompagner, sans recompter de cahier.
+
+Tous les états d'aide à la décision ont un **filtre de période** : E1, les inscriptions de E2 et E4
+par deux dates libres, les encaissements de E2 par jour, semaine, mois ou année, E3 sur la durée
+de la formation, E5 par deux dates sur la date d'échéance. La direction peut
+donc comparer un trimestre à un autre.
+
+Deux besoins restent à couvrir :
+- le **montant facturé par formation** affiché directement à l'écran (aujourd'hui calculé dans
+  Excel à partir de l'export) ;
+- un **export PDF ou Excel** des états E1 à E4 pour les réunions de direction.
 
 ---
 
@@ -916,7 +1106,7 @@ formateurs compétents sont aussi mis en avant dans la vitrine ([§2.2.1](#221-v
 
 📄 **2 pages**
 
-*Tableau 8 : Problèmes rencontrés et solutions*
+*Tableau 9 : Problèmes rencontrés et solutions*
 
 | # | Problème | Solution |
 |:-:|---|---|
@@ -928,9 +1118,13 @@ formateurs compétents sont aussi mis en avant dans la vitrine ([§2.2.1](#221-v
 | 6 | Compter la présence avec les sessions oubliait des jours (une session dure 24 h) | Table `presence` dédiée, une ligne par jour |
 | 7 | Le texte d'un support pouvait cacher un programme malveillant | Nettoyage côté serveur : seules les mises en forme autorisées sont gardées |
 | 8 | Impossible d'empêcher quelqu'un de photographier son écran | Filigrane avec le nom du lecteur ; sur mobile, pas de téléchargement et captures bloquées |
+| 9 | Supports et commentaires chargés en entier : de plus en plus lent avec les années d'utilisation | Le serveur les envoie 5 par 5 (« Voir plus »), à partir du dernier reçu, avec des index en base |
+| 10 | Page Échéances et alerte de rappel : les paiements de toutes les échéances étaient additionnés à chaque affichage, puis chaque heure | Le serveur choisit d'abord les 10 échéances de la page, puis calcule leurs montants ; index sur la date d'échéance et sur les paiements, sans changer les tables |
+| 11 | Tableau de bord : tout l'historique des paiements recalculé à chaque ouverture, pour chaque employé | Échéances lues une seule fois, calculs faits dans les index, résultat gardé une minute et partagé par tout le personnel |
+| 12 | Des écrans chargeaient une table entière : menu de tous les étudiants pour une inscription, toutes les échéances pour 5 lignes du tableau de bord, exports sans limite | L'étudiant se cherche en tapant son nom ; le serveur n'envoie que les lignes affichées ; export plafonné à 10 000 lignes avec un message |
 
 > 💡 Pour remplir les 2 pages : ajouter sous le tableau un court paragraphe sur les problèmes 1
-> et 2, les plus parlants. 🔗 18 problèmes au total : `FLUX-APPLICATION.md`, Tableau 48.
+> et 2, les plus parlants. 🔗 Autres problèmes rencontrés : `FLUX-APPLICATION.md`, partie 9.
 
 ---
 
@@ -975,8 +1169,8 @@ formateurs compétents sont aussi mis en avant dans la vitrine ([§2.2.1](#221-v
 | Pas de notification quand l'application est fermée | Notifications « push » |
 | Pas de lecture des supports sans internet | Stockage chiffré des supports sur le téléphone |
 | Avis sur les formateurs basé seulement sur les réactions | Questionnaire de fin de formation |
-| Inscription en ligne sans vérification de l'e-mail ni des pièces | Code par e-mail, envoi des pièces depuis le téléphone |
-| Pas de tests automatiques | Tests des règles importantes à chaque modification |
+| Inscription en ligne sans vérification de l'e-mail | Code de confirmation envoyé par e-mail |
+| Tests automatiques seulement pour les notes et les avis | Ajouter des tests pour les paiements et les inscriptions |
 | Tout tourne sur un poste, installé à la main | Mise en ligne en HTTPS, déploiement automatique |
 
 ---
@@ -1103,6 +1297,7 @@ NOTIFICATION_EMAIL (id_notification_email, #id_utilisateur, email, contenu, date
 ALERTE_ENVOYEE (id_alerte, type, id_reference, date_envoi)
 RESET_PASSWORD (id_reset, #id_utilisateur, token, date_expiration, utilise, date_creation)
 PARAMETRE_APPLICATION (cle, valeur, modifie_le)
+HISTORIQUE_ETAT (id_historique, table_origine, id_origine, actif, date_action)
 ```
 
 Contraintes d'unicité : une réaction par personne et par support, une présence par personne et
@@ -1119,17 +1314,26 @@ par jour, une alerte par sujet.
 
 **2. Vitrine et inscription en ligne (mobile)** 📷 `Détail formation mobile.png`
 - → Bouton **« Ajouter à ma sélection »** : choisit une ou plusieurs formations.
+- → Champ **« Confirmer le mot de passe »** et bouton œil pour afficher le mot de passe.
+- → Étape **« Votre dossier »** : **« Les ajouter maintenant »** (photo avec l'appareil ou la galerie) ou
+  **« Plus tard »**.
 - → Bouton **« Envoyer mon inscription »** : crée le compte et l'inscription « en attente ».
-- → Message de succès : « Merci … ! » avec le montant du premier paiement.
+- → Message de succès : « Merci … ! » avec le montant du premier paiement et, s'il en manque, le nombre de
+  pièces à déposer dans Mon dossier.
 - → Messages d'erreur : « Un compte existe déjà avec cette adresse e-mail… » ·
-  « Le mot de passe doit contenir au moins 8 caractères. » · « Choisissez au moins une formation. »
+  « Le mot de passe doit contenir au moins 8 caractères. » · « Les deux mots de passe ne correspondent pas. » ·
+  « Choisissez au moins une formation. »
 
 **3. Inscriptions (web)** 📷 `Inscriptions.png`
+- → Les inscriptions **pas encore validées** s'affichent en premier.
 - → Badge **« En ligne »** : inscription faite depuis le téléphone.
+- → Filtre **Dossier** (Complet / Incomplet) : retrouve les dossiers à compléter.
+- → **Détail** : badge **« Dossier incomplet · 2/4 »** (orange) ou **« Dossier complet · 4/4 »** (vert) à côté du titre, les 4 pièces de l'étudiant (aperçu ou « Non fourni ») et la liste de celles qui manquent.
 - → Bouton **« Valider »** : confirme l'inscription et le premier paiement.
 - → Boutons **« Fiche »** / **« Attestation »** : créent le PDF.
 - → Messages d'erreur : « Inscription introuvable ou déjà validée. » ·
-  « Cet étudiant est déjà inscrit à cette formation. »
+  « Cet étudiant est déjà inscrit à cette formation. » ·
+  « Dossier incomplet : Photocopie de la CIN, Certificat de résidence… » (inscription en ligne)
 
 **4. Paiements (mobile)**
 - → Affiche : Total dû · Déjà payé · Reste · prochaine tranche (en rouge « EN RETARD » si dépassée).
@@ -1160,6 +1364,13 @@ par jour, une alerte par sujet.
 - → Liste des connexions : appareil, adresse IP, date.
 - → Bouton **« Se déconnecter partout »** : ferme les autres appareils.
 - → Message d'erreur (sur tous les écrans) : « Session expirée ou révoquée. Veuillez vous reconnecter. »
+
+**9. Mon dossier (mobile, menu ⋮)**
+- → Bandeau : **« Dossier complet »** (vert) ou **« Dossier incomplet : 2/4 pièces »** (orange) ; sur l'accueil
+  de l'appli, un bandeau **« Compléter mon dossier »** tant qu'il manque une pièce.
+- → Pour chaque pièce : aperçu, état (Fournie / À déposer), boutons **appareil photo** et **galerie**.
+- → Bouton **« Enregistrer »** : envoie les pièces choisies et prévient l'accueil (dépôt ou remplacement).
+- → Message d'erreur : « Une pièce du dossier doit être une photo (JPEG, PNG, WEBP) ou un PDF. »
 
 ### Annexe D — Conception métier : les données échangées
 
@@ -1225,7 +1436,7 @@ bien rangée.
 Au lieu de recopier le nom de l'étudiant sur chaque paiement, on écrit simplement **son numéro**.
 Si l'étudiant change de téléphone, on le corrige **à un seul endroit** et tout reste juste.
 
-**Les 26 tiroirs, rangés par thème.**
+**Les 27 tiroirs, rangés par thème.**
 
 | Thème | Tiroir (table) | Ce qu'il contient |
 |---|---|---|
@@ -1255,6 +1466,7 @@ Si l'étudiant change de téléphone, on le corrige **à un seul endroit** et to
 | | `assistance` | Les demandes d'aide des étudiants |
 | | `statut` | Où en est une demande d'aide |
 | **Réglages** | `parametre_application` | Les réglages généraux de la plateforme |
+| **Suivi** | `historique_etat` | Chaque désactivation et réactivation : quel élément, dans quel sens, quand |
 
 **Comment les tiroirs sont reliés.** Le schéma suivant se lit comme des phrases.
 
@@ -1305,9 +1517,598 @@ inscrit en « Développement web » (100 000 Ar en 3 fois). *(Numéros donnés �
 
 | Habitude | En clair | Pourquoi |
 |---|---|---|
-| **On ne jette jamais rien** | Une fiche « supprimée » est seulement cachée (colonne `etat`) | On garde l'historique de l'argent et des factures, même après une erreur de clic |
+| **On ne jette jamais rien** | Une fiche « supprimée » est seulement cachée (colonne `etat`), et chaque désactivation ou réactivation est notée dans `historique_etat` | On garde l'historique de l'argent et des factures, même après une erreur de clic |
 | **Tout ou rien** | Une inscription et ses échéances sont enregistrées ensemble : si une seule chose échoue, rien n'est gardé | Jamais d'inscription « à moitié » sans ses dates de paiement |
 | **Pas de doublons** | La base refuse elle-même deux présences le même jour, deux réactions au même cours… | Les chiffres et les notes restent justes |
 
 Le détail technique de chaque table (toutes ses colonnes) est en
 [Annexe B](#annexe-b--modèle-logique-de-données-complet).
+
+---
+
+### Annexe F — Requêtes des états d'analyse
+
+Requêtes utilisées par les états de [§2.3](#23-états-danalyse-et-statistiques), reprises de
+`dashboardModel.js`, `classementModel.js` et `reactionModel.js` (légèrement simplifiées pour la
+lecture). « Validé » signifie `statut = 'valide'` ; « envoyé » signifie validé ou en attente (un
+paiement refusé ne compte jamais).
+
+**E1 — Indicateurs financiers**
+
+`dans_periode(colonne)` est écrit ici pour la lisibilité : c'est la condition
+`(:debut IS NULL OR colonne >= :debut) AND (:fin IS NULL OR colonne < :fin + 1 jour)`, toujours
+vraie quand on choisit « Tout » (`utils/periode.js`).
+
+```sql
+SELECT
+  (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p
+    WHERE p.etat = true AND p.statut = 'valide'
+      AND dans_periode(p.date_paiement))                              AS montant_encaisse,
+  (SELECT IFNULL(SUM(e.montant_prevu), 0) FROM echeance e
+    WHERE e.etat = true AND dans_periode(e.date_echeance))
+  - (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p
+      JOIN echeance e ON e.id_echeance = p.id_echeance
+      WHERE p.etat = true AND p.statut = 'valide' AND e.etat = true
+        AND dans_periode(e.date_echeance))                            AS reste_a_encaisser,
+  (SELECT COUNT(*) FROM echeance e
+    WHERE e.etat = true AND dans_periode(e.date_echeance)
+      AND CURDATE() > e.date_echeance
+      AND (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p
+            WHERE p.id_echeance = e.id_echeance AND p.etat = true
+              AND p.statut IN ('valide', 'en_attente')) < e.montant_prevu) AS paiements_en_retard;
+```
+
+Détail du reste à encaisser affiché sous les cartes (`valide` = paiements validés de l'échéance,
+`envoye` = validés + en attente) ; la somme des trois colonnes redonne `reste_a_encaisser` :
+
+```sql
+SELECT
+  SUM(LEAST(envoye, prevu) - LEAST(valide, prevu))                                    AS a_valider,
+  SUM(CASE WHEN CURDATE() > date_echeance THEN prevu - LEAST(envoye, prevu) ELSE 0 END) AS en_retard,
+  SUM(CASE WHEN CURDATE() > date_echeance THEN 0 ELSE prevu - LEAST(envoye, prevu) END) AS a_venir
+FROM (
+  SELECT e.montant_prevu AS prevu, e.date_echeance,
+    (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p WHERE p.id_echeance = e.id_echeance
+       AND p.etat = true AND p.statut = 'valide')                       AS valide,
+    (SELECT IFNULL(SUM(p.montant), 0) FROM paiement p WHERE p.id_echeance = e.id_echeance
+       AND p.etat = true AND p.statut IN ('valide', 'en_attente'))      AS envoye
+  FROM echeance e
+  WHERE e.etat = true AND dans_periode(e.date_echeance)
+) detail;
+```
+
+**E2 — Évolution des encaissements** (exemple par semaine ; par jour, mois ou année, `periode`
+vaut `DATE_FORMAT(date_paiement, '%Y-%m-%d')`, `'%Y-%m'` ou `'%Y'`). `?` est le début de la
+fenêtre affichée ; le serveur complète ensuite les périodes sans paiement par 0.
+
+```sql
+-- une semaine est désignée par son lundi
+SELECT DATE_FORMAT(DATE_SUB(DATE(date_paiement), INTERVAL WEEKDAY(date_paiement) DAY), '%Y-%m-%d') AS periode,
+       SUM(montant) AS total
+FROM paiement
+WHERE etat = true AND statut = 'valide' AND date_paiement >= ?
+GROUP BY periode ORDER BY periode;
+```
+
+**E2 — Inscriptions par mois et formations les plus demandées**
+
+```sql
+SELECT DATE_FORMAT(date_inscription, '%Y-%m') AS periode, COUNT(*) AS total
+FROM inscription
+WHERE etat = true AND dans_periode(date_inscription)
+GROUP BY periode ORDER BY periode;
+
+SELECT f.nom AS formation, COUNT(i.id_inscription) AS total_inscriptions
+FROM formation f
+LEFT JOIN inscription i ON i.id_formation = f.id_formation AND i.etat = true
+                        AND dans_periode(i.date_inscription)
+WHERE f.etat = true
+GROUP BY f.id_formation, f.nom
+ORDER BY total_inscriptions DESC, f.nom
+LIMIT 5;
+```
+
+**E3 — Activité des étudiants d'une formation** (la note est ensuite calculée par
+`classementService.calculerClassement`, selon le barème du [Tableau G2](#annexe-g--détail-des-états-danalyse))
+
+```sql
+SELECT i.id_inscription, u.nom, u.prenom, i.note_presentation,
+       DATE(i.date_inscription) AS date_debut, f.duree_jours,
+       -- jours de semaine où l'étudiant a utilisé l'application pendant la formation
+       (SELECT COUNT(*) FROM presence p
+         WHERE p.id_utilisateur = u.id_utilisateur
+           AND p.jour >= DATE(i.date_inscription)
+           AND p.jour <  DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY)
+           AND DAYOFWEEK(p.jour) NOT IN (1, 7))                         AS nb_presences,
+       -- échéances soldées le jour suivant seulement (−1)
+       (SELECT COUNT(*) FROM echeance e
+         WHERE e.id_inscription = i.id_inscription AND e.etat = true
+           AND DATE_ADD(e.date_echeance, INTERVAL 1 DAY) < CURDATE()
+           AND envoye(e, e.date_echeance) < e.montant_prevu
+           AND envoye(e, DATE_ADD(e.date_echeance, INTERVAL 1 DAY)) >= e.montant_prevu) AS nb_payees_en_retard,
+       -- échéances toujours pas soldées le jour suivant (−2)
+       (SELECT COUNT(*) FROM echeance e
+         WHERE e.id_inscription = i.id_inscription AND e.etat = true
+           AND DATE_ADD(e.date_echeance, INTERVAL 1 DAY) < CURDATE()
+           AND envoye(e, DATE_ADD(e.date_echeance, INTERVAL 1 DAY)) < e.montant_prevu) AS nb_non_reglees
+FROM inscription i
+JOIN formation f    ON f.id_formation = i.id_formation
+JOIN etudiant et    ON et.id_etudiant = i.id_etudiant
+JOIN utilisateur u  ON u.id_utilisateur = et.id_utilisateur
+WHERE i.id_formation = ? AND i.etat = true;
+```
+
+*`envoye(e, jour)` est écrit ici pour la lisibilité : c'est la somme des paiements envoyés (validés
+ou en attente) de l'échéance `e` jusqu'à `jour` inclus.*
+
+**E4 — Réactions reçues par chaque formateur** (l'avis « compétent » est ensuite calculé par
+`reactionService.evaluerFormateurs`)
+
+```sql
+SELECT u.nom, u.prenom,
+       COUNT(DISTINCT s.id_support)             AS nb_supports,
+       COALESCE(SUM(tr.nom = 'like'), 0)        AS nb_like,
+       COALESCE(SUM(tr.nom = 'coeur'), 0)       AS nb_coeur,
+       COALESCE(SUM(tr.nom = 'utile'), 0)       AS nb_utile,
+       COALESCE(SUM(tr.nom = 'dislike'), 0)     AS nb_dislike
+FROM utilisateur u
+JOIN role ro ON ro.id_role = u.id_role
+LEFT JOIN support s        ON s.id_utilisateur = u.id_utilisateur
+                          AND s.etat = true AND s.statut = 'publie'
+LEFT JOIN reaction r       ON r.id_support = s.id_support
+                          AND dans_periode(r.date_reaction)
+LEFT JOIN type_reaction tr ON tr.id_type_reaction = r.id_type_reaction
+WHERE ro.nom = 'Formateur' AND u.etat = true
+GROUP BY u.id_utilisateur, u.nom, u.prenom;
+```
+
+---
+
+### Annexe G — Détail des états d'analyse
+
+Complément de [§2.3](#23-états-danalyse-et-statistiques) : les chiffres
+lus sous chaque capture, les règles de calcul détaillées et les vérifications faites à la main.
+Données fictives (`donneesTest.sql`) : 10 étudiants, 25 inscriptions sur 7 formations,
+33 paiements et 47 réactions, de juillet à octobre 2026, lus au 26/10/2026.
+
+#### G.1 Catalogue des états
+
+Le catalogue complet des huit états (type et format compris) est le [Tableau 8](#23-états-danalyse-et-statistiques).
+
+#### G.2 E1 : indicateurs financiers
+
+Tables `paiement`, `echeance`, `formation`. **Filtre de période** : deux dates libres
+« Du … au … » (`?debut=&fin=`, bornes incluses, chacune facultative). Les chiffres ci-dessous sont
+lus sans date (cumul depuis l'ouverture, au 26/10/2026).
+
+| Indicateur | Calcul |
+|---|---|
+| Montant encaissé | Somme des paiements **validés** par l'Accueil, dont la date de paiement est dans la période |
+| Reste à encaisser | Somme des échéances de la période − ce qui a été validé sur ces mêmes échéances |
+| Paiements en retard | Nombre d'échéances de la période dont la date est passée et dont le montant envoyé (validé ou en attente, hors refusé) est inférieur au montant prévu |
+| Nombre de formations | Formations proposées au catalogue |
+
+| Montant encaissé | Reste à encaisser | Paiements en retard | Nombre de formations |
+|:-:|:-:|:-:|:-:|
+| 4 671 667 Ar | 2 698 333 Ar | 4 | 7 |
+
+Les 4 retards : Toky (2ᵉ et 3ᵉ tranches de Développement web, dont un virement refusé) et
+Fanomezantsoa (2ᵉ et 3ᵉ tranches de Réseaux informatiques). Les 265 000 Ar en attente
+correspondent à 2 paiements mobiles pas encore validés.
+
+**Calcul détaillé.** Pour chaque échéance, l'application lit trois montants : le **prévu**,
+le **validé** (paiements validés par l'Accueil) et l'**envoyé** (validés + en attente ; un paiement
+refusé ne compte pas). Elle en tire :
+
+| Montant | Formule, par échéance | Somme sur les échéances de la période |
+|---|---|:-:|
+| Reste à encaisser | prévu − validé | 2 698 333 Ar |
+| dont à valider | envoyé − validé (sans dépasser le prévu) | 265 000 Ar |
+| dont en retard | prévu − envoyé, si la date est passée | 533 333 Ar |
+| dont à venir | prévu − envoyé, si la date n'est pas encore arrivée | 1 900 000 Ar |
+
+Les trois parts ne se recouvrent pas : ce qui est envoyé mais pas validé est « à valider », ce qui
+n'est pas envoyé est « en retard » ou « à venir » selon la date. Leur somme redonne donc le reste :
+
+- 265 000 + 533 333 + 1 900 000 = **2 698 333 Ar** ;
+- en retard : 150 000 + 150 000 (Toky, tranches de 450 000 ÷ 3) + 116 666,67 + 116 666,66
+  (Fanomezantsoa, tranches de 350 000 ÷ 3) = 533 333,33 Ar, affiché **533 333 Ar** ;
+- à valider : 175 000 (Sitraka) + 90 000 (Miora) = **265 000 Ar**.
+
+Le total facturé se retrouve de deux façons :
+
+- par la base : encaissé + reste = 4 671 667 + 2 698 333 = **7 370 000 Ar** ;
+- par le catalogue (tarif × inscrits, [G.3](#g3-e2--évolution-des-encaissements-et-des-inscriptions)) :
+  2 250 000 + 800 000 + 720 000 + 900 000 + 750 000 + 900 000 + 1 050 000 = **7 370 000 Ar**.
+
+Part déjà encaissée : 4 671 667 ÷ 7 370 000 = **63 %** ; part en retard : 533 333 ÷ 7 370 000 =
+**7 %** du total facturé.
+
+**Vérification.**
+- Le montant encaissé (4 671 667 Ar) est égal, à l'ariary près (arrondis), à la **somme des
+  quatre mois** de E2 (750 000 + 1 063 333 + 1 283 333 + 1 575 000).
+- Le total facturé (7 370 000 Ar) est égal à la **somme de la colonne « Tarif »** de l'export CSV
+  (E6), faite dans Excel sur les 25 inscriptions.
+- Les 4 retards sont les **4 lignes rouges** de la liste des échéances (E5) ; leur montant a été
+  additionné à la main : 150 000 + 150 000 + 116 666,67 + 116 666,66 = 533 333,33 Ar (la dernière
+  tranche de Réseaux informatiques récupère les centimes).
+- Le reste à encaisser se décompose ainsi : 533 333 Ar en retard + 265 000 Ar en attente de
+  validation (Sitraka 175 000, Miora 90 000, échéances pas encore en retard) + 1 900 000 Ar de
+  tranches pas encore dues = 2 698 333 Ar.
+
+#### G.3 E2 : évolution des encaissements et des inscriptions
+
+Tables `paiement`, `inscription`, `formation`.
+- **Filtre de période des encaissements** : par jour (7 derniers jours), par semaine (8 dernières
+  semaines, du lundi au dimanche), par mois (12 derniers mois) ou par année (tout l'historique). Une
+  période sans paiement est affichée à 0.
+- **Filtre de période des inscriptions** : le filtre « Du … au … » du tableau de bord, sur la date
+  d'inscription, pour le graphe des inscriptions par mois et pour les formations les plus suivies.
+- Encaissements : somme des paiements validés, regroupée par jour, semaine, mois ou année de paiement.
+- Inscriptions : nombre d'inscriptions par mois d'inscription.
+- Formations les plus demandées : nombre d'inscriptions par formation, les 5 premières.
+
+| Mois 2026 | Juillet | Août | Septembre | Octobre (au 26) |
+|---|:-:|:-:|:-:|:-:|
+| Encaissé (Ar) | 750 000 | 1 063 333 | 1 283 333 | 1 575 000 |
+| Inscriptions | 6 | 8 | 5 | 6 |
+
+Progression des encaissements : +42 %, +21 %, +23 %. Les montants mensuels sont arrondis à
+l'ariary : leur somme affichée (4 671 666 Ar) diffère d'1 Ar du montant encaissé de E1
+(4 671 667 Ar) à cause des centimes des tranches.
+
+**Calcul détaillé de l'évolution.** Évolution = (mois − mois précédent) ÷ mois précédent × 100,
+arrondie à l'unité :
+
+| Mois | Calcul | Évolution |
+|---|---|:-:|
+| Août | (1 063 333 − 750 000) ÷ 750 000 = 313 333 ÷ 750 000 = 0,418 | **+42 %** |
+| Septembre | (1 283 333 − 1 063 333) ÷ 1 063 333 = 220 000 ÷ 1 063 333 = 0,207 | **+21 %** |
+| Octobre | (1 575 000 − 1 283 333) ÷ 1 283 333 = 291 667 ÷ 1 283 333 = 0,227 | **+23 %** |
+
+- Sur la période : (1 575 000 − 750 000) ÷ 750 000 = **+110 %** : octobre (au 26) encaisse plus
+  du double de juillet.
+- Total : 750 000 + 1 063 333 + 1 283 333 + 1 575 000 = 4 671 666 Ar (4 671 667 Ar avec les
+  centimes).
+- Moyenne mensuelle : 4 671 667 ÷ 4 = **1 167 917 Ar**.
+- Inscriptions : 6 + 8 + 5 + 6 = 25, soit **6,25 par mois** ; l'écart au plus haut (août, 8) est
+  de 3 inscriptions seulement, d'où la lecture « courbe à peu près plate ».
+- Montant encaissé par inscription : 4 671 667 ÷ 25 = **186 867 Ar**, pour un tarif moyen de
+  7 370 000 ÷ 25 = **294 800 Ar** : les étudiants ont réglé en moyenne 63 % de leur formation.
+
+| Formation | Inscriptions | Part des inscriptions | Montant facturé (Ar) | Part du montant |
+|---|:-:|:-:|:-:|:-:|
+| Développement web | 5 | 20 % | 2 250 000 | 31 % |
+| Bureautique | 4 | 16 % | 800 000 | 11 % |
+| Excel avancé | 4 | 16 % | 720 000 | 10 % |
+| Infographie | 3 | 12 % | 900 000 | 12 % |
+| Maintenance informatique | 3 | 12 % | 750 000 | 10 % |
+| Python pour débutants | 3 | 12 % | 900 000 | 12 % |
+| Réseaux informatiques | 3 | 12 % | 1 050 000 | 14 % |
+| **Total** | **25** | **100 %** | **7 370 000** | **100 %** |
+
+*Parts arrondies à l'unité ; montant facturé = tarif × nombre d'inscriptions. L'écran affiche les
+5 premières lignes (à égalité, par ordre alphabétique).*
+
+**Calcul détaillé des parts.** Part des inscriptions = inscrits ÷ 25 ; part du montant = montant
+facturé ÷ 7 370 000.
+
+| Formation | Tarif × inscrits | Part des inscriptions | Part du montant |
+|---|---|:-:|:-:|
+| Développement web | 450 000 × 5 = 2 250 000 | 5 ÷ 25 = 20 % | 2 250 000 ÷ 7 370 000 = 30,5 % → 31 % |
+| Bureautique | 200 000 × 4 = 800 000 | 4 ÷ 25 = 16 % | 10,9 % → 11 % |
+| Excel avancé | 180 000 × 4 = 720 000 | 4 ÷ 25 = 16 % | 9,8 % → 10 % |
+| Infographie | 300 000 × 3 = 900 000 | 3 ÷ 25 = 12 % | 12,2 % → 12 % |
+| Maintenance informatique | 250 000 × 3 = 750 000 | 3 ÷ 25 = 12 % | 10,2 % → 10 % |
+| Python pour débutants | 300 000 × 3 = 900 000 | 3 ÷ 25 = 12 % | 12,2 % → 12 % |
+| Réseaux informatiques | 350 000 × 3 = 1 050 000 | 3 ÷ 25 = 12 % | 14,2 % → 14 % |
+
+Les parts arrondies totalisent bien 100 % des deux côtés. Lecture : le Développement web pèse
+20 % des inscriptions mais 31 % du chiffre ; à l'inverse, Bureautique et Excel avancé ont 32 % des
+inscrits pour 21 % du chiffre seulement (formations courtes et peu chères).
+
+**Vérification.**
+- La somme des quatre mois est égale au « montant encaissé » de E1 (à l'ariary près).
+- 6 + 8 + 5 + 6 = 25 inscriptions, autant que de lignes dans l'export CSV (E6).
+- Les montants par formation (que l'écran n'affiche pas) ont été obtenus par un tableau croisé
+  dynamique sur l'export CSV ; leur total, 7 370 000 Ar, est le total facturé de E1.
+
+#### G.4 E3 : notes d'attestation et classement
+
+Tables `inscription`, `presence`, `echeance`, `paiement`. **Filtre** : la formation (un formateur
+ne voit que les siennes) ; la période est celle de la formation, de la date d'inscription à la fin
+de la durée.
+
+*Tableau G2 : Barème de la note d'attestation*
+
+| Partie | Condition | Points |
+|---|---|:-:|
+| **Départ** | Tout étudiant | 10 |
+| **Présence** | Présent au moins 90 % des jours de cours | 0 |
+| | De 75 à 90 % | −1 |
+| | De 50 à 75 % | −2 |
+| | Moins de 50 % | −4 |
+| **Paiement** | Échéance payée le jour de sa date | 0 |
+| | Échéance payée en retard (réglée le jour suivant) | −1 par échéance |
+| | Échéance non réglée (pas réglée le jour suivant) | −2 par échéance |
+| | Total des retenues de paiement | −4 au plus |
+| = Note calculée | (jamais sous 0) | **/10** |
+| **Présentation** | Donnée par le formateur (10 maximum) | **/10** |
+| = **Note d'attestation** | note calculée + présentation | **/20** |
+
+Un étudiant est **présent** un jour de semaine s'il a utilisé l'application ce jour-là (une ligne
+par jour dans `presence`) ; les week-ends sont retirés sur le vrai calendrier. Pour le paiement,
+c'est la **date d'envoi** qui compte, pas celle de la validation par l'Accueil. Le classement trie
+par note calculée, puis par nombre de présences.
+
+| Rang | Étudiant | Présence | Retenue présence | Retenue paiement | Note calculée /10 | Présentation /10 | Note /20 |
+|:-:|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| 1 | Miora | 58 / 64 j (91 %) | 0 | 0 | 10 | 9 | 19 |
+| 2 | Lova | 6 / 6 j (100 %) | 0 | 0 | 10 | — | en cours |
+| 3 | Andry | 58 / 65 j (89 %) | −1 | 0 | 9 | 8 | 17 |
+| 4 | Fitiavana | 46 / 51 j (90 %) | 0 | −1 | 9 | — | en cours |
+| 5 | Toky | 26 / 65 j (40 %) | −4 | −4 | **2** | 6 | 8 |
+
+Le seuil est strict : Andry perd un point avec 89 % de présence, quand Fitiavana, à 90 %, n'en
+perd pas (mais perd un point pour une tranche réglée le lendemain).
+
+**Calcul détaillé, étudiant par étudiant.**
+
+1. **Jours de cours** = jours du lundi au vendredi entre la date d'inscription et la fin de la
+   formation, comptés sur le vrai calendrier (pour une formation en cours, seulement les jours déjà
+   passés : Lova et Fitiavana sont donc jugés sur 6 et 51 jours).
+2. **Taux de présence** = présences ÷ jours de cours × 100, **arrondi à l'entier**, puis comparé
+   aux paliers du Tableau G2.
+3. **Retenue paiement** = (payées en retard × −1) + (non réglées × −2), sans descendre sous −4.
+4. **Note calculée** = 10 + retenue présence + retenue paiement (jamais sous 0) ; **note /20** =
+   note calculée + présentation.
+
+| Étudiant | Taux de présence | Retenue présence | Retenue paiement | Note calculée | Note /20 |
+|---|---|:-:|---|:-:|:-:|
+| Miora | 58 ÷ 64 = 90,6 % → 91 % ≥ 90 | 0 | aucune → 0 | 10 + 0 + 0 = 10 | 10 + 9 = 19 |
+| Lova | 6 ÷ 6 = 100 % | 0 | aucune → 0 | 10 | en cours |
+| Andry | 58 ÷ 65 = 89,2 % → 89 % (75–90) | −1 | aucune → 0 | 10 − 1 + 0 = 9 | 9 + 8 = 17 |
+| Fitiavana | 46 ÷ 51 = 90,2 % → 90 % ≥ 90 | 0 | 1 × −1 = −1 | 10 + 0 − 1 = 9 | en cours |
+| Toky | 26 ÷ 65 = 40 % (< 50) | −4 | 2 × −2 = −4 | 10 − 4 − 4 = 2 | 2 + 6 = 8 |
+
+**Rang** : on trie par note calculée, puis par nombre de présences. Miora et Lova ont 10 : Miora
+(58 présences) passe devant Lova (6). Andry et Fitiavana ont 9 : Andry (58) passe devant
+Fitiavana (46).
+
+**Synthèse de la promotion** : note calculée moyenne (10 + 10 + 9 + 9 + 2) ÷ 5 = **8/10** ;
+sans Toky, 9,5/10. Note /20 moyenne des trois étudiants notés : (19 + 17 + 8) ÷ 3 = **14,7/20**.
+
+**Vérification.**
+- La note de Toky a été recalculée à la main : 26 présences sur 65 jours de cours = 40 % (−4) ;
+  échéances du 04/09 (virement refusé) et du 04/10 (rien envoyé) non réglées : 2 × −2 = −4 ;
+  10 − 4 − 4 = **2**.
+- **Recoupement avec E1** : les deux échéances de Toky font partie des 4 retards du tableau de bord.
+- Les règles sont vérifiées par **9 tests automatiques** (`classement.test.js` : paliers de
+  présence, plafond de −4, week-ends, égalités de rang, exemple 10 − 1 − 1 = 8 puis 15/20).
+
+#### G.5 E4 : avis des étudiants sur les formateurs
+
+Tables `reaction`, `type_reaction`, `support`, `utilisateur`. Seules les réactions sur les
+supports **publiés** comptent. **Filtres** : tri par type de réaction, filtre par avis, et
+**période** (le filtre « Du … au … » de E1) : seules les réactions dont la date (`date_reaction`)
+est dans la période sont comptées. Les chiffres ci-dessous sont lus sans date (depuis le début).
+
+| Élément | Calcul |
+|---|---|
+| Positives | 👍 + ❤️ + 💡 |
+| % positif | positives ÷ toutes les réactions |
+| **Compétent** | au moins 5 réactions et au moins 60 % de positives |
+| **Non compétent** | au moins 5 réactions et moins de 60 % de positives |
+| **Pas assez d'avis** | moins de 5 réactions : on ne juge pas |
+
+| Formateur | Supports | 👍 | ❤️ | 💡 | 👎 | Total | % positif | Avis |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
+| Tiana | 5 | 8 | 4 | 5 | 1 | 18 | 94 % | Compétent |
+| Voahangy | 5 | 5 | 3 | 2 | 2 | 12 | 83 % | Compétent |
+| Rivo | 2 | 2 | 1 | 2 | 1 | 6 | 83 % | Compétent |
+| Hery | 3 | 1 | 1 | 0 | 5 | 7 | 29 % | Non compétent |
+| Lalaina | 2 | 2 | 1 | 1 | 0 | 4 | 100 % | Pas assez d'avis |
+| **Total** | **17** | **18** | **10** | **10** | **9** | **47** | **81 %** | |
+
+*À taux égal (Voahangy et Rivo, 83 %), l'écran place d'abord le formateur qui a le plus d'avis.*
+
+**Calcul détaillé, formateur par formateur.** Positives = 👍 + ❤️ + 💡 ; total = positives + 👎 ;
+% positif = positives ÷ total. L'avis compare le taux **exact** au seuil de 60 % (l'arrondi ne
+sert qu'à l'affichage).
+
+| Formateur | Positives | Total | % positif | Règle appliquée | Avis |
+|---|---|:-:|---|---|---|
+| Tiana | 8 + 4 + 5 = 17 | 17 + 1 = 18 | 17 ÷ 18 = 94,4 % | 18 ≥ 5 et 94,4 ≥ 60 | Compétent |
+| Voahangy | 5 + 3 + 2 = 10 | 10 + 2 = 12 | 10 ÷ 12 = 83,3 % | 12 ≥ 5 et 83,3 ≥ 60 | Compétent |
+| Rivo | 2 + 1 + 2 = 5 | 5 + 1 = 6 | 5 ÷ 6 = 83,3 % | 6 ≥ 5 et 83,3 ≥ 60 | Compétent |
+| Hery | 1 + 1 + 0 = 2 | 2 + 5 = 7 | 2 ÷ 7 = 28,6 % | 7 ≥ 5 mais 28,6 < 60 | Non compétent |
+| Lalaina | 2 + 1 + 1 = 4 | 4 + 0 = 4 | 4 ÷ 4 = 100 % | 4 < 5 | Pas assez d'avis |
+
+- Total des colonnes : 👍 8 + 5 + 2 + 1 + 2 = 18 ; ❤️ 4 + 3 + 1 + 1 + 1 = 10 ; 💡 5 + 2 + 2 + 0 + 1
+  = 10 ; 👎 1 + 2 + 1 + 5 + 0 = 9 ; soit 18 + 10 + 10 + 9 = **47 réactions**.
+- % positif global : (18 + 10 + 10) ÷ 47 = 38 ÷ 47 = 80,9 % → **81 %**.
+- Hery reçoit à lui seul 5 des 9 réactions négatives du centre (**56 %**), pour 7 des 47 réactions
+  (15 %) : c'est ce déséquilibre qui justifie l'entretien.
+- Pour que Lalaina soit jugé, il lui faut **1 réaction de plus** ; pour que Hery repasse au-dessus
+  de 60 %, il lui faudrait, sans nouveau 👎, au moins 6 réactions positives de plus
+  ((2 + 6) ÷ (7 + 6) = 61,5 %).
+
+**Vérification.**
+- Les comptes par formateur ont été refaits avec une requête de contrôle sur la table `reaction`
+  (47 lignes) : les totaux 18 + 12 + 6 + 7 + 4 = 47 sont identiques à l'écran.
+- Les seuils (5 réactions, 60 %) et l'ordre d'affichage sont vérifiés par **2 tests automatiques**
+  (`commentairesReactions.test.js`).
+
+#### G.6 E5 : échéances en retard et à rappeler
+
+**Besoin.** L'Accueil ouvre la page **Échéances** chaque matin. Il doit décider **qui relancer
+aujourd'hui** : les étudiants dont l'échéance arrive dans les 2 jours (pour éviter le retard) et
+ceux qui sont déjà en retard (pour récupérer l'argent).
+
+**Données et règles de calcul.** Tables `echeance`, `paiement`, `inscription`, `formation`,
+`utilisateur`. **Filtres** : recherche (étudiant ou formation), couleur (à jour / à rappeler / en
+retard), état (actives ou désactivées) et **période** « Du … au … » sur la date d'échéance. Pour
+chaque échéance :
+
+| Colonne | Calcul |
+|---|---|
+| Payé | somme des paiements **validés** de l'échéance |
+| Reste | montant prévu − payé |
+| Envoyé | paiements validés + en attente (un paiement refusé ne compte pas) |
+| 🟢 À jour | envoyé ≥ prévu, ou date dans plus de 2 jours |
+| 🟡 À rappeler | pas réglée, et la date est aujourd'hui, demain ou après-demain |
+| 🔴 En retard | pas réglée, et la date est passée |
+
+Une échéance payée depuis le téléphone mais pas encore validée reste verte, avec la mention
+« Payé, à valider » : l'étudiant ne doit pas être relancé pour un paiement qu'il a déjà fait.
+
+**Restitution.**
+
+La capture est la [Figure 20](#235-état-e5--échéances-en-retard-et-à-rappeler) ; le décompte
+complet par couleur :
+
+| Couleur | Nombre d'échéances | Montant restant (Ar) | Étudiants |
+|---|:-:|:-:|---|
+| 🟢 Réglées (dont 2 « payé, à valider ») | 32 | 0 (265 000 à valider) | — |
+| 🟢 À venir (date dans plus de 2 jours) | 10 | 1 510 000 | — |
+| 🟡 À rappeler | 3 | 390 000 | Tsiory (aujourd'hui, 150 000), Andry (28/10, 150 000), Onja (28/10, 90 000) |
+| 🔴 En retard | 4 | 533 333 | Toky (2 × 150 000), Fanomezantsoa (2 × 116 667) |
+| **Total** | **49** | | |
+
+**Lecture et interprétation.** Sur les 49 échéances du centre, **4 seulement sont en retard
+(8 %)**, pour 533 333 Ar, soit 7 % du total facturé. Elles concernent **deux étudiants**, Toky et
+Fanomezantsoa, déjà relancés par e-mail le 20/10 : six jours sans réponse, l'Accueil doit
+maintenant les **appeler** plutôt que renvoyer un e-mail. Les 3 échéances jaunes (390 000 Ar) sont
+à rappeler **aujourd'hui** pour qu'elles ne passent pas au rouge. Sitraka et Miora n'ont pas à être
+relancés : ils ont déjà payé, c'est l'Accueil qui doit valider leurs 265 000 Ar.
+
+**Vérification.**
+- 32 + 10 + 3 + 4 = **49 échéances**, autant que la somme des tranches des 25 inscriptions.
+- Les **4 lignes rouges** sont les 4 « paiements en retard » du tableau de bord (E1), et leur reste,
+  150 000 + 150 000 + 116 666,67 + 116 666,66 = **533 333 Ar**, est le montant « en retard » de E1.
+- Jaunes + vertes à venir : 390 000 + 1 510 000 = **1 900 000 Ar**, le montant « à venir » de E1.
+- Le calcul des tranches (la dernière récupère les centimes) est vérifié par **4 tests
+  automatiques** (`echeancier.test.js`).
+
+#### G.7 E6 : export des inscriptions (CSV pour Excel)
+
+**Besoin.** La direction veut parfois **retravailler les chiffres elle-même** : un tableau croisé
+par formation, un total pour le comptable, une liste à imprimer. Plutôt que d'ajouter un écran pour
+chaque besoin, l'application fournit les données brutes dans un fichier qu'Excel ouvre directement.
+
+**Données et règles de calcul.** Tables `inscription`, `etudiant`, `utilisateur`, `formation`.
+Bouton « Exporter CSV » du tableau de bord : **une ligne par inscription active**, avec 6 colonnes
+(N° inscription, Nom, Prénom, Formation, Date d'inscription, Tarif). Le fichier est préparé pour
+Excel en français : séparateur « ; », accents conservés, tarif écrit comme un **nombre** (pour
+pouvoir faire des sommes). **Filtre de période** : l'export contient tout l'historique ; la période
+se choisit dans Excel, avec le filtre de la colonne « Date d'inscription ». Les pages Échéances et
+Inscriptions ont aussi leur propre bouton d'export, qui reprend la liste **avec les filtres choisis
+à l'écran**.
+
+**Restitution.**
+
+📷 *Figure G1 : Fichier `inscriptions.csv` ouvert dans Excel, avec le tableau croisé dynamique
+« inscriptions et montant facturé par formation » (`export-csv.png`).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+Le tableau croisé obtenu est celui de [G.3](#g3-e2--évolution-des-encaissements-et-des-inscriptions)
+(25 lignes, 7 formations, 7 370 000 Ar).
+
+**Lecture et interprétation.** Le fichier compte **25 inscriptions** pour **7 370 000 Ar**
+facturés, soit un tarif moyen de **294 800 Ar**. Le tableau croisé montre ce que l'écran ne donne
+pas : le **Développement web** rapporte à lui seul 2 250 000 Ar (31 %), presque autant que
+Bureautique, Excel avancé et Maintenance réunies (2 270 000 Ar pour 11 inscrits). Deux lignes sont
+des inscriptions **pas encore validées** (Fitiavana et Miora, Excel avancé, 360 000 Ar) : il faut
+les retirer pour un chiffre définitif.
+
+**Vérification.**
+- 25 lignes dans le fichier = 6 + 8 + 5 + 6 inscriptions par mois de E2.
+- Somme de la colonne Tarif dans Excel : **7 370 000 Ar** = encaissé + reste à encaisser de E1
+  (4 671 667 + 2 698 333).
+- Le fichier a été ouvert dans Excel : accents corrects, tarifs reconnus comme des nombres (la
+  somme fonctionne), dates lisibles.
+
+#### G.8 E7 : fiche d'inscription et facture (PDF)
+
+**Besoin.** L'étudiant doit avoir une **preuve** de ce qu'il a acheté (fiche d'inscription) et de
+chaque somme versée (facture). L'Accueil, lui, ne doit plus rien écrire à la main : les documents
+partent seuls, par e-mail, au bon moment.
+
+**Données et règles de calcul.** Tables `inscription`, `formation`, `echeance`, `paiement`,
+`facture`.
+
+| Document | Quand il est créé | Ce qu'il contient |
+|---|---|---|
+| Fiche d'inscription | À la **validation** de l'inscription par l'Accueil | Étudiant (nom, e-mail, téléphone), formation, date d'inscription, tarif ; l'e-mail qui l'accompagne rappelle l'échéancier |
+| Facture | À la **validation** d'un paiement (jamais pour un paiement en attente ou refusé) | Numéro `FAC-<année>-<n° du paiement sur 4 chiffres>`, étudiant, formation, mode de paiement, montant payé, **reste à payer** |
+
+Reste à payer sur la facture = total des échéances de l'inscription − total des paiements
+**validés** de cette inscription (celui de la facture compris). **Filtre** : un document par
+inscription ou par paiement.
+
+**Restitution.**
+
+📷 *Figure G2 : Facture PDF de Sitraka, créée en validant son paiement envoyé depuis le téléphone
+le 21/10/2026 (`facture.png`).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+**Lecture et interprétation.** Sitraka est inscrit en **Réseaux informatiques** (350 000 Ar en
+2 tranches de 175 000 Ar). La facture indique un paiement de **175 000 Ar** par virement bancaire
+et un **reste à payer de 175 000 Ar** : Sitraka sait exactement ce qu'il doit encore, sans appeler
+l'Accueil. Au 26/10/2026, **30 paiements validés** peuvent recevoir une facture, pour un total de
+4 671 667 Ar ; les 2 paiements en attente et le virement refusé de Toky n'en ont pas, ce qui évite
+de « prouver » un paiement que le centre n'a pas reçu.
+
+**Vérification.**
+- Reste de Sitraka refait à la main : 350 000 − 175 000 = **175 000 Ar**.
+- Recoupement avec E1 : après la validation, le montant encaissé passe de 4 671 667 à
+  **4 846 667 Ar** (+175 000) et le montant « à valider » de 265 000 à **90 000 Ar**.
+- L'envoi automatique de la facture à chaque validation (au guichet ou depuis le téléphone) est
+  vérifié par **3 tests automatiques** (`paiementService.test.js`).
+
+#### G.9 E8 : attestation de formation (PDF + QR code)
+
+**Besoin.** L'étudiant veut un document qui prouve sa formation et sa note. Un **employeur** doit
+pouvoir vérifier qu'il n'est pas faux. La direction veut que seuls les étudiants qui ont **fini,
+payé et été notés** reçoivent une attestation.
+
+**Données et règles de calcul.** Tables `inscription`, `formation`, `echeance`, `paiement`,
+`attestation`. Une attestation est **prête** quand trois conditions sont réunies :
+1. la formation est **terminée** : date d'inscription + durée ≤ aujourd'hui ;
+2. **tout est payé** : total des échéances − paiements validés = 0 ;
+3. le formateur a donné la **note de présentation**.
+
+Sinon elle est **bloquée** : chaque heure, le serveur envoie les attestations prêtes et prévient
+l'Accueil ou le formateur de ce qui bloque les autres. La note imprimée est celle de E3 : note
+calculée /10 + présentation /10. Chaque attestation reçoit un **code unique** (UUID) ; le QR code
+mène à une page publique qui affiche la formation et la date de délivrance, ou « Document non
+reconnu » pour un faux. **Filtres** : sur la page Inscriptions, le statut « Réussie » liste les
+attestations délivrées ; la recherche et l'origine affinent la liste.
+
+**Restitution.**
+
+📷 *Figure G3 : Page Inscriptions filtrée sur « Réussie », et attestation PDF d'Andry avec son
+QR code (`attestation.png`).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+| Situation au 26/10/2026 | Nombre | Détail |
+|---|:-:|---|
+| Délivrées (« Réussie ») | 12 | dont 2 envoyées seules au démarrage du serveur (Rindra en Python, Onja en Maintenance) |
+| Bloquées : reste à payer | 2 | Toky (300 000 Ar), Fanomezantsoa (233 333 Ar) |
+| Bloquée : note manquante | 1 | Tsiory (Bureautique), en attente de la note de Voahangy |
+| **Formations terminées** | **15** | |
+
+**Lecture et interprétation.** **12 attestations sur 15 (80 %)** sont délivrées. Les 3 autres sont
+bloquées pour deux raisons différentes : pour Toky et Fanomezantsoa, c'est l'**argent** (533 333 Ar
+à récupérer, voir E5) ; pour Tsiory, c'est la **formatrice** qui doit encore noter. La direction
+sait donc qui relancer : deux étudiants et une formatrice. L'attestation d'Andry porte **17/20**,
+la même note que dans son classement (E3).
+
+**Vérification.**
+- 12 + 2 + 1 = **15** inscriptions dont la formation est terminée au 26/10/2026.
+- Restes bloquants : 300 000 + 233 333 = **533 333 Ar**, le montant « en retard » de E1 et des
+  lignes rouges de E5.
+- Le QR code d'une attestation a été scanné avec un téléphone : la page affiche la bonne formation
+  et la bonne date ; un code modifié à la main affiche « Document non reconnu ».
+- Les conditions de blocage et l'envoi automatique sont vérifiés par **5 tests automatiques**
+  (`attestationsAuto.test.js`).

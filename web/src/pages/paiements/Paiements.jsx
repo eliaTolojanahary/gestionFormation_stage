@@ -5,21 +5,21 @@ import Tableau from '../../components/tableau/Tableau'
 import SearchFilterBar from '../../components/form/Filter'
 import Pagination from '../../components/pagination/Pagination'
 import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
+import BarreSelection from '../../components/tableau/BarreSelection'
 import Modal from '../../components/modal/Modal'
+import { useRetour } from '../../components/retour/useRetour'
 import { usePaiement, STATUTS_PAIEMENT } from '../../hooks/usePaiement'
 import { useDocument } from '../../hooks/useDocument'
-import { useNotifEvent } from '../../hooks/useNotifEvent'
 import { useListePaginee } from '../../hooks/useListePaginee'
+import { useSelection, useActionsGroupees } from '../../hooks/useSelection'
 import { fileUrl } from '../../utils/api'
 import { formatDate } from '../../utils/time'
+import { formatMontant } from '../../utils/format'
+import BadgeEtat from '../../components/etat/BadgeEtat'
+import { ETATS, ETAT_DEFAUT, filtreEtat } from '../../utils/etat'
 import './Paiements.css'
 
 const TOUS = 'Tous'
-
-// Ex. 150000 -> "150 000 MGA"
-function formatMontant(montant) {
-  return `${Number(montant).toLocaleString('fr-FR')} MGA`
-}
 
 // Badge coloré du statut (classe CSS selon en_attente / valide / refuse)
 function StatutPaiement({ statut }) {
@@ -34,40 +34,124 @@ function StatutPaiement({ statut }) {
 const CODE_STATUT = Object.fromEntries(Object.entries(STATUTS_PAIEMENT).map(([code, libelle]) => [libelle, code]))
 
 // Page Paiements : l'Accueil y valide ou refuse les paiements envoyés par les étudiants
-// depuis le mobile, et génère les factures des paiements validés.
+// depuis le mobile ; à la validation, le serveur envoie la facture à l'étudiant (bouton Facture : l'ouvrir).
 // Liste paginée côté serveur : recherche et filtres sont envoyés à GET /paiements.
+// Filtre « État » : paiements actifs par défaut ; le Super Admin désactive / réactive
+// (un paiement désactivé ne compte plus dans les montants payés).
+// Sélection multiple (clic sur les lignes) : valider, refuser, désactiver ou réactiver en une fois.
 function Paiements({ user }) {
-  const { validerPaiement, refuserPaiement } = usePaiement()
+  const { validerPaiement, refuserPaiement, desactiverPaiement, reactiverPaiement } = usePaiement()
   const { getFacture, isLoading: isGenerating, error: documentError } = useDocument()
-  const { facturePaiement } = useNotifEvent()
+  const { confirmer, notifier } = useRetour()
   const [selectedPayment, setSelectedPayment] = useState(null)
   const [actionError, setActionError] = useState('')
   const [enCours, setEnCours] = useState(null) // id du paiement en cours de validation/refus
   const [search, setSearch] = useState('')
   const [modeFilter, setModeFilter] = useState(TOUS)
   const [statutFilter, setStatutFilter] = useState(TOUS)
+  const [etat, setEtat] = useState(ETAT_DEFAUT)
+  const canManage = user?.role === 'Super Admin'
 
   const liste = useListePaginee('/paiements', {
     recherche: search.trim(),
     statut: CODE_STATUT[statutFilter] || '',
     mode: modeFilter === TOUS ? '' : modeFilter,
+    etat: ETATS[etat],
   })
   const { lignes: paiements, isLoading, error } = liste
   // Paiements en attente sur toute la base (pas seulement la page affichée)
   const nbEnAttente = liste.extra.compteurs?.en_attente ?? 0
 
+  const selection = useSelection(paiements, 'id_paiement')
+  const groupe = useActionsGroupees({ selection, apres: liste.recharger, setErreur: setActionError })
+  const enAttente = selection.selection.filter((p) => Number(p.etat) && p.statut === 'en_attente')
+  const actifs = selection.selection.filter((p) => Number(p.etat))
+  const inactifs = selection.selection.filter((p) => !Number(p.etat))
+  const totalEnAttente = enAttente.reduce((somme, p) => somme + Number(p.montant), 0)
+
+  const actionsGroupees = [
+    {
+      libelle: 'Valider',
+      succes: true,
+      nombre: enAttente.length,
+      onClick: () => groupe.lancer({
+        lignes: enAttente,
+        confirmation: {
+          titre: 'Valider les paiements',
+          message: `Confirmez-vous avoir reçu ces ${enAttente.length} paiement(s), pour ${formatMontant(totalEnAttente)} au total ? Chaque étudiant recevra sa facture.`,
+          bouton: 'Valider',
+        },
+        action: (p) => validerPaiement(p.id_paiement),
+        succes: (n) => `${n} paiement(s) validé(s) : les factures sont envoyées`,
+      }),
+    },
+    {
+      libelle: 'Refuser',
+      danger: true,
+      nombre: enAttente.length,
+      onClick: () => groupe.lancer({
+        lignes: enAttente,
+        confirmation: {
+          titre: 'Refuser les paiements',
+          message: `Refuser ces ${enAttente.length} paiement(s) (${formatMontant(totalEnAttente)}) ? Les étudiants devront payer à nouveau.`,
+          bouton: 'Refuser',
+          danger: true,
+        },
+        action: (p) => refuserPaiement(p.id_paiement),
+        succes: (n) => `${n} paiement(s) refusé(s)`,
+      }),
+    },
+    canManage && {
+      libelle: 'Désactiver',
+      danger: true,
+      nombre: actifs.length,
+      onClick: () => groupe.lancer({
+        lignes: actifs,
+        confirmation: {
+          titre: 'Désactiver les paiements',
+          message: `${actifs.length} paiement(s) seront désactivés et ne compteront plus dans ce qui a été payé. Vous pourrez les réactiver avec le filtre « Désactivés ».`,
+          bouton: 'Désactiver',
+          danger: true,
+        },
+        action: (p) => desactiverPaiement(p.id_paiement),
+        succes: (n) => `${n} paiement(s) désactivé(s)`,
+      }),
+    },
+    canManage && {
+      libelle: 'Réactiver',
+      succes: true,
+      nombre: inactifs.length,
+      onClick: () => groupe.lancer({
+        lignes: inactifs,
+        action: (p) => reactiverPaiement(p.id_paiement),
+        succes: (n) => `${n} paiement(s) réactivé(s)`,
+      }),
+    },
+  ]
+
   // Valide ou refuse un paiement en attente, après confirmation
   async function handleStatut(payment, action) {
-    const confirmation = action === 'valider'
-      ? `Valider le paiement de ${formatMontant(payment.montant)} de ${payment.etudiant_prenom} ${payment.etudiant_nom} ?`
-      : `Refuser ce paiement ? L'étudiant devra payer à nouveau.`
-    if (!window.confirm(confirmation)) return
+    const nom = `${payment.etudiant_prenom} ${payment.etudiant_nom}`
+    const ok = await confirmer(action === 'valider'
+      ? {
+          titre: 'Valider le paiement',
+          message: `Confirmez-vous avoir reçu ${formatMontant(payment.montant)} de ${nom} ?`,
+          bouton: 'Valider',
+        }
+      : {
+          titre: 'Refuser le paiement',
+          message: `Refuser le paiement de ${formatMontant(payment.montant)} de ${nom} ? L'étudiant devra payer à nouveau.`,
+          bouton: 'Refuser',
+          danger: true,
+        })
+    if (!ok) return
 
     setActionError('')
     setEnCours(payment.id_paiement)
     try {
       if (action === 'valider') await validerPaiement(payment.id_paiement)
       else await refuserPaiement(payment.id_paiement)
+      notifier(action === 'valider' ? `Paiement validé : la facture est envoyée à ${nom}` : 'Paiement refusé')
       liste.recharger() // statut, compteur « en attente » et filtres à jour
     } catch (requestError) {
       setActionError(requestError.message)
@@ -76,33 +160,14 @@ function Paiements({ user }) {
     }
   }
 
-  // Génère la facture, l'ouvre, puis l'envoie à l'étudiant (e-mail + notification)
+  // Ouvre la facture d'un paiement validé (déjà envoyée automatiquement à l'étudiant à la validation)
   async function handleGenerateInvoice(payment) {
     setActionError('')
     try {
       const result = await getFacture(payment.id_paiement)
       if (!result?.fichier) return
 
-      const url = fileUrl(result.fichier)
-      window.open(url, '_blank')
-
-      if (!payment.id_utilisateur_etudiant || !payment.email_etudiant) return
-
-      // Télécharge le PDF généré pour le renvoyer en pièce jointe de l'e-mail
-      const response = await fetch(url)
-      if (!response.ok) throw new Error('Impossible de récupérer la facture générée.')
-
-      const blob = await response.blob()
-      const fileName = result.fichier.split('/').pop() || `facture_${payment.id_paiement}.pdf`
-      const file = new File([blob], fileName, { type: blob.type || 'application/pdf' })
-
-      await facturePaiement({
-        idDestinataire: payment.id_utilisateur_etudiant,
-        email: payment.email_etudiant,
-        contenuHtml: `<p>Votre facture concernant le paiement de ${formatMontant(payment.montant)} est disponible en pièce jointe.</p>`,
-        fichier: file,
-        nomFichier: fileName,
-      })
+      window.open(fileUrl(result.fichier), '_blank')
     } catch (err) {
       setActionError(err.message || 'Erreur lors de la génération de la facture.')
     }
@@ -112,14 +177,47 @@ function Paiements({ user }) {
     setSearch('')
     setModeFilter(TOUS)
     setStatutFilter(TOUS)
+    setEtat(ETAT_DEFAUT)
   }
+
+  // Désactivation (après confirmation) ou réactivation d'un paiement
+  async function handleEtat(ligne, actif) {
+    const nom = `${ligne.etudiant_prenom} ${ligne.etudiant_nom}`
+    if (!actif) {
+      const ok = await confirmer({
+        titre: "Désactiver le paiement",
+        message: `Le paiement de ${formatMontant(ligne.montant)} de ${nom} sera désactivé et ne comptera plus dans ce qui a été payé. Vous pourrez le réactiver avec le filtre « Désactivés ».`,
+        bouton: 'Désactiver',
+        danger: true,
+      })
+      if (!ok) return
+    }
+    setActionError('')
+    try {
+      if (actif) await reactiverPaiement(ligne.id_paiement)
+      else await desactiverPaiement(ligne.id_paiement)
+      if (actif) notifier('Paiement réactivé')
+      else notifier('Paiement désactivé', { annuler: () => reactiver(ligne) })
+      liste.recharger()
+    } catch (requestError) {
+      setActionError(requestError.message)
+    }
+  }
+
+  const reactiver = (ligne) => handleEtat(ligne, true)
 
   const columns = [
     { key: 'id_paiement', header: 'N°' },
     {
       key: 'student',
       header: 'Étudiant',
-      render: (row) => `${row.etudiant_prenom} ${row.etudiant_nom}`,
+      render: (row) => (
+        <>
+          {row.etudiant_prenom} {row.etudiant_nom}
+          <BadgeEtat ligne={row} actif={row.etat} />
+        </>
+      ),
+      exportValue: (row) => `${row.etudiant_prenom} ${row.etudiant_nom}`,
     },
     { key: 'formation_nom', header: 'Formation' },
     {
@@ -143,7 +241,16 @@ function Paiements({ user }) {
     {
       key: 'actions',
       header: '',
-      render: (row) => (
+      render: (row) => !Number(row.etat) ? (
+        // Désactivé : seule action possible, le réactiver
+        canManage && (
+          <div className="table-actions">
+            <button type="button" className="row-action success-action" onClick={() => reactiver(row)}>
+              Réactiver
+            </button>
+          </div>
+        )
+      ) : (
         <div className="table-actions">
           <button type="button" className="row-action" onClick={() => setSelectedPayment(row)}>
             Détail
@@ -178,6 +285,12 @@ function Paiements({ user }) {
               disabled={isGenerating}
             >
               {isGenerating ? 'Génération...' : 'Facture'}
+            </button>
+          )}
+
+          {canManage && (
+            <button type="button" className="row-action danger-action" onClick={() => handleEtat(row, false)}>
+              Désactiver
             </button>
           )}
         </div>
@@ -229,6 +342,7 @@ function Paiements({ user }) {
               onChange: setModeFilter,
               options: [TOUS, 'Cash', 'Virement bancaire'],
             },
+            filtreEtat(etat, setEtat),
           ]}
           onReset={resetFilters}
         />
@@ -237,6 +351,8 @@ function Paiements({ user }) {
           <p className="form-error">{error || actionError || documentError}</p>
         )}
 
+        <BarreSelection selection={selection} actions={actionsGroupees} enCours={groupe.enCours} libelle="paiement(s)" />
+
         {isLoading ? (
           <p className="gestion-loading">Chargement...</p>
         ) : (
@@ -244,6 +360,7 @@ function Paiements({ user }) {
             columns={columns}
             rows={paiements}
             rowKey="id_paiement"
+            selection={selection}
             emptyMessage="Aucun paiement trouvé."
             wrapperClassName="gestion-table-wrap"
             className="gestion-table"

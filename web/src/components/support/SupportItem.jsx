@@ -3,6 +3,7 @@ import Icon from '../icon/Icon'
 import Avatar from '../avatar/Avatar'
 import ContenuSupport from './ContenuSupport'
 import ChampMention from './ChampMention'
+import { useRetour } from '../retour/useRetour'
 import { mentionsDuTexte } from '../../utils/mentions'
 import { useSupport } from '../../hooks/useSupport'
 import { useReaction } from '../../hooks/useReaction'
@@ -17,8 +18,8 @@ const reactionOptions = [
   { name: 'dislike', label: 'Je n’aime pas', icon: '👎' },
 ]
 
-// Nombre de commentaires principaux affichés avant « Voir plus de commentaires »
-const COMMENTAIRES_VISIBLES = 3
+// Commentaires principaux demandés au serveur à chaque « Voir plus de commentaires »
+const COMMENTAIRES_PAR_PAGE = 3
 
 // Un commentaire (principal ou réponse) : bulle, date, Répondre, Supprimer
 function CommentRow({ comment, isReply, canDelete, onReply, onDelete, children }) {
@@ -71,8 +72,9 @@ function SupportItem({
   currentUser,
   canDeleteSupport = false,
 }) {
-  const { getCommentaires, createCommentaire, deleteCommentaire, deleteSupport } = useSupport()
+  const { pageCommentaires, createCommentaire, deleteCommentaire, deleteSupport } = useSupport()
   const { getReactions, react, removeReaction, isLoading: reactionBusy } = useReaction()
+  const { confirmer } = useRetour()
 
   // comments = commentaires principaux, chacun avec `reponses` (fil renvoyé par l'API)
   const [comments, setComments] = useState([])
@@ -80,30 +82,50 @@ function SupportItem({
   const [draft, setDraft] = useState('')
   const [commentError, setCommentError] = useState('')
   const [isDeletingSupport, setIsDeletingSupport] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(COMMENTAIRES_VISIBLES)
+  // Pagination du fil par le serveur : curseur de la page suivante (null = fin) et totaux
+  const [fil, setFil] = useState({ suivant: null, total: 0, totalEchanges: 0 })
   // Commentaires principaux dont les réponses sont dépliées
   const [openReplies, setOpenReplies] = useState(() => new Set())
   // Réponse en cours : { id: commentaire principal, auteur } ; null = nouveau commentaire principal
   const [replyTo, setReplyTo] = useState(null)
   const [replyDraft, setReplyDraft] = useState('')
 
-  // Charge commentaires et réactions du support. `cancelled` évite de mettre à jour
-  // un composant déjà démonté si la réponse arrive trop tard.
+  // Page de commentaires : ajoutée à la suite (« Voir plus »), ou remplace tout (première page)
+  function appliquerPage(page, ajouter) {
+    setComments((actuels) => (ajouter ? [...actuels, ...page.elements] : page.elements))
+    setFil({ suivant: page.suivant, total: page.total, totalEchanges: page.totalEchanges })
+  }
+
+  async function rechargerCommentaires() {
+    appliquerPage(await pageCommentaires(support.id_support, null, COMMENTAIRES_PAR_PAGE), false)
+  }
+
+  async function voirPlusCommentaires() {
+    try {
+      appliquerPage(await pageCommentaires(support.id_support, fil.suivant, COMMENTAIRES_PAR_PAGE), true)
+    } catch (err) {
+      setCommentError(err.message || 'Impossible de charger les commentaires.')
+    }
+  }
+
+  // Charge la première page de commentaires et les réactions du support. `cancelled` évite de
+  // mettre à jour un composant déjà démonté si la réponse arrive trop tard.
   useEffect(() => {
     let cancelled = false
 
     Promise.all([
-      getCommentaires(support.id_support),
+      pageCommentaires(support.id_support, null, COMMENTAIRES_PAR_PAGE),
       getReactions(support.id_support),
     ])
-      .then(([commentsData, reactionsData]) => {
+      .then(([page, reactionsData]) => {
         if (cancelled) return
-        setComments(commentsData)
+        appliquerPage(page, false)
         setReactions(reactionsData)
       })
       .catch(() => {})
 
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [support.id_support])
 
   /* ---------- Réactions ---------- */
@@ -132,7 +154,7 @@ function SupportItem({
     try {
       const mentions = peutMentionner ? await mentionsDuTexte(contenu, support.id_formation) : []
       await createCommentaire(support.id_support, contenu.trim(), mentions, idParent)
-      setComments(await getCommentaires(support.id_support))
+      await rechargerCommentaires()
       if (onComment) onComment()
       return true
     } catch (err) {
@@ -174,20 +196,31 @@ function SupportItem({
   }
 
   async function handleDeleteComment(comment) {
-    const message = comment.nb_reponses
-      ? 'Supprimer ce commentaire et ses réponses ?'
-      : 'Supprimer ce commentaire ?'
-    if (!window.confirm(message)) return
+    const ok = await confirmer({
+      titre: 'Supprimer le commentaire',
+      message: comment.nb_reponses
+        ? 'Ce commentaire et toutes ses réponses seront définitivement supprimés.'
+        : 'Ce commentaire sera définitivement supprimé.',
+      bouton: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deleteCommentaire(comment.id_commentaire)
-      setComments(await getCommentaires(support.id_support))
+      await rechargerCommentaires()
     } catch (err) {
       setCommentError(err.message || 'Impossible de supprimer le commentaire.')
     }
   }
 
   async function handleDeleteSupport() {
-    if (!window.confirm(`Supprimer le support "${support.titre}" ? Cette action est irréversible.`)) return
+    const ok = await confirmer({
+      titre: 'Supprimer le support',
+      message: `« ${support.titre} » sera définitivement supprimé, avec ses commentaires. Les étudiants n'y auront plus accès.`,
+      bouton: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
     setIsDeletingSupport(true)
     try {
       await deleteSupport(support.id_support)
@@ -222,10 +255,10 @@ function SupportItem({
     .filter((opt) => reactions.some((r) => r.type_reaction === opt.name))
     .map((opt) => opt.icon)
 
-  // Total des échanges : commentaires principaux + réponses
-  const totalComments = comments.reduce((total, c) => total + 1 + (c.nb_reponses || 0), 0)
-  const visibleComments = comments.slice(0, visibleCount)
-  const hiddenCount = comments.length - visibleComments.length
+  // Total des échanges (commentaires principaux + réponses) de tout le fil, donné par le serveur
+  const totalComments = fil.totalEchanges
+  const visibleComments = comments
+  const hiddenCount = fil.suivant ? Math.max(0, fil.total - comments.length) : 0
 
   return (
     <article className="support-card">
@@ -378,7 +411,7 @@ function SupportItem({
           <button
             type="button"
             className="comment-more"
-            onClick={() => setVisibleCount((count) => count + COMMENTAIRES_VISIBLES)}
+            onClick={voirPlusCommentaires}
           >
             Voir plus de commentaires ({hiddenCount})
           </button>

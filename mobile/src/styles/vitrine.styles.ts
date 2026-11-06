@@ -81,6 +81,8 @@ export const createVitrineStyles = ({ palette: t, fonts: f, density: d }: ThemeT
     sectionTitre: { fontSize: f.lg, fontWeight: '800', color: t.heading, paddingHorizontal: 20 },
     sectionSousTitre: { fontSize: f.xs, color: t.textMuted, paddingHorizontal: 20, marginTop: 2 },
     carrousel: { paddingHorizontal: 20, paddingTop: 12, gap: 12 },
+    // Indicateur en bout de carrousel pendant le chargement des suivants
+    carrouselSuite: { width: 48, alignSelf: 'center' },
 
     // ─── Couverture d'une formation ───
     couverture: { width: 160 },
@@ -126,7 +128,8 @@ export const createVitrineStyles = ({ palette: t, fonts: f, density: d }: ThemeT
     },
     couvertureTitre: { fontSize: f.sm, fontWeight: '800', color: t.heading, marginTop: 8 },
     couvertureMeta: { fontSize: f.xs, color: t.textMuted, marginTop: 2 },
-    couvertureBadge: { fontSize: f.xs, color: t.success, fontWeight: '700', marginTop: 2 },
+    couvertureBadgeLigne: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+    couvertureBadge: { fontSize: f.xs, color: t.success, fontWeight: '700' },
 
     // ─── Formateurs compétents ───
     formateurCarte: {
@@ -275,6 +278,19 @@ export const createVitrineStyles = ({ palette: t, fonts: f, density: d }: ThemeT
       fontSize: f.sm,
       color: t.textMain,
     },
+    champMdp: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surface,
+      borderWidth: 1,
+      borderColor: t.line,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      gap: 8,
+    },
+    champMdpTexte: { flex: 1, paddingVertical: 10, fontSize: f.sm, color: t.textMain },
+    champErreur: { borderColor: t.danger },
+    champErreurTexte: { color: t.danger, fontSize: f.xs, marginTop: 4 },
     total: {
       flexDirection: 'row',
       justifyContent: 'space-between',

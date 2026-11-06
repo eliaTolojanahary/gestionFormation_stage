@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Icon from '../icon/Icon'
 import './EditeurTexte.css'
 
 // Boutons de la barre d'outils : commande du navigateur (document.execCommand) appliquée à la sélection.
@@ -15,9 +16,9 @@ const OUTILS = [
   { separateur: true },
   { cle: 'insertUnorderedList', label: '• Liste', titre: 'Liste à puces', etat: true },
   { cle: 'insertOrderedList', label: '1. Liste', titre: 'Liste numérotée', etat: true },
-  { cle: 'blockquote', label: '❝', titre: 'Citation', bloc: 'BLOCKQUOTE' },
+  { cle: 'blockquote', icone: 'quote', titre: 'Citation', bloc: 'BLOCKQUOTE' },
   { separateur: true },
-  { cle: 'lien', label: '🔗 Lien', titre: 'Ajouter un lien sur le texte sélectionné' },
+  { cle: 'lien', icone: 'link', label: 'Lien', titre: 'Ajouter un lien sur le texte sélectionné' },
   { cle: 'unlink', label: 'Retirer le lien', titre: 'Retirer le lien' },
   { cle: 'removeFormat', label: '⌫ Format', titre: 'Effacer la mise en forme' },
 ]
@@ -116,6 +117,8 @@ function EditeurTexte({ value, onChange, placeholder = 'Rédigez votre support�
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => appliquer(outil)}
             >
+              {outil.icone && <Icon name={outil.icone} className="icon-inline" />}
+              {outil.icone && outil.label ? ' ' : ''}
               {outil.label}
             </button>
           )

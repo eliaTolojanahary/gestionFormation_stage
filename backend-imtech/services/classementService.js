@@ -1,21 +1,33 @@
 // Service du classement et des notes d'attestation.
 //
-// Note d'attestation sur 20 :
-//   paiement      : 5 si régulier (aucune échéance payée en retard), sinon 2
-// + présence      : 2 si moins de la moitié des jours, 3 à partir de la moitié,
-//                   5 si présent jusqu'à 2 semaines avant la fin
-//   = note système sur 10 (enregistrée dans inscription.note_suggeree)
-// + présentation  : 0 à 10, note libre du formateur (inscription.note_presentation)
+// Note d'attestation sur 20 = note système sur 10 + présentation sur 10 (note libre du formateur).
+//
+// Note système : tout le monde part de 10, on retire des points (jamais sous 0) :
+//   présence (jours présents / jours de cours) : ≥ 90 % → 0 · 75–90 % → −1 · 50–75 % → −2 · < 50 % → −4
+//   paiement, pour chaque échéance (payée le jour de l'échéance → 0) :
+//     payée en retard (soldée le jour suivant) → −1 · non réglée (pas soldée le jour suivant) → −2
+//     au plus −4 en tout
+//   enregistrée dans inscription.note_suggeree
+//
+// Exemple : présence 80 % (−1), une échéance payée en retard (−1) → 10 − 1 − 1 = 8 ;
+//   avec une présentation à 7/10, la note d'attestation est 15/20.
 const classementModel = require('../models/classementModel');
 const formationModel = require('../models/formationModel');
+const dependanceService = require('./dependanceService');
 const { ROLES } = require('../config/roles');
 const { badRequest, forbidden, notFound } = require('../utils/errors');
 
-const POINTS_PAIEMENT = Object.freeze({ REGULIER: 5, IRREGULIER: 2 });
-const POINTS_PRESENCE = Object.freeze({ MOINS_DE_LA_MOITIE: 2, MOITIE: 3, JUSQU_A_LA_FIN: 5 });
+const NOTE_SYSTEME_MAX = 10;
+// Taux de présence minimal (en %) -> points retirés, du meilleur palier au moins bon
+const MALUS_PRESENCE = Object.freeze([
+  { tauxMin: 90, points: 0 },
+  { tauxMin: 75, points: -1 },
+  { tauxMin: 50, points: -2 },
+  { tauxMin: 0, points: -4 },
+]);
+const MALUS_PAIEMENT = Object.freeze({ PAYEE_EN_RETARD: -1, NON_REGLEE: -2, PLAFOND: -4 });
 const NOTE_PRESENTATION_MAX = 10;
-// « Présent jusqu'à la fin » : présent tous les jours de cours jusqu'à 2 semaines avant la fin
-const JOURS_TOLERES_AVANT_FIN = 14;
+const UN_JOUR_MS = 24 * 60 * 60 * 1000;
 
 // Nombre de jours de cours (lundi à vendredi) parmi les `nbJours` jours qui commencent à `debut`.
 // Les week-ends sont comptés sur les vraies dates : 90 jours ne font pas toujours le même nombre de week-ends.
@@ -29,28 +41,40 @@ function joursOuvres(debut, nbJours) {
   return total;
 }
 
-// Points de présence selon les jours présents et les jours de cours de la formation
-function pointsPresence(nbPresences, joursRequis, joursJusquAvantFin) {
-  if (nbPresences >= joursJusquAvantFin) return POINTS_PRESENCE.JUSQU_A_LA_FIN;
-  if (nbPresences >= joursRequis / 2) return POINTS_PRESENCE.MOITIE;
-  return POINTS_PRESENCE.MOINS_DE_LA_MOITIE;
+// Jours de la formation déjà écoulés (aujourd'hui compris), au plus sa durée :
+// une formation en cours n'est jugée que sur les jours de cours déjà passés
+function joursEcoules(debut, dureeJours, aujourdhui) {
+  const d = new Date(debut);
+  const premier = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const jour = Date.UTC(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate());
+  return Math.min(dureeJours, Math.max(0, Math.floor((jour - premier) / UN_JOUR_MS) + 1));
+}
+
+function malusPresence(taux) {
+  return MALUS_PRESENCE.find((palier) => taux >= palier.tauxMin).points;
+}
+
+function malusPaiement(nbPayeesEnRetard, nbNonReglees) {
+  const total = nbPayeesEnRetard * MALUS_PAIEMENT.PAYEE_EN_RETARD + nbNonReglees * MALUS_PAIEMENT.NON_REGLEE;
+  return Math.max(MALUS_PAIEMENT.PLAFOND, total) || 0; // 0 × −1 donnerait −0
 }
 
 /**
  * Calcule la note système (sur 10) de chaque étudiant et les classe (fonction pure, testée).
  * Ordre : note système, puis nombre de présences. Des étudiants à égalité partagent le même rang.
  */
-function calculerClassement(etudiants) {
+function calculerClassement(etudiants, aujourdhui = new Date()) {
   const evalues = etudiants.map((e) => {
-    const dureeJours = Number(e.duree_jours);
     const nbPresences = Number(e.nb_presences);
-    const joursRequis = joursOuvres(e.date_debut, dureeJours);
-    const joursJusquAvantFin = joursOuvres(e.date_debut, Math.max(dureeJours - JOURS_TOLERES_AVANT_FIN, 0));
+    const joursRequis = joursOuvres(e.date_debut, joursEcoules(e.date_debut, Number(e.duree_jours), aujourdhui));
+    // Aucun jour de cours encore passé : rien à reprocher
+    const tauxPresence = joursRequis ? Math.min(100, Math.round((nbPresences / joursRequis) * 100)) : 100;
 
-    const paiementRegulier = Number(e.nb_echeances_en_retard) === 0;
-    const points_paiement = paiementRegulier ? POINTS_PAIEMENT.REGULIER : POINTS_PAIEMENT.IRREGULIER;
-    const points_presence = pointsPresence(nbPresences, joursRequis, joursJusquAvantFin);
-    const note_suggeree = points_paiement + points_presence;
+    const nbPayeesEnRetard = Number(e.nb_payees_en_retard ?? 0);
+    const nbNonReglees = Number(e.nb_non_reglees ?? 0);
+    const points_presence = malusPresence(tauxPresence);
+    const points_paiement = malusPaiement(nbPayeesEnRetard, nbNonReglees);
+    const note_suggeree = Math.max(0, NOTE_SYSTEME_MAX + points_presence + points_paiement);
     const note_presentation = e.note_presentation === null || e.note_presentation === undefined
       ? null
       : Number(e.note_presentation);
@@ -59,10 +83,12 @@ function calculerClassement(etudiants) {
       ...e,
       nb_presences: nbPresences,
       jours_requis: joursRequis,
-      jours_jusqu_avant_fin: joursJusquAvantFin,
-      paiement_regulier: paiementRegulier,
-      points_paiement,
+      taux_presence: tauxPresence,
+      nb_payees_en_retard: nbPayeesEnRetard,
+      nb_non_reglees: nbNonReglees,
+      paiement_regulier: nbPayeesEnRetard === 0 && nbNonReglees === 0,
       points_presence,
+      points_paiement,
       note_suggeree,
       note_presentation,
       // Note finale connue seulement quand le formateur a noté la présentation
@@ -104,6 +130,7 @@ async function classementFormation(id_formation, auteur) {
 // Le formateur (de cette formation) ou le Super Admin note la présentation, sur 10.
 // `note` vide ou null : on efface la note de présentation.
 async function definirNote(id_inscription, note, auteur) {
+  await dependanceService.verifierInscription(id_inscription);
   const inscription = await classementModel.getInscriptionAvecFormateur(id_inscription);
   if (!inscription) throw notFound('Inscription introuvable.');
   if (auteur.role === ROLES.FORMATEUR && Number(inscription.id_formateur) !== Number(auteur.id)) {
@@ -128,8 +155,8 @@ async function definirNote(id_inscription, note, auteur) {
 }
 
 module.exports = {
-  POINTS_PAIEMENT,
-  POINTS_PRESENCE,
+  MALUS_PRESENCE,
+  MALUS_PAIEMENT,
   NOTE_PRESENTATION_MAX,
   joursOuvres,
   calculerClassement,

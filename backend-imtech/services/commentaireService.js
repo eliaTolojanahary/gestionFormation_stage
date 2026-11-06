@@ -32,8 +32,21 @@ function construireFil(commentaires) {
     .sort((a, b) => date(b) - date(a))
 }
 
-async function listerCommentairesParSupport(idSupport) {
-  return construireFil(await commentaireModel.getCommentairesBySupport(idSupport))
+// Fil d'un support ({ id_support }) ou d'une formation ({ id_formation }).
+// curseur { limite, avant } : une page de commentaires principaux (limite + 1 lus, voir
+// utils/pagination.js), chacun avec ses réponses, et les totaux ; null : tout le fil.
+async function listerFil(cible, curseur = null) {
+  const [principaux, totaux] = await Promise.all([
+    commentaireModel.getCommentairesPrincipaux(cible, curseur),
+    curseur ? commentaireModel.compterCommentaires(cible) : null,
+  ])
+  const affiches = curseur ? principaux.slice(0, curseur.limite) : principaux
+  const reponses = await commentaireModel.getReponses(affiches.map((c) => c.id_commentaire))
+  return {
+    lignes: construireFil([...principaux, ...reponses]),
+    total: totaux?.principaux,
+    total_echanges: totaux?.echanges,
+  }
 }
 
 // Réponse : le commentaire visé doit exister sur le même support.
@@ -60,8 +73,7 @@ async function verifierMentions(mentions, auteur, support) {
   }
 
   const ids = [...new Set(mentions.map(Number))].filter((id) => id > 0)
-  const inscrits = await formationModel.getEtudiantsByFormation(support.id_formation)
-  const idsInscrits = new Set(inscrits.map((e) => Number(e.id_etudiant)))
+  const idsInscrits = new Set(await formationModel.etudiantsInscritsParmi(support.id_formation, ids))
   if (ids.some((id) => !idsInscrits.has(id))) {
     throw badRequest('Seuls les étudiants inscrits à cette formation peuvent être mentionnés.')
   }
@@ -138,8 +150,7 @@ async function creerCommentaire({ idSupport, idParent, contenu, mentions }, aute
   }
 
   // Renvoie le commentaire complet (nom, photo de l'auteur...) pour l'afficher tout de suite
-  const commentaires = await commentaireModel.getCommentairesBySupport(idSupport)
-  return commentaires.find((c) => c.id_commentaire === idCommentaire) || { id_commentaire: idCommentaire }
+  return (await commentaireModel.getCommentaireComplet(idCommentaire)) || { id_commentaire: idCommentaire }
 }
 
 // Super Admin : tout ; Formateur : commentaires de ses formations ; Étudiant : ses propres commentaires.
@@ -163,7 +174,7 @@ async function supprimerCommentaire(idCommentaire, auteur) {
 
 module.exports = {
   construireFil,
-  listerCommentairesParSupport,
+  listerFil,
   creerCommentaire,
   supprimerCommentaire,
 }

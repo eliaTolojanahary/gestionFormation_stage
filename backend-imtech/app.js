@@ -14,7 +14,11 @@ const app = express();
 
 // Middlewares globaux
 // CORS_ORIGIN (optionnel) : liste d'origines séparées par des virgules, ex. "http://localhost:5173"
-app.use(cors(process.env.CORS_ORIGIN ? { origin: process.env.CORS_ORIGIN.split(',') } : {}));
+// exposedHeaders : le site lit X-Export-Limite (export CSV coupé) depuis une autre origine
+app.use(cors({
+  ...(process.env.CORS_ORIGIN ? { origin: process.env.CORS_ORIGIN.split(',') } : {}),
+  exposedHeaders: ['X-Export-Limite'],
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -90,6 +94,8 @@ if (require.main === module) {
     require('./services/alerteService').demarrerAlertesAutomatiques();
     // Supports programmés : annonce 1 h avant puis envoi automatique (vérifié chaque minute)
     require('./services/supportProgrammeService').demarrerEnvoisProgrammes();
+    // Purge des sessions expirées, codes de mot de passe et notifications supprimées (chaque jour)
+    require('./services/purgeService').demarrerPurgeQuotidienne();
     console.log('─────────────────────────────────────────\n');
   });
 }

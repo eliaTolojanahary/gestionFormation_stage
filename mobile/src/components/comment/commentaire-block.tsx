@@ -5,7 +5,7 @@ import { CornerDownRight, X } from 'lucide-react-native';
 import { Commentaire } from '@/hooks/use-support';
 import { getFileUrl , formatRelativeDate, getInitiales } from '@/utils/format';
 import { createCommentaireBlockStyles } from '@/styles/components/commentaire-block.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 
 interface Props {
   commentaire: Commentaire;
@@ -25,6 +25,7 @@ export function CommentaireBlock({
   onRepondre,
   estReponse = false,
 }: Props) {
+  const { palette } = useSettings();
   const styles = useThemedStyles(createCommentaireBlockStyles);
   const [reponsesOuvertes, setReponsesOuvertes] = useState(false);
 
@@ -72,7 +73,7 @@ export function CommentaireBlock({
             activeOpacity={0.8}
             onPress={() => onRepondre(commentaire)}
           >
-            <CornerDownRight size={14} color="#5A6E85" />
+            <CornerDownRight size={14} color={palette.textMuted} />
             <Text style={styles.commentActionText}>Répondre</Text>
           </TouchableOpacity>
         </View>
@@ -117,6 +118,7 @@ interface BanniereProps {
 
 // Bandeau au-dessus du champ de saisie : « Réponse à X » + bouton pour annuler la réponse
 export function ReponseBanniere({ auteur, onAnnuler }: BanniereProps) {
+  const { palette } = useSettings();
   const styles = useThemedStyles(createCommentaireBlockStyles);
   return (
     <View style={styles.replyBanner}>
@@ -124,7 +126,7 @@ export function ReponseBanniere({ auteur, onAnnuler }: BanniereProps) {
         Réponse à {auteur || 'ce commentaire'}
       </Text>
       <TouchableOpacity onPress={onAnnuler} accessibilityLabel="Annuler la réponse">
-        <X size={15} color="#5A6E85" />
+        <X size={15} color={palette.textMuted} />
       </TouchableOpacity>
     </View>
   );

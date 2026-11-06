@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
 import Icon from '../../components/icon/Icon'
@@ -12,14 +12,16 @@ import './SupportsFormateur.css'
 
 // Page « Supports » du formateur : rédaction / dépôt d'un support (texte mis en forme, PDF, image,
 // audio, vidéo ; envoi immédiat ou programmé) et supports publiés avec réactions et commentaires
-// (recherche, filtres et tri : ListeSupports). Les brouillons programmés ont leur propre page.
+// (recherche, filtres, tri et pagination par le serveur : ListeSupports). Les brouillons
+// programmés ont leur propre page.
 function SupportsFormateur({ user }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { formations, error } = useFormation()
-  const { getSupports, uploadSupport, isLoading: supportLoading, error: supportError } = useSupport()
+  const { uploadSupport, isLoading: supportLoading, error: supportError } = useSupport()
 
-  const [supports, setSupports] = useState([])
+  // Incrémenté après une publication : ListeSupports recharge sa première page
+  const [actualisation, setActualisation] = useState(0)
   const [selectedFormation, setSelectedFormation] = useState('')
   const [title, setTitle] = useState('')
   // Texte mis en forme (HTML de l'éditeur) ; le fichier est facultatif s'il y a un texte
@@ -36,30 +38,6 @@ function SupportsFormateur({ user }) {
   const ownFormations = formations.filter(
     (formation) => Number(formation.id_utilisateur) === Number(userId)
   )
-
-  // Supports publiés de toutes les formations du formateur
-  async function chargerSupports() {
-    const groupes = await Promise.all(
-      ownFormations.map((formation) => getSupports(formation.id_formation))
-    )
-    setSupports(groupes.flat())
-  }
-
-  useEffect(() => {
-    if (!ownFormations.length) return
-    let cancelled = false
-
-    async function chargerInitial() {
-      const groupes = await Promise.all(
-        ownFormations.map((formation) => getSupports(formation.id_formation))
-      )
-      if (!cancelled) setSupports(groupes.flat())
-    }
-
-    chargerInitial()
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formations.length, userId])
 
   // Un support = un texte, un fichier, ou les deux ; sans fichier, le titre est obligatoire
   const aUnTexte = !contenuVide(contenu)
@@ -88,7 +66,7 @@ function SupportsFormateur({ user }) {
       setProgrammer(false)
       setDateEnvoi('')
       if (fileRef.current) fileRef.current.value = ''
-      if (!programmer) await chargerSupports()
+      if (!programmer) setActualisation((n) => n + 1)
     } catch {
       // l'erreur est déjà exposée via supportError, affichée plus haut dans le rendu
     }
@@ -205,14 +183,11 @@ function SupportsFormateur({ user }) {
       <ListeSupports
         key={location.key}
         rechercheInitiale={location.state?.recherche || ''}
-        supports={supports}
         formations={ownFormations}
         user={user}
         userId={userId}
         commentBusy={supportLoading}
-        onSupportDeleted={(deletedId) => {
-          setSupports((prev) => prev.filter((s) => s.id_support !== deletedId))
-        }}
+        actualisation={actualisation}
       />
     </section>
   )

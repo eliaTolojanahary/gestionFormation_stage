@@ -22,7 +22,7 @@
   color: var(--accent);
   background: transparent;
   font: inherit;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   white-space: nowrap;
   cursor: pointer;
   transition: opacity 0.15s ease;
@@ -50,7 +50,7 @@
   color: var(--text-muted);
   background: transparent;
   font: inherit;
-  font-size: 10px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
@@ -67,7 +67,7 @@
 
 .notification-list {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   overflow: hidden;
   display: grid;
   background: var(--surface);
@@ -135,13 +135,13 @@
 
 .notification-copy strong {
   color: var(--heading);
-  font-size: 11px;
+  font-size: var(--fs-sm);
 }
 
 .notification-copy span,
 .notification-copy small {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--fs-xs);
 }
 
 .notification-row i {
@@ -150,4 +150,10 @@
   border-radius: 50%;
   background: var(--accent);
   flex-shrink: 0;
+}
+
+/* Bouton « Voir les notifications précédentes », centré sous la liste */
+.notification-plus {
+  display: flex;
+  margin: 16px auto 0;
 }

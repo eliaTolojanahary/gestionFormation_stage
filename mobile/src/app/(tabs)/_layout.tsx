@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, BookOpen, FileText, Bell, User } from 'lucide-react-native';
 import { useSettings } from '@/context/SettingsContext';
 import { libelleBadge, rafraichirCloche, useNombreNonLues } from '@/hooks/use-notification';
@@ -10,6 +11,9 @@ export default function TabLayout() {
   // La barre suit l'apparence : accent = couleur principale choisie
   const { palette } = useSettings();
   const nbNonLues = useNombreNonLues();
+  // Zone système du bas (barre de gestes / boutons Android, indicateur iPhone) : la barre
+  // s'arrête au-dessus. Avec une hauteur fixe, cette marge mangeait la place des libellés.
+  const { bottom } = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -22,14 +26,20 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: palette.surface,
           borderTopColor: palette.line,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 62 + bottom,
+          paddingBottom: bottom + 6,
+          paddingTop: 6,
         },
+        // Libellé toujours sous l'icône (sinon à côté en paysage / grand écran)
+        tabBarShowLabel: true,
+        tabBarLabelPosition: 'below-icon',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
+          marginTop: 2,
         },
+        // « Notifications » reste lisible même avec une grande taille de texte du téléphone
+        tabBarAllowFontScaling: false,
       }}>
       <Tabs.Screen
         name="index"

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import logoImtech from '../../assets/logoImtech.png'
+import { useLogo } from '../../hooks/useLogo'
 import Icon from '../../components/icon/Icon'
 import { useAuth } from '../../hooks/useAuth'
 import './Login.css'
@@ -11,6 +11,7 @@ import './Login.css'
 //  3. confirmation, retour à la connexion.
 function ForgotPassword() {
   const navigate = useNavigate()
+  const logo = useLogo()
   const { forgotPassword, resetPassword, error } = useAuth()
 
   const [step, setStep] = useState(1)
@@ -79,7 +80,7 @@ function ForgotPassword() {
       <section className="brand-panel" aria-label="Presentation de la plateforme">
         <div className="brand-content">
           <div className="brand-lockup">
-            <img className="brand-logo" src={logoImtech} alt="Logo IMTECH INFO" />
+            <img className="brand-logo" src={logo} alt="Logo IMTECH INFO" />
             <h1>PLATEFORME<br />DE<br />GESTION<br />DE<br /><span>FORMATION</span></h1>
             
           </div>

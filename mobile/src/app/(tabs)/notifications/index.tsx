@@ -47,7 +47,9 @@ function typeDepuisMessage(message: string = ''): string {
 }
 
 // Onglet Notifications : liste avec compteur de non lues, marquer comme lu,
-// tout marquer comme lu, supprimer (avec confirmation) et tirer-pour-rafraîchir
+// tout marquer comme lu, supprimer (avec confirmation) et tirer-pour-rafraîchir.
+// Les 20 plus récentes sont chargées, les précédentes à la demande ; les nouvelles
+// apparaissent seules (vérification toutes les 10 s, voir useNotification).
 export default function NotificationsScreen() {
   const styles = useThemedStyles(createNotificationsStyles);
   const { palette } = useSettings();
@@ -55,16 +57,22 @@ export default function NotificationsScreen() {
 
   const {
     notifications,
+    compteur,
+    encorePlus,
     isLoading,
+    isLoadingPlus,
     error,
     getNotifications,
+    chargerPlusAnciennes,
     lireNotification,
+    lireToutesNotifications,
     deleteNotification,
   } = useNotification();
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const nonLues = notifications.filter((n) => !n.lu).length;
+  // Total du serveur : la liste chargée ne contient pas forcément toutes les notifications
+  const nonLues = compteur.nonLues;
 
   function retour() {
     if (router.canGoBack()) router.back();
@@ -109,10 +117,11 @@ async function handleSupprimer(id: number) {
   }
 }
   async function handleToutLire() {
-    const nonLuesList = notifications.filter((n) => !n.lu);
-    await Promise.all(
-      nonLuesList.map((n) => lireNotification(n.id_notification))
-    );
+    try {
+      await lireToutesNotifications();
+    } catch (e: any) {
+      alerte('Erreur', e?.message || 'Impossible de tout marquer comme lu.');
+    }
   }
 
   return (
@@ -254,6 +263,24 @@ async function handleSupprimer(id: number) {
               </TouchableOpacity>
             );
           })
+        )}
+
+        {/* Notifications plus anciennes, chargées par 20 */}
+        {encorePlus && notifications.length > 0 && (
+          <TouchableOpacity
+            style={styles.plusAction}
+            onPress={chargerPlusAnciennes}
+            disabled={isLoadingPlus}
+            activeOpacity={0.85}
+          >
+            {isLoadingPlus ? (
+              <ActivityIndicator size="small" color={palette.accent} />
+            ) : (
+              <Text style={styles.bulkActionText}>
+                Voir les notifications précédentes
+              </Text>
+            )}
+          </TouchableOpacity>
         )}
       </ScrollView>
     </SafeAreaView>

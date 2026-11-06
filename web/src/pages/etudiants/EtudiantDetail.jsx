@@ -5,6 +5,7 @@ import Tableau from '../../components/tableau/Tableau'
 import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import DocumentAffichage from '../../components/doc/DocumentAffichage'
 import { useEtudiant } from '../../hooks/useEtudiant'
+import { formatMontant } from '../../utils/format'
 import './Etudiants.css'
 
 // Fiche détaillée d'un étudiant : informations, formations suivies et pièces justificatives.
@@ -45,7 +46,7 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
     {
       key: 'tarif',
       header: 'Tarif',
-      render: (formation) => `${Number(formation.tarif || 0).toLocaleString('fr-FR')} MGA`,
+      render: (formation) => formatMontant(formation.tarif || 0),
       exportValue: (formation) => Number(formation.tarif || 0),
     },
     { key: 'date_inscription', header: 'Inscription' },
@@ -62,7 +63,7 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
   if (error) {
     return (
       <main className="etudiant-page">
-        <Header user={user} activeItem="Etudiants" />
+        <Header user={user} activeItem="Étudiants" />
         <p className="form-error">{error}</p>
       </main>
     )
@@ -72,7 +73,7 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
   if (!student) {
     return (
       <main className="etudiant-page">
-        <Header user={user} activeItem="Etudiants" />
+        <Header user={user} activeItem="Étudiants" />
         <p>Chargement...</p>
       </main>
     )
@@ -86,7 +87,7 @@ function EtudiantDetail({ user, studentId, onBack, onEdit }) {
 
   return (
     <main className="etudiant-page">
-      <Header user={user} activeItem="Etudiants" />
+      <Header user={user} activeItem="Étudiants" />
 
       <div className="page-heading detail-heading">
         <div className="student-header-info">

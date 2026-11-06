@@ -13,11 +13,11 @@
 .support-upload-panel input {
   padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   background: var(--surface);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 
 .support-upload-panel input[type="file"] {
@@ -34,11 +34,11 @@
   margin-right: 10px;
   padding: 7px 11px;
   border: 1px solid var(--accent);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--on-accent);
   background: var(--accent);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition: filter 0.15s ease;
 }
@@ -62,7 +62,7 @@
   align-items: center;
   gap: 6px;
   color: var(--text-main);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 

@@ -1,0 +1,57 @@
+/* Fenêtre de confirmation (RetourProvider) */
+.confirmation-message {
+  margin: 0;
+  color: var(--text-main);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+/* Bouton d'une action irréversible (suppression, refus...) */
+.primary-button.confirmation-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  box-shadow: none;
+}
+
+/* Message de réussite en bas de l'écran */
+.retour-succes {
+  position: fixed;
+  z-index: 10000;
+  bottom: 24px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 11px 18px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  background: var(--success);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transform: translateX(-50%);
+  animation: retour-apparition 0.2s ease;
+}
+
+@keyframes retour-apparition {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Bouton « Annuler » du message de réussite (ex. après une désactivation) */
+.retour-annuler {
+  margin-left: 6px;
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.retour-annuler:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

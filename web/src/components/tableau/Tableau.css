@@ -10,7 +10,7 @@
   width: 100%;
   border-collapse: collapse;
   white-space: nowrap;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   color: var(--text-main);
 }
 
@@ -47,6 +47,56 @@
 .tableau-empty {
   padding: 28px 10px;
   text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Sélection multiple (prop `selection`) : case à cocher, ligne cliquable et ligne choisie */
+.tableau .tableau-case {
+  width: 34px;
+  padding-right: 0;
+}
+
+.tableau .tableau-case input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.tableau tbody tr.tableau-ligne-selectionnable {
+  cursor: pointer;
+}
+
+.tableau tbody tr.tableau-ligne-selectionnee,
+.tableau tbody tr.tableau-ligne-selectionnee:hover {
+  background-color: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Barre des actions groupées, au-dessus du tableau */
+.barre-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  font-size: var(--fs-sm);
+  color: var(--text-main);
+}
+
+.barre-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.barre-selection-attente {
   color: var(--text-muted);
   font-style: italic;
 }

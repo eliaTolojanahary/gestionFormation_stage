@@ -1,8 +1,10 @@
 // components/vitrine/format-vitrine.ts
 // Petits formats partagés par la vitrine et l'inscription en ligne.
+import { formatMontant } from '@/utils/format';
 
+// Même format que le reste de l'appli, ex. « 150 000 Ar »
 export function formatAriary(montant: number): string {
-  return `${Math.round(Number(montant) || 0).toLocaleString('fr-FR')} Ar`;
+  return formatMontant(montant);
 }
 
 // Initiales d'un nom de formation pour la couverture, ex. « Développement web » → « DW »

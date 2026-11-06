@@ -1,13 +1,16 @@
 // Formatage des dates en français.
 
-// Date + heure, ex. "8 oct. 2026, 14:30"
+// Date + heure dans le fuseau du navigateur (celui du serveur : Madagascar), ex. "8 oct. 2026, 14:30".
+// Minuit pile = date sans heure (colonnes DATE, ou lignes antérieures au passage en DATETIME) :
+// on affiche alors la date seule, ex. "8 oct. 2026".
 export function formatDate(value) {
   if (!value) return '—'
+  const d = new Date(value)
+  const sansHeure = d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0
   return new Intl.DateTimeFormat('fr-FR', {
     dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'UTC',       
-  }).format(new Date(value))
+    ...(sansHeure ? {} : { timeStyle: 'short' }),
+  }).format(d)
 }
 
 // Date relative, ex. "il y a 5 minutes", "hier" ; au-delà d'une semaine, date simple

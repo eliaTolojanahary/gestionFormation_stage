@@ -17,5 +17,14 @@ export function useEcheance() {
     return apiRequest(`/echeances/${id}/rappeler`, { method: 'POST' })
   }
 
-  return { getEcheancesByInscription, updateEcheance, rappelerEcheance }
+  // Désactivation (réversible) et réactivation
+  function desactiverEcheance(id) {
+    return apiRequest(`/echeances/${id}`, { method: 'DELETE' })
+  }
+
+  function reactiverEcheance(id) {
+    return apiRequest(`/echeances/${id}/reactiver`, { method: 'PUT' })
+  }
+
+  return { getEcheancesByInscription, updateEcheance, rappelerEcheance, desactiverEcheance, reactiverEcheance }
 }

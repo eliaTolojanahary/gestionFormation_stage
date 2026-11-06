@@ -1,7 +1,33 @@
-# Dependances
+# Dépendances
 node_modules/
 
 # Variables d'environnement (garder les .env.example)
 .env
 .env.*
 !.env.example
+
+# Fichiers envoyés par les utilisateurs (données personnelles : fiches, factures, attestations)
+uploads/
+backend-imtech/uploads/
+
+# Builds
+dist/
+dist-ssr/
+build/
+web-build/
+.expo/
+
+# Journaux
+logs/
+*.log
+
+# Éditeurs et système
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Fichiers temporaires d'Office (document ouvert dans Word / Excel)
+~$*

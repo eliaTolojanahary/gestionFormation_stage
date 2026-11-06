@@ -1,6 +1,9 @@
 // Controller des comptes utilisateurs (tous rôles confondus).
 const userService = require('../services/userService');
 const { exigerChamps } = require('../utils/errors');
+const { lireEtat } = require('../utils/etat');
+const { ROLES } = require('../config/roles');
+const { lirePagination, texteRecherche, reponsePaginee, reponseListe } = require('../utils/pagination');
 
 // La photo peut arriver via upload.single('photo') ou upload.fields([{ name: 'photo' }])
 function cheminPhoto(req) {
@@ -8,10 +11,16 @@ function cheminPhoto(req) {
   return fichier ? `utilisateurs/${fichier.filename}` : undefined;
 }
 
-// GET /utilisateurs (Super Admin)
+// GET /utilisateurs?etat=actif|inactif|tous (Super Admin) ; actifs par défaut
+// Query : ?etat=, ?role= (nom du rôle), ?recherche= ; ?page=&limite= pour une liste paginée
 async function getAllUsers(req, res) {
-  const users = await userService.listerUtilisateurs();
-  res.json({ status: 'success', data: users });
+  const pagination = lirePagination(req.query);
+  const resultat = await userService.listerUtilisateurs({
+    etat: lireEtat(req.query),
+    role: Object.values(ROLES).includes(req.query.role) ? req.query.role : undefined,
+    recherche: texteRecherche(req.query.recherche),
+  }, pagination);
+  res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
 // GET /utilisateurs/:id

@@ -12,12 +12,12 @@
 .supports-entete h2 {
   margin-bottom: 8px;
   color: var(--heading);
-  font-size: 15px;
+  font-size: var(--fs-lg);
 }
 
 .supports-entete small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 
 /* Barre d'outils : recherche | formation | type | tri */
@@ -28,7 +28,7 @@
   margin-bottom: 12px;
   padding: 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--surface);
 }
 
@@ -37,11 +37,11 @@
   min-width: 0;
   padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   background: var(--surface);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 
 .supports-outils input:focus,

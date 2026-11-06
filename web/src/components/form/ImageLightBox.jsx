@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import Icon from '../icon/Icon'
 
 /**
  * Composant de prévisualisation d'image en plein écran
@@ -71,7 +72,7 @@ export default function ImageLightbox({ src, alt = 'Aperçu image', onClose }) {
             justifyContent: 'center'
           }}
         >
-          ✕
+          <Icon name="x" className="icon-inline" />
         </button>
         <img
           src={src}

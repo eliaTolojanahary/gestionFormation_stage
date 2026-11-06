@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
 // Hook des formations : liste (chargée au montage ; un formateur ne reçoit que les siennes),
-// détail, étudiants inscrits, CRUD.
-export function useFormation() {
+// détail, CRUD. Les étudiants inscrits se lisent page par page (useListePaginee).
+// etat : 'actif' (défaut), 'inactif' ou 'tous' ; charger: false : pas de liste au montage
+// (la page Formations pagine elle-même par le serveur)
+export function useFormation({ etat = 'actif', charger = true } = {}) {
   const [formations, setFormations] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -13,7 +15,7 @@ export function useFormation() {
     setIsLoading(true)
     setError('')
     try {
-      const data = await apiRequest('/formations')
+      const data = await apiRequest(etat === 'actif' ? '/formations' : `/formations?etat=${etat}`)
       setFormations(data.data || [])
       return data.data || []
     } catch (err) {
@@ -27,11 +29,6 @@ export function useFormation() {
   async function getFormation(id) {
     const data = await apiRequest(`/formations/${id}`)
     return data.data
-  }
-
-  async function getEtudiants(id) {
-    const data = await apiRequest(`/formations/${id}/etudiants`)
-    return data.data || []
   }
 
 
@@ -64,9 +61,14 @@ export function useFormation() {
     return result
   }
 
+  function reactiverFormation(id) {
+    return apiRequest(`/formations/${id}/reactiver`, { method: 'PUT' })
+  }
+
   useEffect(() => {
-    getFormations()
-  }, [])
+    if (charger) getFormations()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etat, charger])
 
   return {
     formations,
@@ -74,10 +76,10 @@ export function useFormation() {
     error,
     getFormations,
     getFormation,
-    getEtudiants,
     createFormation,
     updateFormation,
     updateFormationImage,
     deleteFormation,
+    reactiverFormation,
   }
 }

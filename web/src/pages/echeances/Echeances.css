@@ -26,5 +26,5 @@
   display: block;
   margin-top: 3px;
   color: var(--warning);
-  font-size: 8px;
+  font-size: var(--fs-xs);
 }

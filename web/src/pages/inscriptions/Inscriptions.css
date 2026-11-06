@@ -3,7 +3,21 @@
    ========================================================================== */
 
 .inscriptions-page .gestion-table {
-  min-width: 800px;
+  min-width: 900px;
+}
+
+/* Colonne Statut : badges empilés et espacés, jamais coupés au milieu */
+.inscription-statut {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 170px;
+}
+
+.inscription-statut .student-status {
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
 .inscription-status-valide {
@@ -16,21 +30,92 @@
   background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 
+/* Attestation délivrée : inscription réussie */
+.student-status.inscription-status-reussi {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 /* Inscription faite en ligne depuis la vitrine mobile */
 .inscription-origine {
   margin-left: 6px;
   padding: 2px 6px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   color: var(--accent);
   background: var(--accent-soft);
-  font-size: 8px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
 }
 
+/* Dossier de l'étudiant (pièces obligatoires) sous le statut d'une inscription non validée */
+/* Détail : badge du dossier à côté du titre */
+.inscription-detail-titre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.inscription-dossier {
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: var(--radius);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.inscription-dossier.complet {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.inscription-dossier.incomplet {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+/* Détail d'une inscription : état du dossier au-dessus des pièces */
+.dossier-message {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.dossier-message.complet {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.dossier-message.incomplet {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
 .inscription-paiement-declare {
-  display: block;
-  margin-top: 3px;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--fs-xs);
+}
+
+/* Validation groupée : choix du mode de paiement */
+.validation-groupee-mode {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.validation-groupee-mode select {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  background: var(--surface, transparent);
+  font: inherit;
+  font-weight: 400;
 }

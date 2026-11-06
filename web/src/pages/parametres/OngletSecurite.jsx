@@ -4,11 +4,13 @@ import { useAuth } from '../../hooks/useAuth'
 import { formatDate } from '../../utils/time'
 import { nomNavigateur, nomSysteme } from '../../utils/appareil'
 import FormulaireMotDePasse from './FormulaireMotDePasse'
+import { useRetour } from '../../components/retour/useRetour'
 
 // Onglet Sécurité : changement de mot de passe, dernière connexion, déconnexion globale et
 // historique des sessions. Les sessions sont chargées à l'ouverture de l'onglet.
 function OngletSecurite() {
   const { logoutAll, getLastLogin, getSessions } = useAuth()
+  const { confirmer, notifier } = useRetour()
   const [sessions, setSessions] = useState([])
   const [lastLogin, setLastLogin] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -40,12 +42,18 @@ function OngletSecurite() {
   }, [])
 
   async function handleLogoutAll() {
-    if (!window.confirm('Déconnecter toutes les autres sessions actives ?')) return
+    const ok = await confirmer({
+      titre: 'Se déconnecter des autres appareils',
+      message: 'Tous les autres ordinateurs et téléphones connectés à votre compte seront déconnectés. Vous restez connecté ici.',
+      bouton: 'Déconnecter',
+    })
+    if (!ok) return
 
     setIsLoggingOutAll(true)
     setErreur('')
     try {
       await logoutAll()
+      notifier('Les autres appareils ont été déconnectés')
       const { sessionsData, lastLoginData } = await chargerSessions()
       setSessions(sessionsData)
       setLastLogin(lastLoginData)

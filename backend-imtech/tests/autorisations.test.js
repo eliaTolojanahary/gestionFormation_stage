@@ -1,6 +1,7 @@
 require('./setup');
 const { test, before, after, afterEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
+const { simulerDependances } = require('./simulerDependances');
 const jwt = require('jsonwebtoken');
 
 const app = require('../app');
@@ -114,6 +115,7 @@ test("un étudiant ne peut pas valider un paiement", async () => {
 
 test("l'accueil valide un paiement en attente", async () => {
   sessionActive();
+  simulerDependances();
   mock.method(paiementModel, 'getPaiementById', async () => ({ id_paiement: 3, statut: 'en_attente' }));
   mock.method(paiementModel, 'changerStatutPaiementEnAttente', async () => true);
   mock.method(notifService, 'notifierInApp', async () => {});
@@ -212,6 +214,7 @@ test("un étudiant ne liste que ses propres demandes", async () => {
 
 test("un formateur ne peut pas noter un étudiant d'une formation qui n'est pas la sienne", async () => {
   sessionActive();
+  simulerDependances();
   mock.method(classementModel, 'getInscriptionAvecFormateur', async () => ({ id_inscription: 5, id_formateur: 99 }));
   const setNote = mock.method(classementModel, 'setNotePresentation', async () => {});
 
@@ -223,6 +226,7 @@ test("un formateur ne peut pas noter un étudiant d'une formation qui n'est pas 
 
 test('le formateur de la formation note la présentation (sur 10 au maximum)', async () => {
   sessionActive();
+  simulerDependances();
   mock.method(classementModel, 'getInscriptionAvecFormateur', async () => ({ id_inscription: 5, id_formateur: 3 }));
   const setNote = mock.method(classementModel, 'setNotePresentation', async () => {});
 

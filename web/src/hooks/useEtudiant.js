@@ -1,32 +1,9 @@
-import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
 // Hook des étudiants : détail, formations suivies, CRUD.
-// chargerListe : charge aussi la liste complète au montage (menu de choix du formulaire
-// d'inscription) ; la page Étudiants, elle, est paginée côté serveur (useListePaginee).
-export function useEtudiant({ chargerListe = false } = {}) {
-  const [etudiants, setEtudiants] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-
-
-  async function getEtudiants() {
-    setIsLoading(true)
-    setError('')
-
-    try {
-      const data = await apiRequest('/etudiants')
-      setEtudiants(data.data || [])
-      return data.data || []
-    } catch (err) {
-      setError(err.message || 'Impossible de charger les étudiants.')
-      return []
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-
+// Pas de liste ici : la page Étudiants est paginée côté serveur (useListePaginee) et le
+// formulaire d'inscription cherche l'étudiant au serveur (ChampRecherche).
+export function useEtudiant() {
   async function getEtudiant(id) {
     const data = await apiRequest(`/etudiants/${id}`)
     return data.data
@@ -52,26 +29,21 @@ function updateEtudiant(id, formData) {
     body: formData,
   })
 }
-  async function deleteEtudiant(id) {
-    const result = await apiRequest(`/etudiants/${id}`, { method: 'DELETE' })
-    setEtudiants((current) => current.filter((e) => e.id_etudiant !== Number(id)))
-    return result
+  function deleteEtudiant(id) {
+    return apiRequest(`/etudiants/${id}`, { method: 'DELETE' })
   }
 
-  useEffect(() => {
-    if (chargerListe) getEtudiants()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chargerListe])
+  // Étudiant désactivé (filtre « Désactivés ») remis dans la liste
+  function reactiverEtudiant(id) {
+    return apiRequest(`/etudiants/${id}/reactiver`, { method: 'PUT' })
+  }
 
   return {
-    etudiants,
-    isLoading,
-    error,
-    getEtudiants,
     getEtudiant,
     getFormations,
     createEtudiant,
     updateEtudiant,
-    deleteEtudiant
+    deleteEtudiant,
+    reactiverEtudiant,
   }
 }

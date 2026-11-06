@@ -1,7 +1,7 @@
-import { useRef } from 'react'
 import Icon from '../../components/icon/Icon'
-import logoImtech from '../../assets/logoImtech.png'
+import { logoParDefaut, rafraichirLogo, useCheminLogo } from '../../hooks/useLogo'
 import FondVitrine from './FondVitrine'
+import ImageParametre from './ImageParametre'
 
 // Couleurs proposées pour la couleur principale de l'interface
 const colorOptions = [
@@ -45,21 +45,13 @@ function Ligne({ titre, aide, className = '', children }) {
   )
 }
 
-// Onglet Apparence : thème, couleur, taille du texte, densité, menu réduit, logo
-// (+ fond de la vitrine mobile pour le Super Admin, enregistré sur le serveur).
-// Les préférences sont appliquées et sauvegardées par usePreferences (via changeSetting).
+// Onglet Apparence : thème, couleur, taille du texte, densité, menu réduit (préférences de ce
+// navigateur, appliquées et sauvegardées par usePreferences via changeSetting).
+// Pour le Super Admin seulement : logo de l'organisation et fond de la vitrine mobile,
+// enregistrés sur le serveur et donc les mêmes pour tout le monde.
 function OngletApparence({ user, settings, changeSetting, onEnregistre }) {
-  const inputRef = useRef(null)
-  const logo = settings.logo || logoImtech
-
-  // Le logo est converti en texte base64 (data URL) pour être gardé dans le localStorage
-  function handleLogo(event) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => changeSetting('logo', reader.result)
-    reader.readAsDataURL(file)
-  }
+  const cheminLogo = useCheminLogo()
+  const estSuperAdmin = user?.role === 'Super Admin'
 
   return (
     <section className="workspace-panel settings-section">
@@ -134,24 +126,21 @@ function OngletApparence({ user, settings, changeSetting, onEnregistre }) {
         </div>
       </Ligne>
 
-      <Ligne titre="Logo de l'organisation" aide="PNG ou JPG, recommandé en format carré." className="logo-setting">
-        <div className="logo-control">
-          <img src={logo} alt="Logo actuel" />
-          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            <Icon name="upload" /> Remplacer
-          </button>
-          <input
-            ref={inputRef}
-            className="visually-hidden"
-            type="file"
-            accept="image/png,image/jpeg"
-            onChange={handleLogo}
+      {estSuperAdmin && (
+        <>
+          <ImageParametre
+            titre="Logo de l'organisation"
+            aide="Affiché pour tout le monde (menu latéral, page de connexion). JPG, PNG ou WEBP (2 Mo max), de préférence carré."
+            chemin={cheminLogo}
+            imageParDefaut={logoParDefaut}
+            route="/parametres/logo"
+            onChange={rafraichirLogo}
+            onSaved={onEnregistre}
           />
-        </div>
-      </Ligne>
-
-      {/* Fond du bandeau « Découvrir » de l'application mobile (Super Admin) */}
-      {user?.role === 'Super Admin' && <FondVitrine onSaved={onEnregistre} />}
+          {/* Fond du bandeau « Découvrir » de l'application mobile */}
+          <FondVitrine onSaved={onEnregistre} />
+        </>
+      )}
     </section>
   )
 }

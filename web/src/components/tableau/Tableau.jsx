@@ -17,6 +17,8 @@ function isIsoDate(value) {
 // dateFormat : 'date' (défaut), 'relative' ("il y a 2 h") ou 'none'.
 // exportValue / export / exportSeulement : utilisés par l'export CSV (voir utils/exportCsv.js) ;
 // une colonne exportSeulement n'est pas affichée.
+// selection (facultatif, voir hooks/useSelection.js) : ajoute une colonne de cases à cocher ;
+// un clic sur la ligne (hors boutons, liens, champs et images) la sélectionne.
 function Tableau({
   columns: toutesLesColonnes,
   rows = [],
@@ -25,9 +27,17 @@ function Tableau({
   className = '',
   wrapperClassName = '',
   dateFormat = 'date',
+  selection = null,
 }) {
   const [previewImage, setPreviewImage] = useState(null)
   const columns = toutesLesColonnes.filter((column) => !column.exportSeulement)
+  const nbColonnes = columns.length + (selection ? 1 : 0)
+
+  // Clic sur une ligne : (dé)sélection, sauf si on a cliqué un élément qui a sa propre action
+  function handleRowClick(event, row) {
+    if (!selection || event.target.closest('button, a, input, select, textarea, label, img')) return
+    selection.basculer(row)
+  }
 
   // Un clic sur n'importe quelle image du tableau l'ouvre en grand
   function handleTableClick(event) {
@@ -63,6 +73,20 @@ function Tableau({
       <table className={`tableau ${className}`.trim()} onClick={handleTableClick}>
         <thead>
           <tr>
+            {selection && (
+              <th className="tableau-case">
+                <input
+                  type="checkbox"
+                  aria-label="Tout sélectionner"
+                  checked={selection.toutes}
+                  ref={(input) => {
+                    if (input) input.indeterminate = selection.nombre > 0 && !selection.toutes
+                  }}
+                  onChange={selection.toutBasculer}
+                  disabled={rows.length === 0}
+                />
+              </th>
+            )}
             {columns.map((column) => (
               <th key={column.key}>{column.header || ''}</th>
             ))}
@@ -71,11 +95,25 @@ function Tableau({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="tableau-empty">{emptyMessage}</td>
+              <td colSpan={nbColonnes} className="tableau-empty">{emptyMessage}</td>
             </tr>
           ) : (
             rows.map((row, index) => (
-              <tr key={typeof rowKey === 'function' ? rowKey(row, index) : row[rowKey] || index}>
+              <tr
+                key={typeof rowKey === 'function' ? rowKey(row, index) : row[rowKey] || index}
+                className={selection ? `tableau-ligne-selectionnable ${selection.estSelectionnee(row) ? 'tableau-ligne-selectionnee' : ''}`.trim() : undefined}
+                onClick={selection ? (event) => handleRowClick(event, row) : undefined}
+              >
+                {selection && (
+                  <td className="tableau-case">
+                    <input
+                      type="checkbox"
+                      aria-label="Sélectionner la ligne"
+                      checked={selection.estSelectionnee(row)}
+                      onChange={() => selection.basculer(row)}
+                    />
+                  </td>
+                )}
                 {columns.map((column) => (
                   <td key={column.key} className={column.cellClassName || ''}>
                     {renderCell(row, column, index)}

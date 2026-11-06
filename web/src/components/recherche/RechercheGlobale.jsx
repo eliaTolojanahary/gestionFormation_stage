@@ -5,12 +5,12 @@ import Avatar from '../avatar/Avatar'
 import { apiRequest } from '../../utils/api'
 import { menuDuRole } from '../../utils/navigation'
 import { formatDateHeureLocale } from '../../utils/time'
+import { formatMontant } from '../../utils/format'
 import './RechercheGlobale.css'
 
 const LONGUEUR_MIN = 2
 const DELAI_FRAPPE = 250 // ms sans frappe avant d'interroger le serveur
 
-const formatAriary = (montant) => `${Number(montant).toLocaleString('fr-FR')} Ar`
 
 // Sans accents ni majuscules : « echeances » trouve « Échéances »
 const normaliser = (texte) => String(texte).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -30,7 +30,7 @@ function construireGroupes(pages, data) {
   })))
   ajouter('Formations', 'book', (data?.formations || []).map((f) => ({
     cle: `formation-${f.id_formation}`, type: 'formation', id: f.id_formation, titre: f.nom,
-    sousTitre: [f.duree, f.tarif != null ? formatAriary(f.tarif) : null].filter(Boolean).join(' · '),
+    sousTitre: [f.duree, f.tarif != null ? formatMontant(f.tarif) : null].filter(Boolean).join(' · '),
   })))
   ajouter('Inscriptions', 'card', (data?.inscriptions || []).map((i) => ({
     cle: `inscription-${i.id_inscription}`, type: 'inscription', id: i.id_inscription,

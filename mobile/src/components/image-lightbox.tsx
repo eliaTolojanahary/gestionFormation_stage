@@ -4,6 +4,7 @@ import {
   Modal, View, Image, TouchableOpacity, StyleSheet, Pressable,
 } from 'react-native';
 import { X } from 'lucide-react-native';
+import { useSettings } from '@/context/SettingsContext';
 
 interface Props {
   src: string | null;
@@ -13,6 +14,7 @@ interface Props {
 
 // Affiche une image en plein écran ; toucher le fond ou la croix ferme l'aperçu
 export function ImageLightbox({ src, alt = 'Aperçu image', onClose }: Props) {
+  const { palette } = useSettings();
   if (!src) return null;
 
   return (
@@ -30,7 +32,7 @@ export function ImageLightbox({ src, alt = 'Aperçu image', onClose }: Props) {
             onPress={onClose}
             activeOpacity={0.8}
           >
-            <X size={18} color="#0A2D4F" />
+            <X size={18} color={palette.heading} />
           </TouchableOpacity>
 
           {/* Image — stopPropagation pour ne pas fermer en cliquant dessus */}

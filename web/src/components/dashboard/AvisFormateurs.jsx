@@ -4,6 +4,7 @@ import Tableau from '../tableau/Tableau'
 import SearchFilterBar from '../form/Filter'
 import BoutonExportCSV from '../tableau/BoutonExportCSV'
 import { useAvisFormateurs } from '../../hooks/useAvisFormateurs'
+import { PERIODE_TOUT, libellePeriode } from '../../utils/periodes'
 import './AvisFormateurs.css'
 
 const TOUS = 'Tous'
@@ -47,9 +48,10 @@ function TauxPositif({ taux }) {
   )
 }
 
-// Back-office : formateurs classés selon les réactions des étudiants sur leurs supports
-function AvisFormateurs() {
-  const { formateurs, isLoading, error } = useAvisFormateurs()
+// Back-office : formateurs classés selon les réactions des étudiants sur leurs supports.
+// La période { debut, fin } vient du filtre « Du … au … » du tableau de bord.
+function AvisFormateurs({ periode = PERIODE_TOUT }) {
+  const { formateurs, isLoading, error } = useAvisFormateurs(periode)
   const [search, setSearch] = useState('')
   const [avisFilter, setAvisFilter] = useState(TOUS)
   const [tri, setTri] = useState(TRI_DEFAUT)
@@ -142,6 +144,7 @@ function AvisFormateurs() {
           <p>
             Réactions reçues sur leurs supports. Compétent : au moins 60 % de réactions positives
             (👍 ❤️ 💡) sur 5 réactions ou plus.
+            {` Réactions données ${libellePeriode(periode)}.`}
           </p>
         </div>
         <BoutonExportCSV columns={columns} lignes={lignes} nomFichier="avis_formateurs" />

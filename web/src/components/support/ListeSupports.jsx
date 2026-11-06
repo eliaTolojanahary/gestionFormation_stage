@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import SupportItem from './SupportItem'
-import { typeFichier } from '../../utils/texteRiche'
+import { useSupport } from '../../hooks/useSupport'
 import './ListeSupports.css'
 
-// Nombre de supports affichés d'un coup ; « Voir plus » en ajoute autant
+// Nombre de supports demandés au serveur à chaque « Voir plus »
 const PAR_PAGE = 5
+// Délai avant d'envoyer la recherche au serveur (pas une requête à chaque lettre tapée)
+const DELAI_RECHERCHE = 350
 
 const TYPES = [
   { value: '', label: 'Tous les types' },
@@ -15,82 +17,100 @@ const TYPES = [
   { value: 'video', label: 'Vidéo' },
 ]
 
+// Mêmes clés que l'API (GET /supports?tri=)
 const TRIS = {
-  recents: { label: 'Plus récents', comparer: (a, b) => new Date(b.date_publication) - new Date(a.date_publication) },
-  anciens: { label: 'Plus anciens', comparer: (a, b) => new Date(a.date_publication) - new Date(b.date_publication) },
-  titre: { label: 'Titre (A → Z)', comparer: (a, b) => a.titre.localeCompare(b.titre, 'fr', { sensitivity: 'base' }) },
+  recents: 'Plus récents',
+  anciens: 'Plus anciens',
+  titre: 'Titre (A → Z)',
 }
 
-// Texte cherchable d'un support : titre, formation et texte mis en forme sans ses balises HTML
-function texteRecherche(support) {
-  const contenu = (support.contenu || '').replace(/<[^>]+>/g, ' ')
-  return `${support.titre} ${support.nom_formation || ''} ${contenu}`.toLowerCase()
-}
+// Supports publiés de l'espace formateur : recherche (titre, formation, texte), filtres (formation,
+// type) et tri faits par le serveur (GET /supports), affichés par pages de PAR_PAGE.
+// `actualisation` : changer sa valeur recharge la liste (ex. après la publication d'un support).
+function ListeSupports({ formations, user, userId, commentBusy, rechercheInitiale = '', actualisation = 0 }) {
+  const { listerSupports, error } = useSupport()
+  const [supports, setSupports] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [chargement, setChargement] = useState(true)
 
-// Supports publiés de l'espace formateur : recherche, filtres (formation, type), tri et affichage par pages
-function ListeSupports({ supports, formations, user, userId, commentBusy, onSupportDeleted, rechercheInitiale = '' }) {
   const [recherche, setRecherche] = useState(rechercheInitiale)
+  const [rechercheEnvoyee, setRechercheEnvoyee] = useState(rechercheInitiale)
   const [idFormation, setIdFormation] = useState('')
   const [type, setType] = useState('')
   const [tri, setTri] = useState('recents')
-  const [nbVisibles, setNbVisibles] = useState(PAR_PAGE)
+  // Numéro de la dernière demande : une réponse arrivée après un changement de filtre est ignorée
+  const demande = useRef(0)
 
-  const filtres = useMemo(() => {
-    const mots = recherche.trim().toLowerCase().split(/\s+/).filter(Boolean)
-    return supports
-      .filter((support) => !idFormation || Number(support.id_formation) === Number(idFormation))
-      .filter((support) => {
-        if (!type) return true
-        if (type === 'texte') return !support.fichier
-        return support.fichier && typeFichier(support.fichier) === type
-      })
-      .filter((support) => {
-        const texte = texteRecherche(support)
-        return mots.every((mot) => texte.includes(mot))
-      })
-      .sort(TRIS[tri].comparer)
-  }, [supports, recherche, idFormation, type, tri])
+  useEffect(() => {
+    const minuterie = setTimeout(() => setRechercheEnvoyee(recherche), DELAI_RECHERCHE)
+    return () => clearTimeout(minuterie)
+  }, [recherche])
 
-  // Tout changement de recherche / filtre / tri revient à la première page
-  function changer(setter) {
-    return (event) => {
-      setter(event.target.value)
-      setNbVisibles(PAR_PAGE)
+  // numero 1 : remplace la liste ; sinon la page est ajoutée à la suite
+  async function charger(numero) {
+    const id = ++demande.current
+    setChargement(true)
+    try {
+      const resultat = await listerSupports(
+        { recherche: rechercheEnvoyee, id_formation: idFormation, type, tri },
+        numero,
+        PAR_PAGE
+      )
+      if (id !== demande.current) return
+      setSupports((actuels) => (numero === 1 ? resultat.elements : [...actuels, ...resultat.elements]))
+      setTotal(resultat.total)
+      setPage(numero)
+    } catch {
+      // l'erreur est exposée par useSupport (error), affichée plus bas
+    } finally {
+      if (id === demande.current) setChargement(false)
     }
   }
 
-  const filtreActif = recherche.trim() || idFormation || type
-  const visibles = filtres.slice(0, nbVisibles)
-  const restants = filtres.length - visibles.length
+  // Tout changement de recherche / filtre / tri repart de la première page
+  useEffect(() => {
+    charger(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rechercheEnvoyee, idFormation, type, tri, actualisation])
+
+  const filtreActif = rechercheEnvoyee.trim() || idFormation || type
+  const restants = Math.max(0, total - supports.length)
 
   function reinitialiser() {
     setRecherche('')
+    setRechercheEnvoyee('')
     setIdFormation('')
     setType('')
-    setNbVisibles(PAR_PAGE)
   }
+
+  // Support supprimé : retiré de la liste sans tout recharger
+  function retirer(idSupport) {
+    setSupports((actuels) => actuels.filter((s) => s.id_support !== idSupport))
+    setTotal((actuel) => Math.max(0, actuel - 1))
+  }
+
+  const aucunSupport = !chargement && total === 0 && !filtreActif
 
   return (
     <div className="support-list">
       <div className="supports-entete">
         <h2>Supports et commentaires</h2>
-        <small>
-          {filtreActif ? `${filtres.length} sur ${supports.length} support(s)` : `${supports.length} support(s)`}
-        </small>
+        <small>{filtreActif ? `${total} support(s) trouvé(s)` : `${total} support(s)`}</small>
       </div>
 
-      {supports.length > 0 && (
+      {!aucunSupport && (
         <div className="supports-outils">
           <input
             type="search"
             className="supports-recherche"
             value={recherche}
-            onChange={changer(setRecherche)}
+            onChange={(event) => setRecherche(event.target.value)}
             placeholder="Rechercher un titre, un mot du texte…"
             aria-label="Rechercher un support"
           />
           {formations.length > 1 && (
-            <select value={idFormation} onChange={changer(setIdFormation)} aria-label="Filtrer par formation">
+            <select value={idFormation} onChange={(event) => setIdFormation(event.target.value)} aria-label="Filtrer par formation">
               <option value="">Toutes les formations</option>
               {formations.map((formation) => (
                 <option key={formation.id_formation} value={formation.id_formation}>
@@ -99,29 +119,31 @@ function ListeSupports({ supports, formations, user, userId, commentBusy, onSupp
               ))}
             </select>
           )}
-          <select value={type} onChange={changer(setType)} aria-label="Filtrer par type">
+          <select value={type} onChange={(event) => setType(event.target.value)} aria-label="Filtrer par type">
             {TYPES.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
-          <select value={tri} onChange={changer(setTri)} aria-label="Trier les supports">
-            {Object.entries(TRIS).map(([valeur, option]) => (
-              <option key={valeur} value={valeur}>{option.label}</option>
+          <select value={tri} onChange={(event) => setTri(event.target.value)} aria-label="Trier les supports">
+            {Object.entries(TRIS).map(([valeur, label]) => (
+              <option key={valeur} value={valeur}>{label}</option>
             ))}
           </select>
         </div>
       )}
 
-      {supports.length === 0 ? (
+      {error && <p className="form-error">{error}</p>}
+
+      {aucunSupport ? (
         <p className="muted-text">Aucun support publié.</p>
-      ) : filtres.length === 0 ? (
+      ) : !chargement && supports.length === 0 ? (
         <p className="muted-text">
           Aucun support ne correspond.{' '}
           <button type="button" className="supports-lien" onClick={reinitialiser}>Effacer les filtres</button>
         </p>
       ) : (
         <>
-          {visibles.map((support) => (
+          {supports.map((support) => (
             <SupportItem
               key={support.id_support}
               support={support}
@@ -131,14 +153,15 @@ function ListeSupports({ supports, formations, user, userId, commentBusy, onSupp
               commentBusy={commentBusy}
               canComment={true}
               canDeleteSupport={Number(support.id_utilisateur) === Number(userId)}
-              onSupportDeleted={onSupportDeleted}
+              onSupportDeleted={retirer}
             />
           ))}
           {restants > 0 && (
             <button
               type="button"
               className="secondary-button supports-voir-plus"
-              onClick={() => setNbVisibles((nombre) => nombre + PAR_PAGE)}
+              onClick={() => charger(page + 1)}
+              disabled={chargement}
             >
               Voir plus ({restants} restant{restants > 1 ? 's' : ''})
             </button>

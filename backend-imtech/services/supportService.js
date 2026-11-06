@@ -4,11 +4,36 @@ const supportModel = require('../models/supportModel');
 const { nettoyerContenu, TAILLE_MAX } = require('../utils/contenuRiche');
 const formationModel = require('../models/formationModel');
 const supportProgrammeService = require('./supportProgrammeService');
+const etatService = require('./etatService');
 const { ROLES } = require('../config/roles');
 const { badRequest, conflict, forbidden, notFound } = require('../utils/errors');
 
-async function listerSupportsFormation(id_formation) {
-  return await supportModel.getSupportsByFormation(id_formation);
+// curseur { limite, avant } : une page + le total ; sans curseur : toute la liste
+async function listerSupportsFormation(id_formation, etat, curseur = null) {
+  if (!curseur) return await supportModel.getSupportsByFormation(id_formation, etat);
+  const [lignes, total] = await Promise.all([
+    supportModel.getSupportsByFormation(id_formation, etat, curseur),
+    supportModel.compterSupportsByFormation(id_formation, etat),
+  ]);
+  return { lignes, total };
+}
+
+// GET /supports : supports visibles par l'utilisateur connecté, toutes formations confondues.
+// Étudiant : ses formations validées ; Formateur : les siennes ; Super Admin : toutes.
+async function listerSupports(filtres, pagination, auteur) {
+  const portee = { ...filtres };
+  if (auteur.role === ROLES.ETUDIANT) {
+    if (!auteur.id_etudiant) throw forbidden('Profil étudiant introuvable.');
+    portee.id_etudiant = auteur.id_etudiant;
+  }
+  if (auteur.role === ROLES.FORMATEUR) portee.id_formateur = auteur.id;
+
+  if (!pagination) return { lignes: await supportModel.getSupports(portee) };
+  const [lignes, total] = await Promise.all([
+    supportModel.getSupports(portee, pagination),
+    supportModel.compterSupports(portee),
+  ]);
+  return { lignes, total };
 }
 
 async function recupererSupport(id_support) {
@@ -129,12 +154,13 @@ async function supprimerSupport(id_support, auteur) {
   if (auteur.role === ROLES.FORMATEUR && Number(support.id_utilisateur) !== Number(auteur.id)) {
     throw forbidden('Vous ne pouvez supprimer que vos propres supports.');
   }
-  await supportModel.deleteSupport(id_support);
+  await etatService.desactiverSupport(id_support);
 }
 
 module.exports = {
   supprimerSupport,
   listerSupportsFormation,
+  listerSupports,
   recupererSupport,
   creerSupports,
   lireDateEnvoi,

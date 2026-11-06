@@ -1,6 +1,7 @@
 // styles/components/formation-block.styles.ts
 import { StyleSheet } from 'react-native';
 import type { ThemeTokens } from '@/context/SettingsContext';
+import { hexToRgba } from '@/constants/theme';
 
 /** Styles du bloc « héros » d'une formation (bandeau coloré) */
 export const createFormationBlockStyles = ({
@@ -30,23 +31,23 @@ export const createFormationBlockStyles = ({
     heroPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: 'rgba(255,255,255,0.12)',
+      backgroundColor: hexToRgba(t.onAccent, 0.12),
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 12,
     },
     heroPillText: {
-      color: 'rgba(255,255,255,0.78)',
+      color: hexToRgba(t.onAccent, 0.78),
       fontSize: f.xs,
       fontWeight: '700',
       marginLeft: 5,
     },
     heroTitle: {
-      color: '#FFFFFF',
+      color: t.onAccent,
       fontSize: f.xl - 3,
       fontWeight: '800',
       lineHeight: 25,
     },
-    heroTrainer: { color: 'rgba(255,255,255,0.78)', fontSize: f.sm, marginTop: 6 },
-    heroMeta: { color: 'rgba(255,255,255,0.65)', fontSize: f.xs, marginTop: 4 },
+    heroTrainer: { color: hexToRgba(t.onAccent, 0.78), fontSize: f.sm, marginTop: 6 },
+    heroMeta: { color: hexToRgba(t.onAccent, 0.65), fontSize: f.xs, marginTop: 4 },
   });

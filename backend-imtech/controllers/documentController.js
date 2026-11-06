@@ -2,6 +2,11 @@
 // documents administratifs uploadés.
 const documentService = require('../services/documentService');
 const { badRequest } = require('../utils/errors');
+const { lireEtat } = require('../utils/etat');
+const { STAFF } = require('../config/roles');
+const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
+
+const TYPES_DOCUMENT = ['Administratif', 'Support'];
 
 // POST /fiche/:id_inscription/generer : fiche d'inscription PDF
 async function genererFiche(req, res) {
@@ -29,7 +34,7 @@ async function genererAttestation(req, res) {
 
 // POST /attestations/:id_inscription/envoyer : génère l'attestation puis l'envoie à l'étudiant
 async function envoyerAttestationController(req, res) {
-  const resultat = await documentService.envoyerAttestation(req.params.id_inscription);
+  const resultat = await documentService.envoyerAttestation(req.params.id_inscription, req.user.id);
   res.json({
     status: 'success',
     message: resultat.emailEnvoye
@@ -65,15 +70,31 @@ async function creerDocument(req, res) {
 }
 
 // GET /documents
+// ?etat=actif (défaut) | inactif | tous : documents désactivés visibles par le personnel seulement
+// GET /documents : sans ?page=, documents administratifs seuls (réponse `documents`, comme avant).
+// Avec ?page=&limite= : documents administratifs ET fichiers des supports, filtrés par
+// ?type=Administratif|Support, ?extension=PDF, ?recherche=, ?etat= (personnel), paginés.
 async function obtenirDocuments(req, res) {
-  const documents = await documentService.obtenirDocuments();
-  res.json({ status: 'success', documents });
+  const etat = lireEtat(req.query, STAFF.includes(req.user.role));
+  const pagination = lirePagination(req.query);
+  if (!pagination) {
+    const documents = await documentService.obtenirDocuments(etat);
+    return res.json({ status: 'success', documents });
+  }
+  const extension = String(req.query.extension || '').trim().toUpperCase();
+  const resultat = await documentService.listerTousDocuments({
+    etat,
+    type: TYPES_DOCUMENT.includes(req.query.type) ? req.query.type : undefined,
+    extension: /^[A-Z0-9]{1,5}$/.test(extension) ? extension : undefined,
+    recherche: texteRecherche(req.query.recherche),
+  }, pagination, req.user);
+  res.json(reponsePaginee(resultat, pagination));
 }
 
 // DELETE /documents/:id (Super Admin)
 async function supprimerDocumentController(req, res) {
   await documentService.supprimerDocument(req.params.id);
-  res.json({ status: 'success', message: 'Document supprimé.' });
+  res.json({ status: 'success', message: 'Document désactivé.' });
 }
 
 module.exports = { genererFiche, genererFacture, genererAttestation, envoyerAttestationController, creerDocument, obtenirDocuments, verifierDocumentController, supprimerDocumentController };

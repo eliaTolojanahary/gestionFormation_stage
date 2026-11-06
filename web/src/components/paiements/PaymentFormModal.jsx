@@ -1,20 +1,9 @@
 import { useState } from 'react'
 import InputReutilisable from '../form/InputReutilisable'
 import Modal from '../modal/Modal'
+import { formatMontant } from '../../utils/format'
+import { PAYMENT_MODES, generateReference } from '../../utils/paiement'
 import './PaymentFormModal.css'
-
-// value = id_mode_paiement en base
-const PAYMENT_MODES = [
-  { value: 1, label: 'Cash' },
-  { value: 2, label: 'Virement bancaire' },
-]
-
-// Référence unique proposée par défaut : INS-<id>-<AAAAMMJJHHMMSS>-<4 caractères aléatoires>
-function generateReference(inscriptionId) {
-  const date = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase()
-  return `INS-${inscriptionId}-${date}-${suffix}`
-}
 
 // Fenêtre de paiement, deux modes :
 //  - 'validation' : valider une inscription (mode de paiement + référence) ;
@@ -66,6 +55,12 @@ function PaymentModal({ mode, inscription, echeance, onClose, onSubmit }) {
     }
   }
 
+  // Dossier de l'étudiant (pièces fournies sur le total, donné par la liste des inscriptions).
+  // En ligne : validation impossible tant qu'il est incomplet (refusée aussi par l'API).
+  // À l'Accueil : jamais bloquée, c'est l'Accueil qui complète le dossier ; on le lui rappelle.
+  const dossierIncomplet = isValidation && Number(inscription.pieces_fournies) < Number(inscription.pieces_total)
+  const bloque = dossierIncomplet && inscription.origine === 'en_ligne'
+
   const title = isValidation
     ? "Valider l'inscription"
     : `Payer l'échéance #${echeance.id_echeance}`
@@ -88,7 +83,7 @@ function PaymentModal({ mode, inscription, echeance, onClose, onSubmit }) {
             {inscription.origine === 'en_ligne' && (
               <p className="payment-reference-help">
                 Inscription en ligne : premier paiement déclaré par l'étudiant
-                {inscription.montant_declare ? ` (${Number(inscription.montant_declare).toLocaleString('fr-FR')} Ar)` : ''}.
+                {inscription.montant_declare ? ` (${formatMontant(inscription.montant_declare)})` : ''}.
                 Vérifiez-le avant de valider : il sera validé avec l'inscription.
               </p>
             )}
@@ -122,14 +117,25 @@ function PaymentModal({ mode, inscription, echeance, onClose, onSubmit }) {
           </>
         )}
 
+        {dossierIncomplet && (
+          <p className="payment-dossier" role="alert">
+            Dossier incomplet ({inscription.pieces_fournies}/{inscription.pieces_total} pièces).{' '}
+            {bloque
+              ? "Validation impossible tant que l'étudiant n'a pas déposé ses pièces (mobile, Mon dossier)."
+              : "Vous pouvez valider : pensez à compléter les pièces depuis la fiche de l'étudiant."}
+          </p>
+        )}
+
         {error && <p className="form-error">{error}</p>}
 
         <div className="modal-actions">
           <button type="button" className="secondary-button" onClick={onClose}>
             Annuler
           </button>
-          <button type="submit" className="primary-button" disabled={isSaving}>
-            {isSaving ? 'Enregistrement...' : isValidation ? 'Valider' : 'Enregistrer le paiement'}
+          <button type="submit" className="primary-button" disabled={isSaving || bloque}>
+            {isSaving
+              ? 'Enregistrement...'
+              : isValidation ? (dossierIncomplet ? 'Valider quand même' : 'Valider') : 'Enregistrer le paiement'}
           </button>
         </div>
       </form>

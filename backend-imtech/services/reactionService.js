@@ -2,6 +2,11 @@
 const reactionModel = require('../models/reactionModel');
 const supportModel = require('../models/supportModel');
 const { badRequest, notFound } = require('../utils/errors');
+const { creerCache } = require('../utils/cache');
+
+// L'avis se calcule sur toutes les réactions : gardé 5 minutes par période. La vitrine publique
+// (sans connexion) le demande à chaque visite ; sans cache, chaque visiteur relirait toute la table.
+const enCache = creerCache(5 * 60 * 1000);
 
 // Avis sur un formateur, calculé à partir des réactions reçues sur ses supports :
 //   positives = 👍 + ❤️ + 💡, négatives = 👎, taux = positives / total.
@@ -73,8 +78,9 @@ function evaluerFormateurs(lignes) {
     );
 }
 
-async function avisFormateurs() {
-  return evaluerFormateurs(await reactionModel.getReactionsParFormateur());
+async function avisFormateurs(periode = {}) {
+  const cle = `avis:${periode.debut || null}:${periode.fin || null}`;
+  return await enCache(cle, async () => evaluerFormateurs(await reactionModel.getReactionsParFormateur(periode)));
 }
 
 module.exports = {
@@ -86,4 +92,5 @@ module.exports = {
   listerReactionsSupport,
   evaluerFormateurs,
   avisFormateurs,
+  viderCache: enCache.vider, // pour les tests
 };

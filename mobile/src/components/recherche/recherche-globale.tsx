@@ -13,6 +13,7 @@ import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 import { createRechercheGlobaleStyles } from '@/styles/components/recherche-globale.styles';
 import { useRecherche, LONGUEUR_MIN_RECHERCHE, SupportTrouve, FormationTrouvee } from '@/hooks/use-recherche';
 import { formatDateCourte } from '@/utils/format';
+import { ouvrirSiValidee } from '@/utils/inscription';
 
 type Icone = React.ComponentType<{ size?: number; color?: string }>;
 
@@ -88,7 +89,9 @@ export function RechercheGlobale({ visible, onClose }: Props) {
   }
 
   const ouvrirFormation = (f: FormationTrouvee) =>
-    ouvrir({ pathname: '/(tabs)/formations/[id]', params: { id: String(f.id_formation) } } as any);
+    ouvrirSiValidee(f, () =>
+      ouvrir({ pathname: '/(tabs)/formations/[id]', params: { id: String(f.id_formation) } } as any)
+    );
   const ouvrirSupport = (s: SupportTrouve) =>
     ouvrir({
       pathname: '/(tabs)/documents/[id]',

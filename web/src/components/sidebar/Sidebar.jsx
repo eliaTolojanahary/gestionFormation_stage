@@ -5,8 +5,10 @@ import './Sidebar.css'
 
 // Barre latérale : logo, menu filtré selon le rôle (Notifications s'ouvre par la cloche du header),
 // profil et bouton de déconnexion.
+// Réduite (préférence « Sidebar réduite », Paramètres > Apparence) : icônes seules, le nom de
+// chaque entrée s'affiche au survol (title).
 // Note : ce filtrage ne fait que masquer des liens ; la vraie protection est faite par l'API.
-function Sidebar({ user, onLogout, logo }) {
+function Sidebar({ user, onLogout, logo, reduite = false }) {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -35,6 +37,8 @@ function Sidebar({ user, onLogout, logo }) {
                 key={label}
                 type="button"
                 onClick={() => navigate(path)}
+                title={reduite ? label : undefined}
+                aria-label={label}
               >
                 <Icon name={icon} />
                 <span>{label}</span>
@@ -50,7 +54,11 @@ function Sidebar({ user, onLogout, logo }) {
 
       {/* Bloc de bas de page : Profil + Bouton Déconnexion */}
       <div className="sidebar-footer">
-        <div className="profile-box">
+
+        <div
+          className="profile-box"
+          title={reduite ? `${user?.prenom || ''} ${user?.nom || ''} · ${user?.role || ''}`.trim() : undefined}
+        >
           <span className="avatar">
             {user?.prenom?.[0] || 'A'}
           </span>

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useDocDetail } from '@/hooks/use-doc-detail';
+import { VoirPlus } from '@/components/voir-plus';
 import { ReactionBlock } from '@/components/comment/reaction-block';
 import { CommentaireBlock, ReponseBanniere } from '@/components/comment/commentaire-block';
 import { formatAjout, getFileKind, getFileTypeLabel } from '@/utils/format';
@@ -48,6 +49,8 @@ export default function SupportDetailScreen() {
     supportsParId,
     commentaires,
     nbEchanges,
+    commentairesRestants,
+    voirPlusCommentaires,
     chargement,
     refreshing,
     erreur,
@@ -190,14 +193,17 @@ export default function SupportDetailScreen() {
                   </Text>
                 </View>
               ) : (
-                commentaires.map((c) => (
-                  <CommentaireBlock
-                    key={c.id_commentaire}
-                    commentaire={c}
-                    userId={userId}
-                    onRepondre={repondreA}
-                  />
-                ))
+                <>
+                  {commentaires.map((c) => (
+                    <CommentaireBlock
+                      key={c.id_commentaire}
+                      commentaire={c}
+                      userId={userId}
+                      onRepondre={repondreA}
+                    />
+                  ))}
+                  <VoirPlus restant={commentairesRestants} onPress={voirPlusCommentaires} />
+                </>
               )}
 
               {/* Formulaire */}

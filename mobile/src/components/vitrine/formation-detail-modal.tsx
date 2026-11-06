@@ -4,7 +4,7 @@ import { Modal, View, Text, TouchableOpacity, ScrollView, ImageBackground } from
 import { BadgeCheck, CalendarClock, Clock, Users, Wallet, X } from 'lucide-react-native';
 import { FormationPublique } from '@/hooks/use-vitrine';
 import { createVitrineStyles } from '@/styles/vitrine.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 import { formatAriary } from './format-vitrine';
 import { getFileUrl } from '@/utils/format';
 
@@ -28,6 +28,7 @@ export function FormationDetailModal({
   onBasculerSelection,
   onInscrire,
 }: Props) {
+  const { palette } = useSettings();
   const styles = useThemedStyles(createVitrineStyles);
   if (!formation) return null;
 
@@ -42,7 +43,7 @@ export function FormationDetailModal({
           <View style={styles.modalEntete}>
             <Text style={styles.modalTitre} numberOfLines={2}>{formation.nom}</Text>
             <TouchableOpacity onPress={onFermer} accessibilityLabel="Fermer">
-              <X size={22} color="#5A6E85" />
+              <X size={22} color={palette.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -59,7 +60,7 @@ export function FormationDetailModal({
             </ImageBackground>
 
             <View style={styles.detailLigne}>
-              <Users size={16} color="#5A6E85" />
+              <Users size={16} color={palette.textMuted} />
               <Text style={styles.detailTexte}>
                 Formateur : {formateur}
                 {formation.nb_inscrits > 0 ? ` · ${formation.nb_inscrits} inscrit(s)` : ''}
@@ -67,20 +68,20 @@ export function FormationDetailModal({
             </View>
             {competent ? (
               <View style={styles.detailLigne}>
-                <BadgeCheck size={16} color="#2E7D32" />
-                <Text style={[styles.detailTexte, { color: '#2E7D32', fontWeight: '700' }]}>
+                <BadgeCheck size={16} color={palette.success} />
+                <Text style={[styles.detailTexte, { color: palette.success, fontWeight: '700' }]}>
                   Formateur compétent · {formation.taux_positif} % d’avis positifs des étudiants
                 </Text>
               </View>
             ) : null}
             <View style={styles.detailLigne}>
-              <Clock size={16} color="#5A6E85" />
+              <Clock size={16} color={palette.textMuted} />
               <Text style={styles.detailTexte}>
                 Durée : {formation.duree ? `${formation.duree} mois` : `${formation.duree_jours} jours`}
               </Text>
             </View>
             <View style={styles.detailLigne}>
-              <Wallet size={16} color="#5A6E85" />
+              <Wallet size={16} color={palette.textMuted} />
               <Text style={styles.detailTexte}>
                 {formatAriary(formation.tarif)} · paiement possible en 1 à 4 tranches
               </Text>
@@ -95,7 +96,7 @@ export function FormationDetailModal({
 
             <Text style={styles.detailTitre}>Engagement du formateur</Text>
             <View style={styles.detailLigne}>
-              <CalendarClock size={16} color="#5A6E85" />
+              <CalendarClock size={16} color={palette.textMuted} />
               <Text style={styles.detailTexte}>{formation.engagement_formateur}</Text>
             </View>
 

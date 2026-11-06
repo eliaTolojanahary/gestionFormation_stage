@@ -168,7 +168,7 @@ export function PaiementModal({ visible, onClose, echeance, onPayer }: Props) {
               disabled={!modeSelectionne || enCours}
             >
               {enCours ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={palette.onAccent} />
               ) : (
                 <Text style={styles.payerBtnText}>
                   Envoyer le paiement de {formatMontant(echeance.montant_prevu)}

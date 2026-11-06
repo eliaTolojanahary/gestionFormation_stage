@@ -12,7 +12,7 @@
   height: 45px;
   padding: 0 34px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
 
   background: var(--page-bg);
   border-bottom: 1px solid var(--line);
@@ -34,10 +34,10 @@
   box-sizing: border-box;
   padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   outline: 0;
   font: inherit;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   background: var(--surface);
   color: var(--text-main);
 }
@@ -50,13 +50,13 @@
   border-radius: 50%;
   color: #fff;
   background: #e65c5c;
-  font-size: 8px;
+  font-size: var(--fs-xs);
 }
 
 .top-avatar {
   width: 22px;
   height: 22px;
-  font-size: 9px;
+  font-size: var(--fs-xs);
 }
 
 .top-profile-button {
@@ -77,11 +77,11 @@
   gap: 8px;
   padding: 4px 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-main);
   font: inherit;
-  font-size: 10px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -98,7 +98,7 @@
   height: 28px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   background: var(--surface);
   cursor: pointer;
@@ -129,7 +129,7 @@
   border-radius: 999px;
   color: #fff;
   background: #e65c5c;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 12px;
   text-align: center;

@@ -8,7 +8,7 @@ export function useNotifEvent() {
     envoyerNotifInApp,
     envoyerEmail,
     envoyerEmailPieceJointe,
-  } = useNotification()
+  } = useNotification({ charger: false })
 
   function nouveauSupport(idDestinataire, titreSupport) {
     return envoyerNotifInApp({
@@ -41,7 +41,7 @@ export function useNotifEvent() {
       envoyerEmail({
         id_destinataire: idDestinataire,
         email,
-        sujet: 'Confirmation de votre inscription',
+        sujet: 'IMTECH INFO — Confirmation de votre inscription',
         contenuHtml,
       }),
     ])
@@ -52,7 +52,7 @@ export function useNotifEvent() {
     const formData = new FormData()
     formData.append('id_destinataire', idDestinataire)
     formData.append('email', email)
-    formData.append('sujet', 'Facture de paiement')
+    formData.append('sujet', 'IMTECH INFO — Facture de paiement')
     formData.append('contenuHtml', contenuHtml)
     formData.append('piece_jointe', fichier, nomFichier)
 

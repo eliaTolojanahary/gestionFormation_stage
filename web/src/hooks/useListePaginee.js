@@ -9,7 +9,7 @@ import { apiRequest } from '../utils/api'
 // pour une mise à jour locale.
 // Un changement de filtre revient à la page 1 ; la requête part 250 ms après la dernière frappe
 // et une réponse dépassée (filtre changé entre-temps) est ignorée.
-export function useListePaginee(chemin, filtres, { limite = 20, delai = 250 } = {}) {
+export function useListePaginee(chemin, filtres, { limite = 10, delai = 250 } = {}) {
   const cleFiltres = JSON.stringify(filtres)
   const [page, setPage] = useState(1)
   const [cleAffichee, setCleAffichee] = useState(cleFiltres)
@@ -59,14 +59,16 @@ export function useListePaginee(chemin, filtres, { limite = 20, delai = 250 } = 
     }
   }, [chemin, cleFiltres, page, limite, delai, version])
 
-  // Toutes les lignes des filtres en cours (sans ?page=, l'API renvoie la liste complète) : export CSV
+  // Toutes les lignes des filtres en cours (sans ?page=, l'API renvoie la liste complète,
+  // plafonnée à 10 000 lignes) : export CSV
   const toutesLesLignes = useCallback(async () => {
     const params = new URLSearchParams()
     for (const [cle, valeur] of Object.entries(JSON.parse(cleFiltres))) {
       if (valeur !== '' && valeur !== null && valeur !== undefined) params.set(cle, String(valeur))
     }
     const reponse = await apiRequest(`${chemin}?${params}`)
-    return reponse.data || []
+    // Le serveur plafonne la liste (export) : limite = nombre de lignes renvoyées si tronquée
+    return { lignes: reponse.data || [], limite: reponse.tronque ? reponse.limite_export : null }
   }, [chemin, cleFiltres])
 
   const recharger = useCallback(() => setVersion((v) => v + 1), [])

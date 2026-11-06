@@ -70,7 +70,7 @@ test('mention : un formateur ne mentionne pas dans la formation d\'un autre', as
 
 test('mention : seuls les étudiants inscrits à la formation sont acceptés', async () => {
   mock.method(supportModel, 'getSupportById', async () => supportFormation);
-  mock.method(formationModel, 'getEtudiantsByFormation', async () => [{ id_etudiant: 8 }]);
+  mock.method(formationModel, 'etudiantsInscritsParmi', async () => [8]);
   await assert.rejects(
     creerCommentaire({ idSupport: 1, contenu: 'Bonjour', mentions: [8, 42] }, { id: 3, role: ROLES.FORMATEUR }),
     { status: 400 }

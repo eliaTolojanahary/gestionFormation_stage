@@ -105,11 +105,11 @@
 .main-nav::-webkit-scrollbar { width: 5px; }
 .main-nav::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 .main-nav::-webkit-scrollbar-thumb {
   background: #f3c82c;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 .main-nav::-webkit-scrollbar-thumb:hover {
   background: #e2a019;
@@ -136,7 +136,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, .05);
   cursor: default;
   transition: none;
@@ -208,7 +208,7 @@
   width: 100%;
   padding: 7px;
   border: 1px solid rgba(237, 83, 89, 0.3);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: #f7aab0;
   background: rgba(237, 83, 89, 0.08);
   font: inherit;
@@ -259,7 +259,10 @@
   border-left-width: 3px;
 }
 :root[data-sidebar='collapsed'] .nav-item .label,
-:root[data-sidebar='collapsed'] .nav-item > span:not(.icon),
+:root[data-sidebar='collapsed'] .nav-item > span:not(.icon) {
+  display: none;
+}
+
 /* Profil : avatar seul */
 :root[data-sidebar='collapsed'] .profile-box {
   justify-content: center;

@@ -3,31 +3,33 @@ import { useLocation } from 'react-router-dom'
 import Header from '../../components/header/Header'
 import Modal from '../../components/modal/Modal'
 import Avatar from '../../components/avatar/Avatar'
+import Pagination from '../../components/pagination/Pagination'
 import ClassementFormation from '../../components/classement/ClassementFormation'
 import { useFormation } from '../../hooks/useFormation'
+import { useListePaginee } from '../../hooks/useListePaginee'
+import { apiRequest } from '../../utils/api'
 import { formatDate } from '../../utils/time'
 import './AccueilFormateur.css'
 
-// Étudiants d'une formation, en fenêtre ; recherche par nom ou e-mail au-delà de 5 étudiants
-function EtudiantsFormationModal({ formation, etudiants, onClose }) {
+// Étudiants d'une formation, en fenêtre : 10 par page et recherche (nom, e-mail, téléphone) faites
+// par le serveur (GET /formations/:id/etudiants?page=&recherche=)
+function EtudiantsFormationModal({ formation, total, onClose }) {
   const [recherche, setRecherche] = useState('')
-  const filtre = recherche.trim().toLowerCase()
-  const visibles = etudiants.filter((etudiant) =>
-    `${etudiant.prenom} ${etudiant.nom} ${etudiant.email}`.toLowerCase().includes(filtre)
-  )
+  const liste = useListePaginee(`/formations/${formation.id_formation}/etudiants`, { recherche: recherche.trim() })
+  const nbInscrits = total ?? liste.total // total de la carte, ou celui de la liste s'il n'est pas encore connu
 
   return (
     <Modal
-      eyebrow={`${etudiants.length} étudiant(s) inscrit(s)`}
+      eyebrow={`${nbInscrits} étudiant(s) inscrit(s)`}
       title={formation.nom}
       titleId="etudiants-formation-titre"
       onClose={onClose}
     >
-      {etudiants.length === 0 ? (
+      {nbInscrits === 0 && !liste.isLoading ? (
         <p className="muted-text">Aucun étudiant inscrit pour le moment.</p>
       ) : (
         <>
-          {etudiants.length > 5 && (
+          {nbInscrits > 5 && (
             <input
               className="etudiants-recherche"
               value={recherche}
@@ -37,7 +39,7 @@ function EtudiantsFormationModal({ formation, etudiants, onClose }) {
             />
           )}
           <ul className="etudiants-modal-liste">
-            {visibles.map((etudiant) => (
+            {liste.lignes.map((etudiant) => (
               <li key={etudiant.id_etudiant}>
                 <Avatar photo={etudiant.photo} prenom={etudiant.prenom} nom={etudiant.nom} shape="circle" />
                 <div>
@@ -49,8 +51,11 @@ function EtudiantsFormationModal({ formation, etudiants, onClose }) {
                 </small>
               </li>
             ))}
-            {visibles.length === 0 && <li className="muted-text">Aucun étudiant ne correspond.</li>}
+            {liste.lignes.length === 0 && (
+              <li className="muted-text">{liste.isLoading ? 'Chargement…' : 'Aucun étudiant ne correspond.'}</li>
+            )}
           </ul>
+          <Pagination page={liste.page} pages={liste.pages} total={liste.total} limite={liste.limite} onChange={liste.setPage} libelle="étudiant(s)" />
         </>
       )}
     </Modal>
@@ -60,9 +65,10 @@ function EtudiantsFormationModal({ formation, etudiants, onClose }) {
 // Espace formateur : ses formations (un clic ouvre la liste des étudiants) et le classement /
 // notes d'attestation. Les supports ont leurs pages : « Supports » et « Supports programmés ».
 function AccueilFormateur({ user }) {
-  const { formations, isLoading, error, getEtudiants } = useFormation()
+  const { formations, isLoading, error } = useFormation()
 
-  const [studentsByFormation, setStudentsByFormation] = useState({})
+  // Nombre d'inscrits par formation (id_formation -> nombre), affiché sur les cartes
+  const [inscritsParFormation, setInscritsParFormation] = useState({})
   // Formation dont on affiche les étudiants en fenêtre
   const [formationOuverte, setFormationOuverte] = useState(null)
 
@@ -80,23 +86,24 @@ function AccueilFormateur({ user }) {
     setFormationOuverte(ownFormations.find((f) => Number(f.id_formation) === Number(idDemande)) || null)
   }
 
-  // Charge les étudiants de chaque formation du formateur
+  // Nombre d'inscrits de chaque formation : une page d'une ligne suffit, le total vient du serveur
+  // (les étudiants eux-mêmes ne sont chargés qu'à l'ouverture de la fenêtre)
   useEffect(() => {
     if (!ownFormations.length) return
 
     let cancelled = false
 
-    async function loadEtudiants() {
-      const studentGroups = await Promise.all(
-        ownFormations.map(async (formation) => [
-          formation.id_formation,
-          await getEtudiants(formation.id_formation),
-        ])
+    async function compterInscrits() {
+      const totaux = await Promise.all(
+        ownFormations.map(async (formation) => {
+          const reponse = await apiRequest(`/formations/${formation.id_formation}/etudiants?page=1&limite=1`)
+          return [formation.id_formation, reponse.pagination?.total ?? 0]
+        })
       )
-      if (!cancelled) setStudentsByFormation(Object.fromEntries(studentGroups))
+      if (!cancelled) setInscritsParFormation(Object.fromEntries(totaux))
     }
 
-    loadEtudiants()
+    compterInscrits().catch(() => {})
 
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,7 +137,7 @@ function AccueilFormateur({ user }) {
         ) : (
           <div className="formation-cartes">
             {ownFormations.map((formation) => {
-              const etudiants = studentsByFormation[formation.id_formation]
+              const inscrits = inscritsParFormation[formation.id_formation]
               return (
                 <button
                   type="button"
@@ -144,7 +151,7 @@ function AccueilFormateur({ user }) {
                   </span>
                   <span className="formation-carte-pied">
                     <span className="formation-carte-compte">
-                      {etudiants ? `${etudiants.length} étudiant(s)` : 'Chargement…'}
+                      {inscrits !== undefined ? `${inscrits} étudiant(s)` : 'Chargement…'}
                     </span>
                     <span className="formation-carte-lien">Voir les étudiants →</span>
                   </span>
@@ -158,7 +165,7 @@ function AccueilFormateur({ user }) {
       {formationOuverte && (
         <EtudiantsFormationModal
           formation={formationOuverte}
-          etudiants={studentsByFormation[formationOuverte.id_formation] || []}
+          total={inscritsParFormation[formationOuverte.id_formation]}
           onClose={() => setFormationOuverte(null)}
         />
       )}

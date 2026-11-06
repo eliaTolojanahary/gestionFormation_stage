@@ -42,12 +42,19 @@ async function creerDemande({ objet, contenu }, auteur) {
 }
 
 // Un étudiant ne voit que ses demandes ; le personnel voit tout
-async function listerDemandes(auteur, { statut } = {}) {
-  if (auteur.role === ROLES.ETUDIANT) {
-    if (!auteur.id_etudiant) return [];
-    return await assistanceModel.getAssistances({ id_etudiant: auteur.id_etudiant, statut });
-  }
-  return await assistanceModel.getAssistances({ statut });
+// Un étudiant ne voit que ses demandes. pagination { page, limite, offset } : une page, le total
+// et le nombre de demandes en attente (badge de la page) ; null : toute la liste
+async function listerDemandes(auteur, { statut, recherche } = {}, pagination = null) {
+  if (auteur.role === ROLES.ETUDIANT && !auteur.id_etudiant) return pagination ? { lignes: [], total: 0 } : [];
+  const portee = auteur.role === ROLES.ETUDIANT ? { id_etudiant: auteur.id_etudiant } : {};
+  const filtres = { ...portee, statut, recherche };
+  if (!pagination) return await assistanceModel.getAssistances(filtres);
+  const [lignes, total, enAttente] = await Promise.all([
+    assistanceModel.getAssistances(filtres, pagination),
+    assistanceModel.compterAssistances(filtres),
+    assistanceModel.compterAssistances({ ...portee, statut: assistanceModel.STATUTS_ASSISTANCE.EN_ATTENTE }),
+  ]);
+  return { lignes, total, compteurs: { en_attente: enAttente } };
 }
 
 // L'Accueil clique « Résoudre » : statut Résolu + notification in-app à l'étudiant

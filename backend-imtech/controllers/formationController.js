@@ -1,11 +1,18 @@
 // Controller des formations.
 const formationService = require('../services/formationService');
 const { exigerChamps } = require('../utils/errors');
+const { lirePagination, texteRecherche, reponsePaginee, reponseListe } = require('../utils/pagination');
 
 // GET /formations : la liste dépend du rôle (req.user transmis au service)
+// Query : ?etat=, ?recherche= (nom, description, formateur) ; ?page=&limite= pour une liste paginée
 async function listerFormations(req, res) {
-  const formations = await formationService.listerFormations(req.user);
-  res.json({ status: 'success', data: formations });
+  const pagination = lirePagination(req.query);
+  const resultat = await formationService.listerFormations(
+    req.user,
+    { etat: req.query.etat, recherche: texteRecherche(req.query.recherche) },
+    pagination
+  );
+  res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
 // GET /formations/:id
@@ -15,9 +22,13 @@ async function detailFormation(req, res) {
 }
 
 // GET /formations/:id/etudiants : étudiants inscrits à la formation
+// Query : ?recherche= (nom, e-mail, téléphone) ; ?page=&limite= pour une liste paginée
 async function etudiantsFormation(req, res) {
-  const etudiants = await formationService.recupererEtudiantsFormation(req.params.id, req.user);
-  res.json({ status: 'success', data: etudiants });
+  const pagination = lirePagination(req.query);
+  const resultat = await formationService.recupererEtudiantsFormation(
+    req.params.id, req.user, { recherche: texteRecherche(req.query.recherche) }, pagination
+  );
+  res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
 // POST /formations (Super Admin) : id_utilisateur = formateur responsable

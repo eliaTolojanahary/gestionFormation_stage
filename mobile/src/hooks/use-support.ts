@@ -45,7 +45,44 @@ export interface Commentaire {
   id_parent?: number | null;
   reponses?: Commentaire[];
   nb_reponses?: number;
+  titre_support?: string; // support commenté (renvoyé par l'API)
 }
+
+/** Nombre d'éléments demandés au serveur à chaque « Voir plus » */
+export const PAR_PAGE = 5;
+
+/**
+ * Une page lue au curseur (?limite=&avant=) : `suivant` = id à passer en `avant` pour la page
+ * suivante (null : fin de la liste), `total` = nombre d'éléments de toute la liste.
+ */
+export interface Page<T> {
+  elements: T[];
+  suivant: number | null;
+  total: number;
+  totalEchanges?: number; // commentaires : principaux + réponses
+}
+
+/** Filtres de GET /supports (onglet Documents) */
+export interface FiltresSupports {
+  recherche?: string;
+  id_formation?: number;
+  id_formateur?: number;
+}
+
+function avecCurseur(chemin: string, avant: number | null, limite: number) {
+  return `${chemin}?limite=${limite}${avant ? `&avant=${avant}` : ''}`;
+}
+
+function lirePage<T>(result: any): Page<T> {
+  return {
+    elements: result.data || [],
+    suivant: result.curseur?.suivant ?? null,
+    total: result.curseur?.total ?? (result.data || []).length,
+    totalEchanges: result.total_echanges,
+  };
+}
+
+const PAGE_VIDE = { elements: [], suivant: null, total: 0 };
 
 // ─────────────────────────────────────────────
 // Hook
@@ -71,6 +108,36 @@ export function useSupport() {
       setError(requestError.message || 'Impossible de charger les supports.');
       return [];
     }
+  }
+
+  // Une page des supports d'une formation (du plus récent au plus ancien)
+  async function pageSupports(
+    formationId: number | string,
+    avant: number | null = null,
+    limite = PAR_PAGE
+  ): Promise<Page<Support>> {
+    setError('');
+    try {
+      return lirePage<Support>(await apiRequest(avecCurseur(ENDPOINTS.SUPPORTS_FORMATION(formationId), avant, limite)));
+    } catch (requestError: any) {
+      setError(requestError.message || 'Impossible de charger les supports.');
+      return PAGE_VIDE;
+    }
+  }
+
+  // Onglet Documents : supports de toutes les formations validées de l'étudiant,
+  // filtrés et paginés par le serveur (GET /supports?page=&limite=&recherche=...)
+  async function listerSupports(
+    filtres: FiltresSupports,
+    page: number,
+    limite = PAR_PAGE
+  ): Promise<{ elements: Support[]; total: number }> {
+    const params = new URLSearchParams({ page: String(page), limite: String(limite) });
+    if (filtres.recherche?.trim()) params.set('recherche', filtres.recherche.trim());
+    if (filtres.id_formation) params.set('id_formation', String(filtres.id_formation));
+    if (filtres.id_formateur) params.set('id_formateur', String(filtres.id_formateur));
+    const result = await apiRequest(`${ENDPOINTS.SUPPORTS}?${params}`);
+    return { elements: result.data || [], total: result.pagination?.total ?? 0 };
   }
 
   // ─── Détail d'un support (GET /supports/:id) ─
@@ -121,47 +188,6 @@ export function useSupport() {
     }
   }
 
-  // ─── Commentaires ───────────────────────────
-  // Tous les commentaires de tous les supports d'une formation (l'API n'a pas de route dédiée)
-  async function getCommentairesByFormation(
-  formationId: number | string
-): Promise<Commentaire[]> {
-  if (!formationId) return [];
-
-  setError('');
-
-  try {
-    // 1. Récupère les supports de la formation
-    const supports = await getSupports(formationId);
-    if (supports.length === 0) return [];
-
-    // 2. Charge les commentaires de chaque support en parallèle
-    const listes = await Promise.all(
-      supports.map((s) => getCommentairesBySupport(s.id_support))
-    );
-
-    // 3. Fusionne tout en conservant le support d'origine
-    //    (l'API /supports/:id/commentaires ne renvoie pas id_support)
-    const tous: Commentaire[] = [];
-    listes.forEach((liste, index) => {
-      const idSupport = supports[index]?.id_support;
-      liste.forEach((c) => tous.push({ ...c, id_support: c.id_support || idSupport }));
-    });
-
-    // 4. Trie par date (plus récent d'abord)
-    //    L'API renvoie date_commentaire (date_creation conservé par compatibilité)
-    tous.sort((a, b) => {
-      const da = new Date(a.date_commentaire || a.date_creation || 0).getTime();
-      const db = new Date(b.date_commentaire || b.date_creation || 0).getTime();
-      return db - da;
-    });
-
-    return tous;
-  } catch (requestError: any) {
-    setError(requestError.message || 'Impossible de charger les commentaires.');
-    return [];
-  }
-}
   // ─── Commentaires d'un support (GET /supports/:id/commentaires) ─
   async function getCommentairesBySupport(
     supportId: number | string
@@ -178,6 +204,36 @@ export function useSupport() {
     } catch (requestError: any) {
       setError(requestError.message || 'Impossible de charger les commentaires.');
       return [];
+    }
+  }
+
+  // Une page du fil d'un support : commentaires principaux, chacun avec ses réponses
+  async function pageCommentairesSupport(
+    supportId: number | string,
+    avant: number | null = null,
+    limite = PAR_PAGE
+  ): Promise<Page<Commentaire>> {
+    setError('');
+    try {
+      return lirePage<Commentaire>(await apiRequest(avecCurseur(ENDPOINTS.COMMENTAIRES_SUPPORT(supportId), avant, limite)));
+    } catch (requestError: any) {
+      setError(requestError.message || 'Impossible de charger les commentaires.');
+      return PAGE_VIDE;
+    }
+  }
+
+  // Une page des commentaires de tous les supports d'une formation (une seule requête)
+  async function pageCommentairesFormation(
+    formationId: number | string,
+    avant: number | null = null,
+    limite = PAR_PAGE
+  ): Promise<Page<Commentaire>> {
+    setError('');
+    try {
+      return lirePage<Commentaire>(await apiRequest(avecCurseur(ENDPOINTS.COMMENTAIRES_FORMATION(formationId), avant, limite)));
+    } catch (requestError: any) {
+      setError(requestError.message || 'Impossible de charger les commentaires.');
+      return PAGE_VIDE;
     }
   }
 
@@ -240,13 +296,16 @@ export function useSupport() {
     isLoading,
     error,
     getSupports,
+    pageSupports,
+    listerSupports,
     getSupportById,
     uploadSupport,
     deleteSupport,
     getCommentaires,
     getCommentairesBySupport,
+    pageCommentairesSupport,
+    pageCommentairesFormation,
     createCommentaire,
-    getCommentairesByFormation,
     deleteCommentaire,
   };
 }

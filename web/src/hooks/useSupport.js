@@ -18,6 +18,23 @@ export function useSupport() {
     }
   }
 
+  // GET /supports : supports visibles par l'utilisateur (formateur : les siens), filtrés et
+  // paginés par le serveur. filtres = { recherche, id_formation, type, tri }
+  async function listerSupports(filtres, page, limite) {
+    setError('')
+    const params = new URLSearchParams({ page: String(page), limite: String(limite) })
+    Object.entries(filtres).forEach(([cle, valeur]) => {
+      if (valeur) params.set(cle, String(valeur).trim())
+    })
+    try {
+      const result = await apiRequest(`/supports?${params}`)
+      return { elements: result.data || [], total: result.pagination?.total ?? 0 }
+    } catch (requestError) {
+      setError(requestError.message || 'Impossible de charger les supports.')
+      throw requestError
+    }
+  }
+
   async function uploadSupport(formData) {
     setIsLoading(true)
     setError('')
@@ -84,6 +101,26 @@ export function useSupport() {
     }
   }
 
+  // Une page du fil d'un support (curseur) : commentaires principaux avec leurs réponses.
+  // avant = id du dernier commentaire reçu (null : la plus récente)
+  async function pageCommentaires(supportId, avant, limite) {
+    setError('')
+    try {
+      const result = await apiRequest(
+        `/supports/${supportId}/commentaires?limite=${limite}${avant ? `&avant=${avant}` : ''}`
+      )
+      return {
+        elements: result.data || [],
+        suivant: result.curseur?.suivant ?? null,
+        total: result.curseur?.total ?? 0,
+        totalEchanges: result.total_echanges ?? 0,
+      }
+    } catch (requestError) {
+      setError(requestError.message || 'Impossible de charger les commentaires.')
+      throw requestError
+    }
+  }
+
   async function getCommentaires(supportId) {
     setError('')
     try {
@@ -135,12 +172,14 @@ export function useSupport() {
     isLoading,
     error,
     getSupports,
+    listerSupports,
     uploadSupport,
     getSupportsProgrammes,
     updateSupportProgramme,
     envoyerSupport,
     deleteSupport,
     getCommentaires,
+    pageCommentaires,
     createCommentaire,
     deleteCommentaire,
   }

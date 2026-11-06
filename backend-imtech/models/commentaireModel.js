@@ -1,26 +1,81 @@
 // Model des commentaires et de leurs mentions.
 const db = require('../config/db');
 
-// Commentaires d'un support (principaux ET réponses), dans l'ordre chronologique.
-// Le service les range en fil de discussion grâce à id_parent.
-// L'auteur est soit un étudiant (id_etudiant), soit un autre utilisateur (id_utilisateur) :
-// COALESCE prend le nom / la photo de celui qui est renseigné.
-async function getCommentairesBySupport(id_support) {
-  const sql = `
-    SELECT c.id_commentaire, c.id_support, c.id_parent, c.contenu, c.date_commentaire, c.etat,
-           COALESCE(u_etudiant.nom, u_auteur.nom) AS nom,
-       COALESCE(u_etudiant.prenom, u_auteur.prenom) AS prenom,
-       COALESCE(u_etudiant.photo, u_auteur.photo) AS photo,   
-       c.id_utilisateur AS id_utilisateur_auteur        
-    FROM commentaire c
-    LEFT JOIN etudiant e ON c.id_etudiant = e.id_etudiant
-    LEFT JOIN utilisateur u_etudiant ON e.id_utilisateur = u_etudiant.id_utilisateur
-    LEFT JOIN utilisateur u_auteur ON c.id_utilisateur = u_auteur.id_utilisateur
-    WHERE c.id_support = ? AND c.etat = true
-    ORDER BY c.date_commentaire ASC
-  `;
-  const [rows] = await db.query(sql, [id_support]);
+const { clauseCurseur } = require('../utils/pagination');
+
+// Colonnes d'un commentaire affiché. L'auteur est soit un étudiant (id_etudiant), soit un autre
+// utilisateur (id_utilisateur) : COALESCE prend le nom / la photo de celui qui est renseigné.
+const COLONNES = `
+  c.id_commentaire, c.id_support, c.id_parent, c.contenu, c.date_commentaire, c.etat,
+  COALESCE(u_etudiant.nom, u_auteur.nom) AS nom,
+  COALESCE(u_etudiant.prenom, u_auteur.prenom) AS prenom,
+  COALESCE(u_etudiant.photo, u_auteur.photo) AS photo,
+  c.id_utilisateur AS id_utilisateur_auteur,
+  s.titre AS titre_support
+`;
+const JOINTURES = `
+  JOIN support s ON s.id_support = c.id_support
+  LEFT JOIN etudiant e ON c.id_etudiant = e.id_etudiant
+  LEFT JOIN utilisateur u_etudiant ON e.id_utilisateur = u_etudiant.id_utilisateur
+  LEFT JOIN utilisateur u_auteur ON c.id_utilisateur = u_auteur.id_utilisateur
+`;
+
+// Fil visé : un support ({ id_support }) ou tous les supports publiés d'une formation ({ id_formation })
+function conditionCible({ id_support, id_formation }) {
+  return id_support
+    ? { sql: 'c.id_support = ?', params: [id_support] }
+    : { sql: "s.id_formation = ? AND s.etat = true AND s.statut = 'publie'", params: [id_formation] };
+}
+
+// Commentaires principaux d'un fil, du plus récent au plus ancien.
+// curseur { limite, avant } : une page (limite + 1 lignes) ; null : tout le fil.
+async function getCommentairesPrincipaux(cible, curseur = null) {
+  const condition = conditionCible(cible);
+  const page = clauseCurseur(curseur, { table: 'commentaire', alias: 'c', date: 'date_commentaire', id: 'id_commentaire' });
+  const [rows] = await db.query(
+    `SELECT ${COLONNES}
+     FROM commentaire c ${JOINTURES}
+     WHERE ${condition.sql} AND c.id_parent IS NULL AND c.etat = true${page.where}
+     ORDER BY c.date_commentaire DESC, c.id_commentaire DESC${page.limite}`,
+    [...condition.params, ...page.whereParams, ...page.limiteParams]
+  );
   return rows;
+}
+
+// Réponses des commentaires principaux donnés (une seule requête pour toute la page)
+async function getReponses(ids_principaux) {
+  if (ids_principaux.length === 0) return [];
+  const [rows] = await db.query(
+    `SELECT ${COLONNES}
+     FROM commentaire c ${JOINTURES}
+     WHERE c.id_parent IN (?) AND c.etat = true
+     ORDER BY c.date_commentaire ASC, c.id_commentaire ASC`,
+    [ids_principaux]
+  );
+  return rows;
+}
+
+// { principaux, echanges } : commentaires principaux, et échanges (principaux + réponses encore visibles)
+async function compterCommentaires(cible) {
+  const condition = conditionCible(cible);
+  const [rows] = await db.query(
+    `SELECT COALESCE(SUM(c.id_parent IS NULL), 0) AS principaux, COUNT(*) AS echanges
+     FROM commentaire c
+     JOIN support s ON s.id_support = c.id_support
+     LEFT JOIN commentaire p ON p.id_commentaire = c.id_parent
+     WHERE ${condition.sql} AND c.etat = true AND (c.id_parent IS NULL OR p.etat = true)`,
+    condition.params
+  );
+  return { principaux: Number(rows[0].principaux), echanges: Number(rows[0].echanges) };
+}
+
+// Un commentaire complet (nom, photo de l'auteur...) : renvoyé juste après sa publication
+async function getCommentaireComplet(id_commentaire) {
+  const [rows] = await db.query(
+    `SELECT ${COLONNES} FROM commentaire c ${JOINTURES} WHERE c.id_commentaire = ?`,
+    [id_commentaire]
+  );
+  return rows[0] || null;
 }
 
 // Commentaire + formateur de la formation concernée (pour les droits de suppression)
@@ -75,6 +130,7 @@ async function deleteCommentaire(id_commentaire) {
 }
 
 module.exports = {
-  getCommentairesBySupport, getCommentaireAvecFormateur, getCommentaireParent,
+  getCommentairesPrincipaux, getReponses, compterCommentaires, getCommentaireComplet,
+  getCommentaireAvecFormateur, getCommentaireParent,
   insertCommentaire, insertMentions, deleteCommentaire
 };

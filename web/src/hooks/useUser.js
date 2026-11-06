@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../utils/api'
 
-// Hook des comptes utilisateurs (page Utilisateurs, Super Admin). Liste chargée au montage.
-export function useUser() {
+// Hook des comptes utilisateurs. Liste chargée au montage et à chaque changement de
+// `etat` ('actif' par défaut, 'inactif' ou 'tous'), sauf avec { charger: false } (la page
+// Utilisateurs pagine elle-même par le serveur et n'utilise ici que les actions).
+// { role: 'Formateur' } : seulement les comptes de ce rôle (sinon, les étudiants aussi : liste énorme).
+export function useUser(etat = 'actif', { charger = true, role } = {}) {
   const [users, setUsers] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -11,7 +14,9 @@ export function useUser() {
     setIsLoading(true)
     setError('')
     try {
-      const response = await apiRequest('/utilisateurs')
+      const params = new URLSearchParams({ etat })
+      if (role) params.set('role', role)
+      const response = await apiRequest(`/utilisateurs?${params}`)
       const data = response.data || []
       setUsers(data)
       return data
@@ -43,15 +48,19 @@ export function useUser() {
     return apiRequest(`/utilisateurs/${id}`, { method: 'PUT', body: userData })
   }
 
-  async function deleteUser(id) {
-    const response = await apiRequest(`/utilisateurs/${id}`, { method: 'DELETE' })
-    setUsers((current) => current.filter((user) => user.id_utilisateur !== Number(id)))
-    return response
+  // Désactiver / réactiver : la page recharge ensuite la liste (le compte change de filtre)
+  function deleteUser(id) {
+    return apiRequest(`/utilisateurs/${id}`, { method: 'DELETE' })
+  }
+
+  function reactiverUser(id) {
+    return apiRequest(`/utilisateurs/${id}/reactiver`, { method: 'PUT' })
   }
 
   useEffect(() => {
-    getUsers()
-  }, [])
+    if (charger) getUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etat, charger, role])
 
-  return { users, isLoading, error, getUsers, getUser, searchUsers, createUser, updateUser, deleteUser }
+  return { users, isLoading, error, getUsers, getUser, searchUsers, createUser, updateUser, deleteUser, reactiverUser }
 }

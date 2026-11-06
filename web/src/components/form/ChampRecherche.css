@@ -1,0 +1,60 @@
+/* Champ « on tape, le serveur propose » : la liste s'ouvre sous le champ */
+.champ-recherche {
+  position: relative;
+}
+
+.champ-recherche-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+}
+
+.champ-recherche-suggestions li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  color: var(--text-main);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.champ-recherche-suggestions li span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.champ-recherche-suggestions li small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.champ-recherche-suggestions li.actif,
+.champ-recherche-suggestions li:hover {
+  background: var(--accent-soft);
+}
+
+.champ-recherche-suggestions li.vide {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.champ-recherche-suggestions li.vide:hover {
+  background: transparent;
+}

@@ -20,24 +20,22 @@ const dossier = (nom) => {
 const PERSONNES = [
   { slug: 'elia', nom: 'Elia Nantenaina', portrait: 'men/3', existante: 'utilisateurs/1789646473109-elia.jpg' },
   { slug: 'hanitra', nom: 'Hanitra Rasoanaivo', portrait: 'women/65' },
-  { slug: 'mamy', nom: 'Mamy Andriamanana', portrait: 'men/32' },
   { slug: 'tiana', nom: 'Tiana Randrianarisoa', portrait: 'men/75' },
   { slug: 'voahangy', nom: 'Voahangy Rakotomalala', portrait: 'women/68' },
   { slug: 'hery', nom: 'Hery Rajaonarison', portrait: 'men/52' },
   { slug: 'lalaina', nom: 'Lalaina Razafindrabe', portrait: 'women/90' },
+  { slug: 'rivo', nom: 'Rivo Andrianaivo', portrait: 'men/38' },
+  // Étudiants
   { slug: 'andry', nom: 'Andry Rakotoarisoa', portrait: 'men/11', etudiant: true },
   { slug: 'miora', nom: 'Miora Randriamampionona', portrait: 'women/21', etudiant: true },
   { slug: 'fitiavana', nom: 'Fitiavana Rasolofo', portrait: 'women/33', etudiant: true },
   { slug: 'toky', nom: 'Toky Ravelojaona', portrait: 'men/22', etudiant: true },
-  { slug: 'nomena', nom: 'Nomena Andrianjafy', portrait: 'women/45', etudiant: true },
   { slug: 'sitraka', nom: 'Sitraka Rakotondrabe', portrait: 'men/41', etudiant: true },
   { slug: 'onja', nom: 'Onja Raharimanana', portrait: 'women/57', etudiant: true },
   { slug: 'fano', nom: 'Fanomezantsoa Rabe', portrait: 'men/60', etudiant: true },
-  { slug: 'nyaina', nom: 'Ny Aina Ramanantsoa', portrait: 'women/79', etudiant: true },
-  { slug: 'haja', nom: 'Haja Randrianasolo', portrait: 'men/85', etudiant: true },
   { slug: 'tsiory', nom: 'Tsiory Razanakoto', portrait: 'women/12', etudiant: true },
-  // Inscrit en ligne : pièces du dossier pas encore fournies (complétées par l'Accueil)
-  { slug: 'mahery', nom: 'Mahery Rabemananjara', portrait: 'men/18' },
+  { slug: 'rindra', nom: 'Rindra Rasoamanarivo', portrait: 'women/3', etudiant: true },
+  { slug: 'lova', nom: 'Lova Andriamihaja', portrait: 'women/14', etudiant: true },
 ];
 
 // Supports PDF : titre, puis sections (titre, paragraphes)
@@ -194,7 +192,7 @@ const SUPPORTS_PDF = [
   },
 ];
 
-// Couvertures des formations : photos libres de droits (CC0, issues d'Unsplash) hébergées sur
+// Couvertures des formations : photos libres de droits (CC0, la plupart issues d'Unsplash) hébergées sur
 // Wikimedia Commons. Fichier Commons -> uploads/formations/<fichier> (chemin enregistré dans formation.image)
 const COUVERTURES = [
   { fichier: 'demo-developpement-web.jpg', commons: 'Colorful code (Unsplash).jpg', auteur: 'Markus Spiske' },
@@ -203,6 +201,7 @@ const COUVERTURES = [
   { fichier: 'demo-infographie.jpg', commons: 'Math tools utensils (Unsplash).jpg', auteur: 'Jazmin Quaynor' },
   { fichier: 'demo-python.jpg', commons: 'Laptop coding programs (Unsplash).jpg', auteur: 'Tirza van Dijk' },
   { fichier: 'demo-excel.jpg', commons: 'Desktop with laptop and calculator (Unsplash).jpg', auteur: 'Auteur inconnu' },
+  { fichier: 'demo-maintenance.jpg', commons: 'Computer motherboard 2.jpg', auteur: 'Kurt Kaiser' },
 ];
 
 // Wikimedia demande un User-Agent qui identifie l'outil

@@ -28,7 +28,7 @@
   padding: 15px;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--surface);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
 }
@@ -38,7 +38,7 @@
   place-items: center;
   width: 38px;
   height: 42px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--accent);
   background: var(--accent-soft);
   flex-shrink: 0;
@@ -63,7 +63,7 @@
   margin: 0;
   overflow: hidden;
   color: var(--heading);
-  font-size: 12px;
+  font-size: var(--fs-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -73,7 +73,7 @@
   display: block;
   margin: 5px 0 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--fs-xs);
 }
 
 .document-upload-line {
@@ -83,18 +83,18 @@
   gap: 9px;
   padding: 12px 14px 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--fs-xs);
 }
 
 .document-upload-line select,
 .document-upload-line input {
   padding: 6px 8px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   background: var(--surface);
   font: inherit;
-  font-size: 9px;
+  font-size: var(--fs-xs);
 }
 
 .document-upload-line input {
@@ -122,11 +122,11 @@
   justify-content: center;
   padding: 5px 9px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   background: var(--surface);
   font: inherit;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   text-decoration: none;
   cursor: pointer;
   transition: all 0.15s ease;

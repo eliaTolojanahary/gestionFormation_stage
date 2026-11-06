@@ -125,7 +125,8 @@ const SOMBRE = {
   textMuted: '#94A3B8',
   heading: '#F8FAFC',
   line: '#334155',
-  onAccent: '#FFFFFF',
+  // L'accent est clair en mode sombre (voir ACCENT_SOMBRE) : texte foncé dessus, comme le web
+  onAccent: '#0F172A',
   overlay: 'rgba(0, 0, 0, 0.65)',
   danger: '#F87171',
   dangerSoft: 'rgba(248, 113, 113, 0.15)',
@@ -166,6 +167,34 @@ export const DENSITY_SCALES: Record<DensityName, DensityScale> = {
 };
 
 // ─────────────────────────────────────────────
+// Couleur principale en mode sombre (= ACCENT_SOMBRE de web/src/utils/theme.js) : les couleurs
+// proposées sont foncées, illisibles sur fond sombre ; chacune a une version claire et vive.
+// Une autre couleur est mélangée avec du blanc (45 % couleur, 55 % blanc).
+// ─────────────────────────────────────────────
+const ACCENT_SOMBRE: Record<string, string> = {
+  '#063a5c': '#38BDF8', // Bleu IMTECH
+  '#137c8b': '#2DD4BF', // Bleu azur
+  '#2d8066': '#4ADE80', // Vert formation
+  '#8e3b54': '#F472B6', // Bordeaux
+  '#e2a019': '#FBBF24', // Jaune
+  '#546e7a': '#94A3B8', // Gris
+  '#d32f2f': '#F87171', // Rouge
+};
+
+function accentSombre(couleur: string): string {
+  const connu = ACCENT_SOMBRE[couleur.toLowerCase()];
+  if (connu) return connu;
+
+  const propre = couleur.replace('#', '');
+  if (propre.length !== 6) return '#38BDF8';
+  const canal = (i: number) =>
+    Math.round(parseInt(propre.slice(i, i + 2), 16) * 0.45 + 255 * 0.55)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${canal(0)}${canal(2)}${canal(4)}`.toUpperCase();
+}
+
+// ─────────────────────────────────────────────
 // Construit la palette finale : thème + couleur principale choisie
 // ─────────────────────────────────────────────
 export function buildPalette(
@@ -173,7 +202,8 @@ export function buildPalette(
   accent?: string
 ): Palette {
   const base = theme === 'dark' ? SOMBRE : CLAIR;
-  const couleur = accent || (theme === 'dark' ? '#38BDF8' : '#063A5C');
+  const choisie = accent || '#063A5C';
+  const couleur = theme === 'dark' ? accentSombre(choisie) : choisie;
 
   return {
     ...base,

@@ -1,7 +1,10 @@
 // Service des échéances : calcul de l'échéancier, consultation, modification et rappels.
 const echeanceModel = require('../models/echeanceModel');
 const notifService = require('./notifService');
+const dependanceService = require('./dependanceService');
 const { badRequest, conflict, notFound } = require('../utils/errors');
+const { formatMontant } = require('../utils/format');
+const { salutation, titre, encadre, formation } = require('../utils/modeleEmail');
 
 const JOUR_MS = 24 * 60 * 60 * 1000;
 
@@ -65,12 +68,17 @@ async function listerToutesEcheances(filtres = {}, pagination = null) {
 }
 
 async function modifierEcheance(id_echeance, { montant_prevu, date_echeance, etat }) {
+  if (montant_prevu !== undefined || date_echeance !== undefined) {
+    await dependanceService.verifierEcheance(id_echeance);
+  }
   const ok = await echeanceModel.updateEcheance(id_echeance, { montant_prevu, date_echeance, etat });
   if (!ok) throw notFound('Échéance non trouvée.');
 }
 
-// Bouton « Rappeler » de l'Accueil : notification in-app + e-mail à l'étudiant
-async function rappelerEcheance(id_echeance) {
+// Bouton « Rappeler » de l'Accueil : notification in-app + e-mail à l'étudiant.
+// id_auteur : membre du personnel qui envoie le rappel (il signe l'e-mail).
+async function rappelerEcheance(id_echeance, id_auteur = null) {
+  await dependanceService.verifierEcheance(id_echeance);
   const echeance = await echeanceModel.getEcheancePourRappel(id_echeance);
   if (!echeance) throw notFound('Échéance non trouvée.');
 
@@ -82,18 +90,31 @@ async function rappelerEcheance(id_echeance) {
     throw conflict("L'étudiant a déjà envoyé son paiement : il attend la validation de l'accueil (page Paiements).");
   }
 
-  const montant = reste.toLocaleString('fr-FR');
+  const montant = formatMontant(reste);
   const date = new Date(echeance.date_echeance).toLocaleDateString('fr-FR');
 
   const resultat = await notifService.notifierEtudiant({
     id_utilisateur: echeance.id_utilisateur,
     email: echeance.email,
-    message: `Rappel : ${montant} MGA à régler pour la formation ${echeance.formation_nom} avant le ${date}.`,
-    sujet: 'Rappel de paiement IMTECH INFO',
-    contenuHtml: `<p>Bonjour ${echeance.prenom},</p>
-      <p>Nous vous rappelons qu'un montant de <strong>${montant} MGA</strong> reste à régler
-      pour la formation <strong>${echeance.formation_nom}</strong>, avant le <strong>${date}</strong>.</p>
-      <p>Vous pouvez payer depuis l'application mobile IMTECH ou à l'accueil.</p>`,
+    message: `Rappel : ${montant} à régler pour la formation ${echeance.formation_nom} avant le ${date}.`,
+    sujet: `IMTECH INFO — Rappel de paiement : échéance du ${date}`,
+    contenuHtml: `${titre('Rappel de paiement')}
+      ${salutation(echeance.prenom, echeance.nom)}
+      <p>Nous espérons que votre formation ${formation(echeance.formation_nom)} se passe bien !
+      Nous nous permettons de vous rappeler qu'une <strong>échéance de paiement</strong> arrive à son terme
+      — ou est déjà dépassée.</p>
+      ${encadre([
+        ['Formation', echeance.formation_nom],
+        ['Montant à régler', montant],
+        ["Date d'échéance", date],
+      ])}
+      <p>Vous pouvez régler ce montant <strong>en quelques secondes</strong> depuis l'application mobile
+      IMTECH INFO (rubrique <strong>Paiements</strong>), ou directement auprès de notre <strong>Accueil</strong>.</p>
+      <p>Une difficulté pour payer à temps ? <strong>N'hésitez pas à nous contacter</strong> : nous trouverons
+      ensemble une solution.</p>
+      <p style="color:#64748b;font-size:13px;">Si vous avez déjà effectué ce règlement, merci de ne pas tenir
+      compte de ce message.</p>`,
+    id_auteur,
   });
   await echeanceModel.marquerRappelEnvoye(id_echeance);
   return resultat;

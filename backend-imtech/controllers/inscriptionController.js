@@ -1,7 +1,8 @@
 // Controller des inscriptions d'étudiants aux formations.
 const inscriptionService = require('../services/inscriptionService');
 const { exigerChamps } = require('../utils/errors');
-const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
+const { lirePagination, texteRecherche, reponsePaginee, reponseListe } = require('../utils/pagination');
+const { lireEtat } = require('../utils/etat');
 
 // POST /inscriptions : crée l'inscription et son échéancier (nombre_tranches échéances)
 async function creerInscriptionController(req, res) {
@@ -23,22 +24,29 @@ async function validerInscriptionController(req, res) {
   exigerChamps(req.body, ['id_mode_paiement']);
   const { id_mode_paiement, reference_virement } = req.body;
 
-  const result = await inscriptionService.validerInscription(req.params.id, id_mode_paiement, reference_virement);
-  res.json({ status: 'success', message: 'Inscription validée et premier paiement enregistré.', data: result });
+  const result = await inscriptionService.validerInscription(req.params.id, id_mode_paiement, reference_virement, req.user.id);
+  // Inscription faite à l'Accueil avec un dossier incomplet : validée, mais l'Accueil est prévenu
+  const avertissement = result.pieces_manquantes.length > 0
+    ? `Dossier incomplet : ${result.pieces_manquantes.join(', ')}. À compléter depuis la fiche de l'étudiant.`
+    : undefined;
+  res.json({ status: 'success', message: 'Inscription validée et premier paiement enregistré.', avertissement, data: result });
 }
 
 // GET /inscriptions
-// Query : ?recherche= (étudiant ou formation), ?valide=oui|non, ?origine=accueil|en_ligne ;
+// Query : ?recherche= (étudiant ou formation), ?valide=oui|non, ?statut=en_cours|reussi, ?origine=accueil|en_ligne ;
 // ?page=&limite= pour une liste paginée (une autre valeur de filtre est ignorée)
 async function listerInscriptions(req, res) {
   const pagination = lirePagination(req.query);
   const filtres = {
     recherche: texteRecherche(req.query.recherche),
     valide: { oui: true, non: false }[req.query.valide],
+    statut: ['en_cours', 'reussi'].includes(req.query.statut) ? req.query.statut : undefined,
     origine: ['accueil', 'en_ligne'].includes(req.query.origine) ? req.query.origine : undefined,
+    dossier: ['complet', 'incomplet'].includes(req.query.dossier) ? req.query.dossier : undefined,
+    etat: lireEtat(req.query), // route réservée au personnel
   };
   const resultat = await inscriptionService.listerInscriptions(filtres, pagination);
-  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
+  res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
 // GET /inscriptions/:id

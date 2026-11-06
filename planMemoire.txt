@@ -73,16 +73,21 @@ Introduction .................................................... 1 p
         (Figure 15 : diagramme de sequence de la connexion)
 
 2.3 Etats d'analyse et statistiques .............................. 3 p
-    2.3.1 Etat : tableau de bord
-        (Figure 16 : tableau de bord)
-    2.3.2 Statistique : note d'attestation et classement
+    (Tableau 8 : catalogue des etats E1 a E8 ; mention donnees fictives)
+    Chaque fiche : besoin, donnees et calcul, restitution, lecture, verification
+    2.3.1 Etat E1 : indicateurs financiers (tableau de bord)
+        (Figure 16 : tableau de bord, indicateurs financiers)
+    2.3.2 Etat E2 : evolution des encaissements et des inscriptions
+        (Figure 17 : evolution mensuelle et formations les plus demandees)
+    2.3.3 Etat E3 : notes d'attestation et classement d'une formation
         (note sur 20 = paiement + presence + presentation)
-        (Figure 17 : tableau des notes et classement d'une formation)
-    2.3.3 Statistique : avis des etudiants sur les formateurs
-        (Figure 18 : tri des formateurs par competence)
+        (Figure 18 : notes et classement d'une formation)
+    2.3.4 Etat E4 : avis des etudiants sur les formateurs
+        (Figure 19 : avis des etudiants sur les formateurs)
+    2.3.5 Bilan des etats (besoins couverts, besoins restants)
 
 2.4 Problemes rencontres et solutions ............................ 2 p
-    (Tableau 8 : problemes rencontres et solutions, 6 a 8 lignes)
+    (Tableau 9 : problemes rencontres et solutions, 6 a 8 lignes)
 
 3 Evaluation du projet et connaissances acquises ................ 3 p
 3.1 Bilan pour l'entreprise
@@ -99,5 +104,6 @@ Annexes (hors pages comptees)
     Annexe C : conception affichage (ecrans, boutons, messages d'erreur)
     Annexe D : conception metier (donnees echangees front/back, equivalent DTO)
     Annexe E : base de donnees expliquee simplement
+    Annexe F : requetes SQL des etats d'analyse
 
 Total : 35 pages.

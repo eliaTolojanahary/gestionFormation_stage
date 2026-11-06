@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Icon from '../../components/icon/Icon'
 import Header from '../../components/header/Header'
 import { useAssistance, STATUTS_ASSISTANCE } from '../../hooks/useAssistance'
+import { useListePaginee } from '../../hooks/useListePaginee'
+import Pagination from '../../components/pagination/Pagination'
 import { formatDate } from '../../utils/time'
 import './Assistance.css'
 
@@ -19,30 +21,36 @@ function StatutDemande({ statut }) {
 
 // Demandes envoyées par les étudiants depuis l'application mobile ;
 // l'Accueil / le Super Admin les traitent puis cliquent « Résoudre ».
+// Statut, recherche et pagination faits par le serveur (GET /assistances?page=&statut=&recherche=).
 function Assistance({ user }) {
-  const { demandes, isLoading, error, resoudreDemande } = useAssistance()
+  const { resoudreDemande } = useAssistance({ charger: false })
   const [filtre, setFiltre] = useState(STATUTS_ASSISTANCE.EN_ATTENTE)
+  const [recherche, setRecherche] = useState('')
   const [idSelection, setIdSelection] = useState(null)
   const [enCours, setEnCours] = useState(false)
   const [actionError, setActionError] = useState('')
 
-  const nbEnAttente = demandes.filter((d) => d.statut === STATUTS_ASSISTANCE.EN_ATTENTE).length
+  const liste = useListePaginee('/assistances', {
+    statut: filtre === 'Toutes' ? '' : filtre,
+    recherche: recherche.trim(),
+  })
+  const { lignes: demandesFiltrees, isLoading, error } = liste
+  // Nombre de demandes en attente, toutes pages confondues (renvoyé par le serveur)
+  const nbEnAttente = liste.extra.compteurs?.en_attente ?? 0
 
-  const demandesFiltrees = useMemo(
-    () => (filtre === 'Toutes' ? demandes : demandes.filter((d) => d.statut === filtre)),
-    [demandes, filtre]
-  )
-
-  // Demande affichée à droite : celle cliquée, sinon la première de la liste filtrée
+  // Demande affichée à droite : celle cliquée, sinon la première de la page
   const selection =
-    demandes.find((d) => d.id_assistance === idSelection) || demandesFiltrees[0] || null
+    demandesFiltrees.find((d) => d.id_assistance === idSelection) || demandesFiltrees[0] || null
 
   async function handleResoudre() {
     if (!selection) return
     setActionError('')
     setEnCours(true)
     try {
-      await resoudreDemande(selection.id_assistance)
+      const resolue = await resoudreDemande(selection.id_assistance)
+      // Mise à jour tout de suite, puis rechargement (compteur, filtre « En attente »)
+      liste.setLignes((lignes) => lignes.map((d) => (d.id_assistance === resolue.id_assistance ? resolue : d)))
+      liste.recharger()
     } catch (requestError) {
       setActionError(requestError.message)
     } finally {
@@ -78,8 +86,17 @@ function Assistance({ user }) {
               <h2>Demandes</h2>
               <p>Cliquez sur une demande pour la consulter.</p>
             </div>
-            <span className="count-badge">{demandesFiltrees.length}</span>
+            <span className="count-badge">{liste.total}</span>
           </div>
+
+          <input
+            type="search"
+            className="assistance-recherche"
+            value={recherche}
+            onChange={(event) => { setRecherche(event.target.value); setIdSelection(null) }}
+            placeholder="Rechercher un objet, un message, un étudiant…"
+            aria-label="Rechercher une demande"
+          />
 
           <div className="assistance-filtres">
             {FILTRES.map(({ valeur, label }) => (
@@ -117,6 +134,15 @@ function Assistance({ user }) {
               ))}
             </div>
           )}
+
+          <Pagination
+            page={liste.page}
+            pages={liste.pages}
+            total={liste.total}
+            limite={liste.limite}
+            onChange={(page) => { liste.setPage(page); setIdSelection(null) }}
+            libelle="demande(s)"
+          />
         </div>
 
         <div className="workspace-panel assistance-detail">

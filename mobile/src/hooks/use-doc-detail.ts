@@ -2,15 +2,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Formation, useFormationEtudiant } from './use-formation';
-import { Commentaire, Support, useSupport } from './use-support';
+import { Commentaire, Page, Support, useSupport } from './use-support';
 import { Reaction, TypeReaction, useReaction } from './use-reaction';
 
-// Nombre de supports affichés avant le bouton "Voir tout"
-const SUPPORTS_VISIBLES = 3;
-
 // Données et actions des écrans de détail, en deux modes :
-//  - mode formation (formationId) : la formation, tous ses supports, commentaires et réactions ;
+//  - mode formation (formationId) : la formation, ses supports, commentaires et réactions ;
 //  - mode support (supportId)     : un seul support avec ses commentaires et réactions.
+// Supports et commentaires arrivent par pages de 5 (pagination du serveur) : « Voir plus »
+// demande la page suivante avec le curseur `suivant`.
 // Gère aussi la saisie / publication des commentaires et l'ouverture du fichier.
 export function useDocDetail(
   formationId?: string,
@@ -25,10 +24,10 @@ export function useDocDetail(
   } = useFormationEtudiant();
 
   const {
-    getSupports,
+    pageSupports,
     getSupportById,
-    getCommentairesByFormation,
-    getCommentairesBySupport,
+    pageCommentairesFormation,
+    pageCommentairesSupport,
     createCommentaire,
     error: erreurSupport,
   } = useSupport();
@@ -46,6 +45,13 @@ export function useDocDetail(
   const [supports, setSupports] = useState<Support[]>([]);
   const [commentaires, setCommentaires] = useState<Commentaire[]>([]);
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+  // Curseurs (id à passer en `avant`, null = fin) et totaux de toute la liste
+  const [suivantSupports, setSuivantSupports] = useState<number | null>(null);
+  const [totalSupports, setTotalSupports] = useState(0);
+  const [suivantCommentaires, setSuivantCommentaires] = useState<number | null>(null);
+  const [totalCommentaires, setTotalCommentaires] = useState(0);
+  const [totalEchanges, setTotalEchanges] = useState(0);
+  const [suiteEnCours, setSuiteEnCours] = useState(false);
   const [estEnCours, setEstEnCours] = useState(false);
   const [dateInscription, setDateInscription] = useState<string | undefined>();
 
@@ -53,7 +59,6 @@ export function useDocDetail(
   const [refreshing, setRefreshing] = useState(false);
   const [erreur, setErreur] = useState('');
 
-  const [tousLesSupports, setTousLesSupports] = useState(false);
   // Support sur lequel le prochain commentaire sera publié
   const [cibleSupport, setCibleSupport] = useState<number | null>(null);
   const [brouillon, setBrouillon] = useState('');
@@ -76,7 +81,30 @@ export function useDocDetail(
     setFormationEffectiveId(formationId);
   }, [formationId]);
 
-  // ─── Chargement complet ────────────────────
+  // Page de commentaires selon le mode (support ou formation)
+  function pageCommentaires(avant: number | null): Promise<Page<Commentaire>> {
+    if (supportId) return pageCommentairesSupport(supportId, avant);
+    return pageCommentairesFormation(formationEffectiveId!, avant);
+  }
+
+  function appliquerCommentaires(page: Page<Commentaire>, ajouter: boolean) {
+    setCommentaires((actuels) => (ajouter ? [...actuels, ...page.elements] : page.elements));
+    setSuivantCommentaires(page.suivant);
+    setTotalCommentaires(page.total);
+    setTotalEchanges(page.totalEchanges ?? page.elements.length);
+  }
+
+  // Réactions des supports donnés, une requête par support de la page (5 au plus)
+  async function chargerReactions(liste: Support[]) {
+    const listes = await Promise.all(liste.map((s) => getReactions(s.id_support)));
+    const parSupport: Record<string, Reaction[]> = {};
+    liste.forEach((support, index) => {
+      parSupport[String(support.id_support)] = listes[index] || [];
+    });
+    return parSupport;
+  }
+
+  // ─── Chargement de la première page ────────
   async function chargerDonnees() {
     // Rien à charger si on n'a ni formation ni support
     if (!formationEffectiveId && !supportId) {
@@ -95,13 +123,13 @@ export function useDocDetail(
           throw new Error('Support introuvable.');
         }
 
-        const [listeCommentaires, listeReactions] = await Promise.all([
-          getCommentairesBySupport(supportId),
+        const [pageCom, listeReactions] = await Promise.all([
+          pageCommentairesSupport(supportId),
           getReactions(support.id_support),
         ]);
 
         setSupports([support]);
-        setCommentaires(listeCommentaires);
+        appliquerCommentaires(pageCom, false);
         setReactions({ [String(support.id_support)]: listeReactions || [] });
         setCibleSupport(support.id_support);
 
@@ -143,23 +171,16 @@ export function useDocDetail(
         return;
       }
 
-      const [detail, listeSupports, mesFormations] = await Promise.all([
+      const [detail, pageSup, mesFormations, pageCom] = await Promise.all([
         getFormationById(formationEffectiveId),
-        getSupports(formationEffectiveId),
+        pageSupports(formationEffectiveId),
         etudiantId
           ? getFormations(etudiantId)
           : Promise.resolve<Formation[]>([]),
+        pageCommentairesFormation(formationEffectiveId),
       ]);
-
-      const [listeCommentaires, listeReactions] = await Promise.all([
-        getCommentairesByFormation(formationEffectiveId),
-        Promise.all(listeSupports.map((s) => getReactions(s.id_support))),
-      ]);
-
-      const parSupport: Record<string, Reaction[]> = {};
-      listeSupports.forEach((support, index) => {
-        parSupport[String(support.id_support)] = listeReactions[index] || [];
-      });
+      const listeSupports = pageSup.elements;
+      const parSupport = await chargerReactions(listeSupports);
 
       // La formation est considérée "en cours" si c'est la dernière de la liste de l'étudiant
       const derniere = mesFormations[mesFormations.length - 1];
@@ -169,7 +190,9 @@ export function useDocDetail(
 
       setFormation(detail);
       setSupports(listeSupports);
-      setCommentaires(listeCommentaires);
+      setSuivantSupports(pageSup.suivant);
+      setTotalSupports(pageSup.total);
+      appliquerCommentaires(pageCom, false);
       setReactions(parSupport);
       setEstEnCours(
         String(derniere?.id_formation) === String(formationEffectiveId)
@@ -214,6 +237,32 @@ export function useDocDetail(
     setRefreshing(true);
     await chargerDonnees();
     setRefreshing(false);
+  }
+
+  // ─── Pages suivantes (« Voir plus ») ───────
+  async function voirPlusSupports() {
+    if (!formationEffectiveId || !suivantSupports || suiteEnCours) return;
+    setSuiteEnCours(true);
+    try {
+      const page = await pageSupports(formationEffectiveId, suivantSupports);
+      const parSupport = await chargerReactions(page.elements);
+      setSupports((actuels) => [...actuels, ...page.elements]);
+      setReactions((actuelles) => ({ ...actuelles, ...parSupport }));
+      setSuivantSupports(page.suivant);
+      setTotalSupports(page.total);
+    } finally {
+      setSuiteEnCours(false);
+    }
+  }
+
+  async function voirPlusCommentaires() {
+    if (!suivantCommentaires || suiteEnCours) return;
+    setSuiteEnCours(true);
+    try {
+      appliquerCommentaires(await pageCommentaires(suivantCommentaires), true);
+    } finally {
+      setSuiteEnCours(false);
+    }
   }
 
   // ─── Réactions ─────────────────────────────
@@ -266,14 +315,8 @@ export function useDocDetail(
       setBrouillon('');
       setReponseA(null);
 
-      // Rechargement des commentaires selon le mode
-      if (supportId) {
-        setCommentaires(await getCommentairesBySupport(supportId));
-      } else if (formationEffectiveId) {
-        setCommentaires(
-          await getCommentairesByFormation(formationEffectiveId)
-        );
-      }
+      // Le nouveau commentaire est le plus récent : on recharge la première page
+      appliquerCommentaires(await pageCommentaires(null), false);
     } catch (requestError: any) {
       setErreurCommentaire(
         requestError?.message || 'Impossible de publier le commentaire.'
@@ -324,17 +367,11 @@ export function useDocDetail(
     return map;
   }, [supports]);
 
-  const supportsAffiches = tousLesSupports
-    ? supports
-    : supports.slice(0, SUPPORTS_VISIBLES);
-
-  const restant = supports.length - SUPPORTS_VISIBLES;
-
-  // Nombre d'échanges : commentaires principaux + leurs réponses
-  const nbEchanges = commentaires.reduce(
-    (total, c) => total + 1 + (c.reponses?.length || 0),
-    0
-  );
+  // Nombre d'échanges de tout le fil (commentaires principaux + réponses), donné par le serveur
+  const nbEchanges = totalEchanges;
+  // Éléments pas encore chargés (bouton « Voir plus »)
+  const supportsRestants = suivantSupports ? Math.max(0, totalSupports - supports.length) : 0;
+  const commentairesRestants = suivantCommentaires ? Math.max(0, totalCommentaires - commentaires.length) : 0;
 
   const formateur = `${formation?.prenom_formateur || ''} ${
     formation?.nom_formateur || ''
@@ -349,10 +386,11 @@ export function useDocDetail(
     supports,
     commentaires,
     nbEchanges,
+    totalSupports,
+    supportsRestants,
+    commentairesRestants,
     reactions,
     supportsParId,
-    supportsAffiches,
-    restant,
     formateur,
     estEnCours,
     dateInscription,
@@ -362,7 +400,6 @@ export function useDocDetail(
     refreshing,
     erreur: messageErreur,
     reactionEnCours,
-    tousLesSupports,
     cibleSupport,
     brouillon,
     reponseA,
@@ -371,6 +408,8 @@ export function useDocDetail(
 
     // Actions
     refresh,
+    voirPlusSupports,
+    voirPlusCommentaires,
     reactionsDuSupport,
     compterReactions,
     basculerReaction,
@@ -380,7 +419,6 @@ export function useDocDetail(
     ouvrirFichier,
 
     // Setters exposés
-    setTousLesSupports,
     setCibleSupport,
     setBrouillon,
   };

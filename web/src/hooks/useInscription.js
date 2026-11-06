@@ -28,5 +28,9 @@ export function useInscription() {
     return apiRequest(`/inscriptions/${id}`, { method: 'DELETE' })
   }
 
-  return { getInscription, createInscription, validateInscription, deleteInscription }
+  function reactiverInscription(id) {
+    return apiRequest(`/inscriptions/${id}/reactiver`, { method: 'PUT' })
+  }
+
+  return { getInscription, createInscription, validateInscription, deleteInscription, reactiverInscription }
 }

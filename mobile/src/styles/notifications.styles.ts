@@ -50,6 +50,15 @@ export const createNotificationsStyles = ({
       borderRadius: 10,
       backgroundColor: t.accentSoft,
     },
+    // Bouton « Voir les notifications précédentes », sous la liste
+    plusAction: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 4,
+      paddingVertical: 12,
+      borderRadius: 10,
+      backgroundColor: t.accentSoft,
+    },
     bulkActionText: {
       fontSize: f.xs + 1,
       fontWeight: '800',

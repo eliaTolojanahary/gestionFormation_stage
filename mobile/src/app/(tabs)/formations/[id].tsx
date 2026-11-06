@@ -14,22 +14,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Ellipsis, MessageCircle, Send, Paperclip,
+  MessageCircle, Send, Paperclip,
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useDocDetail } from '@/hooks/use-doc-detail';
+import { VoirPlus } from '@/components/voir-plus';
 import { DetailHeader } from '@/components/detail-header';
 import { FormationBlock } from '@/components/formation/formation-block';
 import { SupportBlock } from '@/components/doc/support-block';
 import { CommentaireBlock, ReponseBanniere } from '@/components/comment/commentaire-block';
 import { createFormationsStyles } from '@/styles/formations.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 
-// Détail d'une formation : en-tête, description, supports (3 affichés puis "Voir les autres"),
-// réactions, commentaires et formulaire pour commenter un support choisi.
+// Détail d'une formation : en-tête, description, supports et commentaires (5 par 5, chargés
+// par le serveur à chaque « Voir plus »), réactions et formulaire pour commenter un support choisi.
 // Toute la logique est dans le hook useDocDetail (mode formation).
 export default function FormationDetailScreen() {
   const styles = useThemedStyles(createFormationsStyles);
+  const { palette } = useSettings();
   // L'id vient de l'URL (/formations/[id]) ; expo-router peut le donner sous forme de tableau
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const formationId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -43,9 +45,11 @@ export default function FormationDetailScreen() {
     supports,
     commentaires,
     nbEchanges,
-    supportsParId,
-    supportsAffiches,
-    restant,
+    totalSupports,
+    supportsRestants,
+    commentairesRestants,
+    voirPlusSupports,
+    voirPlusCommentaires,
     formateur,
     estEnCours,
     dateInscription,
@@ -53,7 +57,6 @@ export default function FormationDetailScreen() {
     refreshing,
     erreur,
     reactionEnCours,
-    tousLesSupports,
     cibleSupport,
     brouillon,
     envoiEnCours,
@@ -66,7 +69,6 @@ export default function FormationDetailScreen() {
     reponseA,
     annulerReponse,
     ouvrirFichier,
-    setTousLesSupports,
     setCibleSupport,
     setBrouillon,
   } = useDocDetail(formationId, undefined, etudiantId);
@@ -86,7 +88,7 @@ export default function FormationDetailScreen() {
 
       {chargement && !formation ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#072E4C" />
+          <ActivityIndicator size="large" color={palette.heading} />
           <Text style={styles.loadingText}>Chargement de la formation...</Text>
         </View>
       ) : (
@@ -134,20 +136,20 @@ export default function FormationDetailScreen() {
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>Supports pédagogiques</Text>
                   <Text style={styles.cardHeaderMeta}>
-                    {supports.length} fichier{supports.length > 1 ? 's' : ''}
+                    {totalSupports} fichier{totalSupports > 1 ? 's' : ''}
                   </Text>
                 </View>
 
                 {supports.length === 0 ? (
                   <View style={styles.emptyInline}>
-                    <Paperclip size={20} color="#8898AA" />
+                    <Paperclip size={20} color={palette.textMuted} />
                     <Text style={styles.emptyInlineText}>
                       Aucun support n'a encore été publié pour cette formation.
                     </Text>
                   </View>
                 ) : (
                   <>
-                    {supportsAffiches.map((support) => (
+                    {supports.map((support) => (
                       <SupportBlock
                         key={support.id_support}
                         support={support}
@@ -161,19 +163,7 @@ export default function FormationDetailScreen() {
                       />
                     ))}
 
-                    {restant > 0 && !tousLesSupports ? (
-                      <TouchableOpacity
-                        style={styles.voirPlus}
-                        activeOpacity={0.8}
-                        onPress={() => setTousLesSupports(true)}
-                      >
-                        <Ellipsis size={16} color="#0A3B66" />
-                        <Text style={styles.voirPlusText}>
-                          Voir les {restant} autre{restant > 1 ? 's' : ''} support
-                          {restant > 1 ? 's' : ''}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : null}
+                    <VoirPlus restant={supportsRestants} onPress={voirPlusSupports} />
                   </>
                 )}
               </View>
@@ -190,21 +180,24 @@ export default function FormationDetailScreen() {
 
                 {commentaires.length === 0 ? (
                   <View style={styles.emptyInline}>
-                    <MessageCircle size={20} color="#8898AA" />
+                    <MessageCircle size={20} color={palette.textMuted} />
                     <Text style={styles.emptyInlineText}>
                       Aucun commentaire pour l'instant : lancez la discussion.
                     </Text>
                   </View>
                 ) : (
-                  commentaires.map((commentaire) => (
-                    <CommentaireBlock
-                      key={commentaire.id_commentaire}
-                      commentaire={commentaire}
-                      nomSupport={supportsParId[commentaire.id_support]?.titre}
-                      userId={userId}
-                      onRepondre={repondreA}
-                    />
-                  ))
+                  <>
+                    {commentaires.map((commentaire) => (
+                      <CommentaireBlock
+                        key={commentaire.id_commentaire}
+                        commentaire={commentaire}
+                        nomSupport={commentaire.titre_support}
+                        userId={userId}
+                        onRepondre={repondreA}
+                      />
+                    ))}
+                    <VoirPlus restant={commentairesRestants} onPress={voirPlusCommentaires} />
+                  </>
                 )}
 
                 {/* Formulaire */}
@@ -267,9 +260,9 @@ export default function FormationDetailScreen() {
                         disabled={!brouillon.trim() || envoiEnCours}
                       >
                         {envoiEnCours ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
+                          <ActivityIndicator size="small" color={palette.onAccent} />
                         ) : (
-                          <Send size={17} color="#FFFFFF" />
+                          <Send size={17} color={palette.onAccent} />
                         )}
                       </TouchableOpacity>
                     </View>

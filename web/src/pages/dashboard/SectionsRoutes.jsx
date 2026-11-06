@@ -11,6 +11,7 @@ import Inscriptions from '../inscriptions/Inscriptions'
 import InscriptionDetail from '../inscriptions/InscriptionDetail'
 import InscriptionForm from '../inscriptions/InscriptionForm'
 import { CHEMINS } from '../../utils/navigation'
+import { useRetour } from '../../components/retour/useRetour'
 
 // Sous-routes des sections « liste / fiche / formulaire » : chaque vue a sa propre URL
 // (ex. /dashboard/etudiants/12, /dashboard/formations/3/modifier). Un rechargement (F5) garde
@@ -28,9 +29,19 @@ function AvecId({ liste, children }) {
   return id ? children(id) : <Navigate to={liste} replace />
 }
 
+// Après un enregistrement réussi : message de confirmation puis navigation
+function useApresEnregistrement() {
+  const { notifier } = useRetour()
+  return (message, suite) => () => {
+    notifier(message)
+    suite()
+  }
+}
+
 export function EtudiantsRoutes({ user }) {
   const navigate = useNavigate()
   const liste = () => navigate(CHEMINS.etudiants)
+  const apres = useApresEnregistrement()
   return (
     <Routes>
       <Route
@@ -44,7 +55,7 @@ export function EtudiantsRoutes({ user }) {
           />
         }
       />
-      <Route path="nouveau" element={<EtudiantForm user={user} onBack={liste} onSaved={liste} />} />
+      <Route path="nouveau" element={<EtudiantForm user={user} onBack={liste} onSaved={apres('Étudiant ajouté', liste)} />} />
       <Route
         path=":id"
         element={
@@ -71,7 +82,7 @@ export function EtudiantsRoutes({ user }) {
                 user={user}
                 studentId={id}
                 onBack={() => navigate(CHEMINS.etudiant(id))}
-                onSaved={() => navigate(CHEMINS.etudiant(id))}
+                onSaved={apres('Modifications enregistrées', () => navigate(CHEMINS.etudiant(id)))}
               />
             )}
           </AvecId>
@@ -85,6 +96,7 @@ export function EtudiantsRoutes({ user }) {
 export function UtilisateursRoutes({ user }) {
   const navigate = useNavigate()
   const liste = () => navigate(CHEMINS.utilisateurs)
+  const apres = useApresEnregistrement()
   return (
     <Routes>
       <Route
@@ -97,12 +109,12 @@ export function UtilisateursRoutes({ user }) {
           />
         }
       />
-      <Route path="nouveau" element={<UserForm user={user} onBack={liste} onSaved={liste} />} />
+      <Route path="nouveau" element={<UserForm user={user} onBack={liste} onSaved={apres('Compte créé', liste)} />} />
       <Route
         path=":id/modifier"
         element={
           <AvecId liste={CHEMINS.utilisateurs}>
-            {(id) => <UserForm key={id} user={user} userId={id} onBack={liste} onSaved={liste} />}
+            {(id) => <UserForm key={id} user={user} userId={id} onBack={liste} onSaved={apres('Modifications enregistrées', liste)} />}
           </AvecId>
         }
       />
@@ -114,6 +126,7 @@ export function UtilisateursRoutes({ user }) {
 export function FormationsRoutes({ user }) {
   const navigate = useNavigate()
   const liste = () => navigate(CHEMINS.formations)
+  const apres = useApresEnregistrement()
   return (
     <Routes>
       <Route
@@ -127,7 +140,7 @@ export function FormationsRoutes({ user }) {
           />
         }
       />
-      <Route path="nouvelle" element={<FormationForm user={user} onBack={liste} onSaved={liste} />} />
+      <Route path="nouvelle" element={<FormationForm user={user} onBack={liste} onSaved={apres('Formation créée', liste)} />} />
       <Route
         path=":id"
         element={
@@ -154,7 +167,7 @@ export function FormationsRoutes({ user }) {
                 user={user}
                 formationId={id}
                 onBack={() => navigate(CHEMINS.formation(id))}
-                onSaved={() => navigate(CHEMINS.formation(id))}
+                onSaved={apres('Modifications enregistrées', () => navigate(CHEMINS.formation(id)))}
               />
             )}
           </AvecId>
@@ -168,6 +181,7 @@ export function FormationsRoutes({ user }) {
 export function InscriptionsRoutes({ user }) {
   const navigate = useNavigate()
   const liste = () => navigate(CHEMINS.inscriptions)
+  const apres = useApresEnregistrement()
   return (
     <Routes>
       <Route
@@ -180,7 +194,7 @@ export function InscriptionsRoutes({ user }) {
           />
         }
       />
-      <Route path="nouvelle" element={<InscriptionForm user={user} onBack={liste} onSaved={liste} />} />
+      <Route path="nouvelle" element={<InscriptionForm user={user} onBack={liste} onSaved={apres('Inscription enregistrée', liste)} />} />
       <Route
         path=":id"
         element={

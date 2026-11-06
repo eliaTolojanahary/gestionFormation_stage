@@ -1,21 +1,35 @@
 // Model des étudiants : table `etudiant` (pièces justificatives) jointe à `utilisateur` (identité).
 const db = require('../config/db');
 const { ROLES } = require('../config/roles');
-const { motifLike, clauseLimite } = require('../utils/pagination');
+const { clauseLimite } = require('../utils/pagination');
+const { conditionUtilisateur } = require('../utils/recherche');
+const { conditionEtat } = require('../utils/etat');
+const { STATUT_INSCRIPTION } = require('./inscriptionModel');
 
-// Filtres de la liste : recherche dans le nom, le prénom, le nom complet, l'e-mail, le téléphone
-function filtresEtudiants({ recherche } = {}) {
-  const conditions = ['e.etat = true'];
+// Filtres de la liste : recherche dans le nom, le prénom, l'e-mail, le téléphone (index plein texte,
+// voir utils/recherche.js) et état (actif par défaut, désactivé ou tous).
+// id_formateur : seulement les étudiants inscrits (inscription active) à une de ses formations.
+// Les conditions ne portent que sur la table etudiant : le total se compte sans jointure.
+function filtresEtudiants({ recherche, etat, id_formateur } = {}) {
+  const conditions = [conditionEtat('e.etat', etat)].filter(Boolean);
   const params = [];
-  if (recherche) {
-    const motif = motifLike(recherche);
-    conditions.push(`(u.nom LIKE ? OR u.prenom LIKE ? OR CONCAT(u.prenom, ' ', u.nom) LIKE ? OR CONCAT(u.nom, ' ', u.prenom) LIKE ? OR u.email LIKE ? OR u.telephone LIKE ?)`);
-    params.push(motif, motif, motif, motif, motif, motif);
+  if (id_formateur) {
+    conditions.push(`e.id_etudiant IN (SELECT fi.id_etudiant FROM inscription fi
+                       JOIN formation ff ON ff.id_formation = fi.id_formation
+                      WHERE ff.id_utilisateur = ? AND ff.etat = true AND fi.etat = true)`);
+    params.push(id_formateur);
   }
-  return { where: conditions.join(' AND '), params };
+  if (recherche) {
+    const condition = conditionUtilisateur('e.id_utilisateur', recherche);
+    conditions.push(condition.sql);
+    params.push(...condition.params);
+  }
+  return { where: conditions.join(' AND ') || '1 = 1', params };
 }
 
-// Étudiants actifs avec leurs infos de compte, triés par nom ; `pagination` = page demandée (ou null : tous)
+// Étudiants actifs avec leurs infos de compte, triés par nom ; `pagination` = page demandée (ou null : tous).
+// Tri entièrement sur utilisateur (nom, prénom, id) : l'index idx_utilisateur_nom donne les lignes
+// déjà dans l'ordre, MariaDB s'arrête après la page.
 async function getAllEtudiants(filtres = {}, pagination = null) {
   const { where, params } = filtresEtudiants(filtres);
   const limite = clauseLimite(pagination);
@@ -26,7 +40,7 @@ async function getAllEtudiants(filtres = {}, pagination = null) {
     FROM etudiant e
     JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur
     WHERE ${where}
-    ORDER BY u.nom, u.prenom, e.id_etudiant${limite.sql}
+    ORDER BY u.nom, u.prenom, u.id_utilisateur${limite.sql}
   `;
   const [rows] = await db.query(sql, [...params, ...limite.params]);
   return rows;
@@ -36,7 +50,7 @@ async function getAllEtudiants(filtres = {}, pagination = null) {
 async function compterEtudiants(filtres = {}) {
   const { where, params } = filtresEtudiants(filtres);
   const [[{ total }]] = await db.query(
-    `SELECT COUNT(*) AS total FROM etudiant e JOIN utilisateur u ON e.id_utilisateur = u.id_utilisateur WHERE ${where}`,
+    `SELECT COUNT(*) AS total FROM etudiant e WHERE ${where}`,
     params
   );
   return Number(total);
@@ -64,6 +78,8 @@ async function getFormationsByEtudiant(id_etudiant) {
       f.duree,
       i.date_inscription,
       i.valide,
+      ${STATUT_INSCRIPTION()} AS statut,
+      f.id_utilisateur AS id_formateur,
       u.nom    AS nom_formateur,
       u.prenom AS prenom_formateur
     FROM inscription i
@@ -129,14 +145,8 @@ async function getIdEtudiantByUtilisateur(id_utilisateur) {
   return rows[0]?.id_etudiant ?? null;
 }
 
-// Suppression logique de la fiche étudiant (etat = false)
-async function deleteEtudiant(id_etudiant) {
-  const [result] = await db.query('UPDATE etudiant SET etat = false WHERE id_etudiant = ?', [id_etudiant]);
-  return result.affectedRows > 0;
-}
-
 module.exports = {
   getAllEtudiants, compterEtudiants, getEtudiantById, getFormationsByEtudiant,
-  insertUtilisateurEtEtudiant, updateEtudiant, deleteEtudiant,
+  insertUtilisateurEtEtudiant, updateEtudiant,
   getIdEtudiantByUtilisateur,
 };

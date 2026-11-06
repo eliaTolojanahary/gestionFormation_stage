@@ -1,10 +1,11 @@
 // Informations publiques d'IMTECH INFO affichées dans la vitrine de l'application mobile.
-// À renseigner dans le fichier .env (les valeurs par défaut ne sont que des exemples).
+// Valeurs par défaut = vrais contacts d'IMTECH INFO ; le fichier .env peut les remplacer.
 require('dotenv').config();
 
 const CONTACTS = Object.freeze({
-  facebook: process.env.IMTECH_FACEBOOK_URL || 'https://www.facebook.com/',
-  email: process.env.IMTECH_EMAIL || 'contact@imtech.info',
+  siteWeb: process.env.IMTECH_SITE_WEB || 'https://www.imtechinfo.com/',
+  facebook: process.env.IMTECH_FACEBOOK_URL || 'https://web.facebook.com/profile.php?id=61584566136680&locale=fr_FR',
+  email: process.env.IMTECH_EMAIL || 'im.techinfo.mdg@gmail.com',
   // Numéro WhatsApp au format international, sans espace ni « + » (ex. 261340000000)
   whatsapp: process.env.IMTECH_WHATSAPP || '',
   telephone: process.env.IMTECH_TELEPHONE || '',

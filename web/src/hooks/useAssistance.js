@@ -6,8 +6,9 @@ export const STATUTS_ASSISTANCE = {
   RESOLU: 'Résolu',
 }
 
-// Demandes d'assistance envoyées par les étudiants depuis l'application mobile
-export function useAssistance() {
+// Demandes d'assistance envoyées par les étudiants depuis l'application mobile.
+// { charger: false } : pas de liste au montage (la page Assistance pagine par le serveur)
+export function useAssistance({ charger = true } = {}) {
   const [demandes, setDemandes] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -32,7 +33,10 @@ export function useAssistance() {
     return result.data
   }
 
-  useEffect(() => { getDemandes() }, [])
+  useEffect(() => {
+    if (charger) getDemandes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charger])
 
   return { demandes, isLoading, error, getDemandes, resoudreDemande }
 }

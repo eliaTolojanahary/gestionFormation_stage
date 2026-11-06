@@ -5,7 +5,7 @@ import { ArrowRight, Clock, Code, Megaphone } from 'lucide-react-native';
 import { Formation } from '@/hooks/use-formation';
 import { formatDateFr } from '@/utils/format';
 import { createCarteFormationStyles } from '@/styles/components/carte-formation.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 
 // Couleurs cycliques selon l'index
 const CARD_COLORS = ['#E8F5E9', '#FFF3E0', '#E3F2FD', '#FCE4EC', '#F3E5F5'];
@@ -20,6 +20,7 @@ interface Props {
 
 // Carte d'une formation dans la liste ; l'index sert seulement à varier l'icône et les couleurs
 export function CarteFormation({ formation, index, enCours, onPress }: Props) {
+  const { palette } = useSettings();
   const styles = useThemedStyles(createCarteFormationStyles);
   const formateur = `${formation.prenom_formateur || ''} ${
     formation.nom_formateur || ''
@@ -45,7 +46,12 @@ export function CarteFormation({ formation, index, enCours, onPress }: Props) {
             <Text style={styles.cardTitle} numberOfLines={2}>
               {formation.nom}
             </Text>
-            {enCours ? (
+            {/* Attestation délivrée : formation réussie */}
+            {formation.statut === 'reussi' ? (
+              <View style={[styles.badgeEnCours, { backgroundColor: palette.successSoft }]}>
+                <Text style={[styles.badgeEnCoursText, { color: palette.success }]}>RÉUSSIE</Text>
+              </View>
+            ) : enCours ? (
               <View style={styles.badgeEnCours}>
                 <Text style={styles.badgeEnCoursText}>EN COURS</Text>
               </View>
@@ -54,7 +60,7 @@ export function CarteFormation({ formation, index, enCours, onPress }: Props) {
 
           {/* Inscription pas encore validée par l'Accueil (ex. inscription en ligne) */}
           {formation.valide === false || formation.valide === 0 ? (
-            <Text style={[styles.cardFormateur, { color: '#B45309', fontWeight: '700' }]}>
+            <Text style={[styles.cardFormateur, { color: palette.warning, fontWeight: '700' }]}>
               En attente de validation par l’accueil
             </Text>
           ) : null}
@@ -77,7 +83,7 @@ export function CarteFormation({ formation, index, enCours, onPress }: Props) {
         <View style={styles.cardMeta}>
           {formation.duree_jours ? (
             <>
-              <Clock size={13} color="#8898AA" />
+              <Clock size={13} color={palette.textMuted} />
               <Text style={styles.cardMetaText}>
                 {formation.duree_jours} jour
                 {formation.duree_jours > 1 ? 's' : ''}
@@ -94,7 +100,7 @@ export function CarteFormation({ formation, index, enCours, onPress }: Props) {
         </View>
 
         <View style={styles.cardArrow}>
-          <ArrowRight size={18} color="#0A3B66" />
+          <ArrowRight size={18} color={palette.heading} />
         </View>
       </View>
     </TouchableOpacity>

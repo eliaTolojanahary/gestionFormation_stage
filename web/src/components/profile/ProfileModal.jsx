@@ -11,7 +11,7 @@ import ImageLightbox from '../form/ImageLightBox'
 // Après enregistrement, l'utilisateur stocké localement est mis à jour (en-tête, menu...).
 function ProfileModal({ user, onClose, onUpdated }) {
   const { updateCurrentUser } = useProfile() || {}
-  const { getUser, updateUser, isLoading: isUpdatingUser, error: userError } = useUser()
+  const { getUser, updateUser, isLoading: isUpdatingUser, error: userError } = useUser('actif', { charger: false })
 
   const [profile, setProfile] = useState(user || {})
   const [file, setFile] = useState(null)
@@ -23,9 +23,11 @@ function ProfileModal({ user, onClose, onUpdated }) {
 
   const [previewImage, setPreviewImage] = useState(null)
 
-  // À l'ouverture : recharge le profil depuis le serveur pour afficher des données à jour
-  useEffect(() => {
+  // À l'ouverture : recharge le profil depuis le serveur pour afficher des données à jour.
+  // Une seule fois par utilisateur : getUser change à chaque rendu, l'avoir en dépendance
+  // relançait le chargement à chaque frappe et effaçait ce qui venait d'être tapé.
   const userId = user?.id || user?.id_utilisateur
+  useEffect(() => {
   if (userId) {
     getUser(userId)
       .then((data) => {
@@ -41,7 +43,7 @@ function ProfileModal({ user, onClose, onUpdated }) {
   } else {
     setIsLoadingProfile(false)
   }
-}, [getUser, user])
+}, [userId])
 
   function handleChange(e) {
     const name = e?.target ? e.target.name : e?.name

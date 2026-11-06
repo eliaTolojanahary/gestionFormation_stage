@@ -1,16 +1,23 @@
-# React + Vite
+# IMTECH INFO — Site web (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Site du personnel : Super Admin, Accueil, Formateur. Tout est expliqué dans
+[`FLUX-APPLICATION.md`](../FLUX-APPLICATION.md) : démarrage (§2), organisation du code (§3),
+parcours A → Z (§4), modules (§5).
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npx eslint src       # lint
+npx vite build       # build de production (dossier dist/)
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+`.env` : `VITE_URL_BASE=http://localhost:3000/api` (lu au moment du `npm run build`).
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Dossier | Contenu |
+|---|---|
+| `src/pages/` | un dossier par menu |
+| `src/hooks/` | appels à l'API (`use…`) |
+| `src/components/` | composants partagés |
+| `src/utils/api.js` | `apiRequest` (ajoute le token ; erreurs traduites en français) |
+| `src/components/retour/` | `useRetour()` : `confirmer(...)` (fenêtre de confirmation) et `notifier(...)` (message de réussite) |
+| `src/utils/navigation.js` | menu et pages autorisées par rôle (masque seulement : la protection est dans l'API) |

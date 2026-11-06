@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import logoImtech from '../../assets/logoImtech.png'
+import { useLogo } from '../../hooks/useLogo'
 import Icon from '../../components/icon/Icon'
 import './Login.css'
 
@@ -8,6 +8,7 @@ import './Login.css'
 // cette page vérifie seulement que les champs sont remplis.
 function Login({ onLogin, isLoading, error }) {
   const navigate = useNavigate()
+  const logo = useLogo()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -34,7 +35,7 @@ function Login({ onLogin, isLoading, error }) {
       <section className="brand-panel" aria-label="Presentation de la plateforme">
         <div className="brand-content">
           <div className="brand-lockup">
-            <img className="brand-logo" src={logoImtech} alt="Logo IMTECH INFO" />
+            <img className="brand-logo" src={logo} alt="Logo IMTECH INFO" />
             <h1>PLATEFORME<br />DE<br />GESTION<br />DE<br /><span>FORMATION</span></h1>
           </div>
           <div className="pattern" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>

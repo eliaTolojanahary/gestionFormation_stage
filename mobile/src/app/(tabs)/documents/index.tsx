@@ -14,22 +14,26 @@ import { useRouter } from 'expo-router';
 import { Search, BookOpen, GraduationCap, X, User } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useDocumentsList } from '@/hooks/use-document-lists';
+import { VoirPlus } from '@/components/voir-plus';
 import { SupportBlock } from '@/components/doc/support-block';
 import { DetailHeader } from '@/components/detail-header';
 import { createDocumentsListStyles } from '@/styles/documents.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 
 // Onglet Documents : tous les supports de l'étudiant, avec recherche et filtres
 // (logique dans le hook useDocumentsList) ; toucher un support ouvre son détail
 export default function DocumentsListScreen() {
   const styles = useThemedStyles(createDocumentsListStyles);
+  const { palette } = useSettings();
   const { user } = useAuth();
   const router = useRouter();
   const etudiantId = user?.id_etudiant;
 
   const {
     supports,
-    totalSupports,
+    total,
+    restant,
+    filtresActifs,
     formations,
     formateurs,
     isLoading,
@@ -43,6 +47,7 @@ export default function DocumentsListScreen() {
     setFiltreFormateur,
     resetFiltres,
     refresh,
+    voirPlus,
   } = useDocumentsList(etudiantId);
 
   function ouvrirSupport(id: number) {
@@ -56,12 +61,6 @@ export default function DocumentsListScreen() {
     if (router.canGoBack()) router.back();
     else router.replace('/' as any);
   }
-
-  // Affiche le bouton "Réinitialiser" seulement si un filtre ou une recherche est actif
-  const filtresActifs =
-    filtreFormation !== 'Toutes' ||
-    filtreFormateur !== 'Tous' ||
-    recherche.trim() !== '';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -88,7 +87,7 @@ export default function DocumentsListScreen() {
 
         {/* Recherche */}
         <View style={styles.searchBox}>
-          <Search size={18} color="#8E9AA8" style={{ marginRight: 8 }} />
+          <Search size={18} color={palette.textMuted} style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
             value={recherche}
@@ -99,7 +98,7 @@ export default function DocumentsListScreen() {
           />
           {recherche ? (
             <TouchableOpacity onPress={() => setRecherche('')}>
-              <X size={16} color="#8E9AA8" />
+              <X size={16} color={palette.textMuted} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -178,26 +177,26 @@ export default function DocumentsListScreen() {
 
               {formateurs.map((f) => (
                 <TouchableOpacity
-                  key={f}
+                  key={f.id}
                   style={[
                     styles.chip,
-                    filtreFormateur === f && styles.chipActif,
+                    filtreFormateur === f.id && styles.chipActif,
                   ]}
-                  onPress={() => setFiltreFormateur(f)}
+                  onPress={() => setFiltreFormateur(f.id)}
                 >
                   <User
                     size={12}
-                    color={filtreFormateur === f ? '#FFF' : '#5A6E85'}
+                    color={filtreFormateur === f.id ? '#FFF' : '#5A6E85'}
                   />
                   <Text
                     style={[
                       styles.chipText,
-                      filtreFormateur === f && styles.chipTextActif,
+                      filtreFormateur === f.id && styles.chipTextActif,
                       { marginLeft: 5 },
                     ]}
                     numberOfLines={1}
                   >
-                    {f}
+                    {f.nom}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -207,7 +206,7 @@ export default function DocumentsListScreen() {
 
         {filtresActifs && (
           <TouchableOpacity style={styles.resetBtn} onPress={resetFiltres}>
-            <X size={14} color="#0A3B66" />
+            <X size={14} color={palette.heading} />
             <Text style={styles.resetText}>Réinitialiser les filtres</Text>
           </TouchableOpacity>
         )}
@@ -222,26 +221,26 @@ export default function DocumentsListScreen() {
         {/* Contenu */}
         {isLoading && supports.length === 0 ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#072E4C" />
+            <ActivityIndicator size="large" color={palette.heading} />
             <Text style={styles.loadingText}>Chargement des supports...</Text>
           </View>
         ) : !etudiantId ? (
           <View style={styles.emptyBox}>
-            <GraduationCap size={32} color="#8898AA" />
+            <GraduationCap size={32} color={palette.textMuted} />
             <Text style={styles.emptyText}>
               Profil étudiant introuvable. Reconnectez-vous.
             </Text>
           </View>
-        ) : totalSupports === 0 ? (
+        ) : total === 0 && !filtresActifs ? (
           <View style={styles.emptyBox}>
-            <BookOpen size={32} color="#8898AA" />
+            <BookOpen size={32} color={palette.textMuted} />
             <Text style={styles.emptyText}>
               Aucun support n'est disponible pour l'instant.
             </Text>
           </View>
         ) : supports.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Search size={30} color="#8898AA" />
+            <Search size={30} color={palette.textMuted} />
             <Text style={styles.emptyText}>
               Aucun support ne correspond à vos critères.
             </Text>
@@ -249,7 +248,7 @@ export default function DocumentsListScreen() {
         ) : (
           <>
             <Text style={styles.resultsCount}>
-              {supports.length} résultat{supports.length > 1 ? 's' : ''}
+              {total} résultat{total > 1 ? 's' : ''}
             </Text>
 
             {supports.map((support: any) => (
@@ -257,12 +256,13 @@ export default function DocumentsListScreen() {
                 key={support.id_support}
                 support={support}
                 nomFormation={support.nom_formation}
-                nomFormateur={`${support.prenom_formateur || ''} ${
-                  support.nom_formateur || ''
+                nomFormateur={`${support.prof_prenom || ''} ${
+                  support.prof_nom || ''
                 }`.trim()}
                 onPress={() => ouvrirSupport(support.id_support)}
               />
             ))}
+            <VoirPlus restant={restant} onPress={voirPlus} />
           </>
         )}
       </ScrollView>

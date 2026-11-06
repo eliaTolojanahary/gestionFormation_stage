@@ -29,5 +29,14 @@ export function usePaiement() {
   const validerPaiement = (id) => changerStatut(id, 'valider')
   const refuserPaiement = (id) => changerStatut(id, 'refuser')
 
-  return { getPaiement, createPaiement, validerPaiement, refuserPaiement }
+  // Désactivation (réversible) et réactivation : un paiement désactivé ne compte plus dans les montants
+  function desactiverPaiement(id) {
+    return apiRequest(`/paiements/${id}`, { method: 'DELETE' })
+  }
+
+  function reactiverPaiement(id) {
+    return apiRequest(`/paiements/${id}/reactiver`, { method: 'PUT' })
+  }
+
+  return { getPaiement, createPaiement, validerPaiement, refuserPaiement, desactiverPaiement, reactiverPaiement }
 }

@@ -1,6 +1,9 @@
 -- ============================================
 -- BASE DE DONNÉES IMTECH INFO - VERSION CORRIGÉE ET STRUCTURÉE
 -- ============================================
+-- Les tables se référencent entre elles (ex. sessions -> utilisateur, créée plus loin) : les contrôles
+-- de clés étrangères sont coupés le temps de la création, puis remis à la fin.
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. role
 CREATE TABLE role (
@@ -56,7 +59,7 @@ CREATE TABLE utilisateur (
     email VARCHAR(150) NOT NULL UNIQUE,
     mot_de_passe VARCHAR(255) NOT NULL,
     photo VARCHAR(255) NULL, -- Libellé ajouté pour la photo de profil
-    date_creation DATE DEFAULT CURRENT_DATE,
+    date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
     telephone VARCHAR(20),
     id_role INT NOT NULL,
     etat BOOLEAN DEFAULT TRUE,
@@ -95,7 +98,7 @@ CREATE TABLE inscription (
     id_etudiant INT NULL,
     id_utilisateur INT NULL,
     id_formation INT NOT NULL,
-    date_inscription DATE DEFAULT CURRENT_DATE,
+    date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP,
     valide BOOLEAN DEFAULT TRUE,
     origine ENUM('accueil', 'en_ligne') NOT NULL DEFAULT 'accueil', -- en_ligne = depuis la vitrine mobile
     etat BOOLEAN DEFAULT TRUE,
@@ -182,7 +185,7 @@ CREATE TABLE paiement (
     id_echeance INT NOT NULL,
     id_mode_paiement INT NOT NULL,
     montant DECIMAL(10,2) NOT NULL,
-    date_paiement DATE DEFAULT CURRENT_DATE,
+    date_paiement DATETIME DEFAULT CURRENT_TIMESTAMP,
     reference_virement VARCHAR(100),
     statut ENUM('en_attente', 'valide', 'refuse') NOT NULL DEFAULT 'valide',
     etat BOOLEAN DEFAULT TRUE,
@@ -195,7 +198,7 @@ CREATE TABLE facture (
     id_facture INT AUTO_INCREMENT PRIMARY KEY,
     id_paiement INT NOT NULL,
     numero_facture VARCHAR(50) NOT NULL UNIQUE,
-    date_emission DATE DEFAULT CURRENT_DATE,
+    date_emission DATETIME DEFAULT CURRENT_TIMESTAMP,
     fichier_pdf VARCHAR(255),
     FOREIGN KEY (id_paiement) REFERENCES paiement(id_paiement)
 );
@@ -216,7 +219,7 @@ CREATE TABLE attestation (
     id_attestation INT AUTO_INCREMENT PRIMARY KEY,
     id_inscription INT NOT NULL,
     uuid_verification VARCHAR(36) NOT NULL UNIQUE,
-    date_delivrance DATE DEFAULT CURRENT_DATE,
+    date_delivrance DATETIME DEFAULT CURRENT_TIMESTAMP,
     fichier_pdf VARCHAR(255),
     FOREIGN KEY (id_inscription) REFERENCES inscription(id_inscription)
 );
@@ -268,9 +271,6 @@ CREATE TABLE reset_password (
     date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
 );
-ALTER TABLE notification_inapp
-ADD COLUMN etat TINYINT(1) NOT NULL DEFAULT 1
-AFTER lu;
 -- ============================================
 -- INDEX D'OPTIMISATION
 -- ============================================
@@ -281,6 +281,7 @@ CREATE INDEX idx_echeance_inscription ON echeance(id_inscription);
 CREATE INDEX idx_paiement_echeance ON paiement(id_echeance);
 CREATE INDEX idx_sessions_token ON sessions(token);
 CREATE INDEX idx_support_programme ON support(statut, date_envoi_prevue);
+CREATE INDEX idx_notification_pagination ON notification_inapp(id_utilisateur, etat, id_notification);
 
 -- Alertes automatiques déjà envoyées au personnel (évite les doublons)
 CREATE TABLE alerte_envoyee (
@@ -307,7 +308,45 @@ CREATE TABLE parametre_application (
     modifie_le TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Historique des désactivations et réactivations (etat reste la valeur actuelle dans chaque table)
+CREATE TABLE historique_etat (
+    id_historique INT AUTO_INCREMENT PRIMARY KEY,
+    table_origine VARCHAR(30) NOT NULL,  -- table de l'élément (liste TABLES de models/dependanceModel.js)
+    id_origine INT NOT NULL,             -- pas de clé étrangère : pointe vers plusieurs tables
+    actif BOOLEAN NOT NULL,              -- false = désactivation, true = réactivation
+    date_action DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_historique_element (table_origine, id_origine, date_action)
+);
+
 CREATE INDEX idx_commentaire_support ON commentaire(id_support);
 CREATE INDEX idx_commentaire_parent ON commentaire(id_parent);
 CREATE INDEX idx_notification_utilisateur ON notification_inapp(id_utilisateur, lu);
 CREATE INDEX idx_reaction_support ON reaction(id_support);
+-- Pagination (curseur) : supports d'une formation et commentaires principaux d'un support
+CREATE INDEX idx_support_formation_fil ON support(id_formation, statut, etat, date_publication, id_support);
+CREATE INDEX idx_commentaire_fil ON commentaire(id_support, id_parent, etat, date_commentaire, id_commentaire);
+-- Somme des paiements d'une échéance lue dans l'index seul ; échéances par date (page Échéances, alertes)
+CREATE INDEX idx_paiement_echeance_somme ON paiement(id_echeance, etat, statut, montant);
+CREATE INDEX idx_echeance_date ON echeance(date_echeance, id_echeance);
+-- Tableau de bord : paiements validés par date, inscriptions par date et par formation
+CREATE INDEX idx_paiement_encaisse ON paiement(statut, etat, date_paiement, montant);
+CREATE INDEX idx_inscription_date ON inscription(etat, date_inscription);
+CREATE INDEX idx_inscription_formation_date ON inscription(id_formation, etat, date_inscription);
+-- Tri des listes paginées (Étudiants, Utilisateurs, Paiements, Inscriptions, Assistance, Supports)
+CREATE INDEX idx_utilisateur_nom ON utilisateur(nom, prenom, id_utilisateur);
+CREATE INDEX idx_paiement_date ON paiement(date_paiement, id_paiement);
+CREATE INDEX idx_inscription_liste ON inscription(valide, date_inscription DESC, id_inscription DESC);
+CREATE INDEX idx_assistance_liste ON assistance(etat, date_envoi, id_assistance);
+CREATE INDEX idx_support_publie ON support(statut, etat, date_publication, id_support);
+-- Recherche plein texte (chaque mot tapé commence un mot du champ, voir utils/recherche.js)
+CREATE FULLTEXT INDEX ft_utilisateur ON utilisateur(nom, prenom, email, telephone);
+CREATE FULLTEXT INDEX ft_assistance ON assistance(objet, contenu);
+CREATE FULLTEXT INDEX ft_support ON support(titre, contenu);
+-- Avis sur les formateurs : réactions d'un support sur une période, lues dans l'index
+CREATE INDEX idx_reaction_avis ON reaction(id_support, date_reaction, id_type_reaction);
+-- Purge quotidienne (services/purgeService.js) : lignes mortes retrouvées par date
+CREATE INDEX idx_sessions_expiration ON sessions(expire_le);
+CREATE INDEX idx_reset_expiration ON reset_password(date_expiration);
+CREATE INDEX idx_notification_supprimee ON notification_inapp(etat, date_creation);
+
+SET FOREIGN_KEY_CHECKS = 1;

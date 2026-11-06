@@ -7,10 +7,11 @@ import {
 } from 'react-native';
 import { X, Camera, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { File as FichierLocal } from 'expo-file-system';
 import { getFileUrl } from '@/utils/format';
 import { useAuth } from '@/context/AuthContext';
 import { useProfil, type UpdateProfilPayload } from '@/hooks/use-profile';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 import { ImageLightbox } from '@/components/image-lightbox';
 import { createProfileModalStyles } from '@/styles/components/profile-modal.styles';
 
@@ -32,6 +33,7 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
   } = useProfil();
 
   const styles = useThemedStyles(createProfileModalStyles);
+  const { palette } = useSettings();
 
   // ─── État principal du profil ───
   // Comme dans le web : initialisé avec `user` puis rechargé depuis l'API
@@ -159,12 +161,10 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
         const blob = await (await fetch(photoLocale)).blob();
         formData.append('photo', new File([blob], nomFichier, { type: blob.type || 'image/jpeg' }));
       } else {
-        // Sur iOS / Android, l'objet { uri, name, type } est la bonne forme.
-        formData.append('photo', {
-          uri: photoLocale,
-          name: nomFichier,
-          type: 'image/jpeg',
-        } as any);
+        // Sur iOS / Android : fichier d'expo-file-system. Le fetch d'Expo refuse l'ancien
+        // objet { uri, name, type } (« Unsupported FormDataPart implementation ») ; il lit
+        // le contenu (bytes), le nom et le type MIME (déduit de l'extension) du File.
+        formData.append('photo', new FichierLocal(photoLocale) as unknown as Blob, nomFichier);
       }
 
       corps = formData;
@@ -179,7 +179,7 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
     // 3️⃣ Mettre à jour le contexte avec les données FRAÎCHES
     await updateCurrentUser({
       ...user,
-      ...profilFrais,           // ✅ priorité aux données serveur
+      ...profilFrais,           // priorité aux données serveur
       id,
       // On force le rôle pour éviter la déconnexion
       role: user?.role || profilFrais?.role || user?.role_nom,
@@ -235,14 +235,14 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
                 onPress={onClose}
                 disabled={envoiEnCours}
               >
-                <X size={20} color="#0A2D4F" />
+                <X size={20} color={palette.heading} />
               </TouchableOpacity>
             </View>
 
             {isLoadingProfile ? (
               <View style={{ padding: 40, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#072E4C" />
-                <Text style={{ marginTop: 12, color: '#8898AA' }}>
+                <ActivityIndicator size="large" color={palette.heading} />
+                <Text style={{ marginTop: 12, color: palette.textMuted }}>
                   Chargement du profil...
                 </Text>
               </View>
@@ -275,7 +275,7 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
                   onPress={choisirPhoto}
                   disabled={envoiEnCours}
                 >
-                  <Camera size={14} color="#0A3B66" />
+                  <Camera size={14} color={palette.heading} />
                   <Text style={styles.photoChangeText}>
                     {previewUrl ? 'Changer la photo' : 'Ajouter une photo'}
                   </Text>
@@ -354,10 +354,10 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
                     disabled={envoiEnCours || isUpdating}
                   >
                     {envoiEnCours || isUpdating ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={palette.onAccent} />
                     ) : (
                       <>
-                        <Check size={16} color="#FFFFFF" />
+                        <Check size={16} color={palette.onAccent} />
                         <Text style={styles.primaryBtnText}>Enregistrer</Text>
                       </>
                     )}

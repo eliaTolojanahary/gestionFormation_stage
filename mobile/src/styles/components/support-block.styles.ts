@@ -35,6 +35,9 @@ export const createSupportBlockStyles = ({
       fontWeight: '600',
       marginTop: 3,
     },
+    // Formation / formateur avec leur icône
+    supportContextLigne: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
+    supportContextTexte: { marginTop: 0, flexShrink: 1 },
     supportDescription: {
       fontSize: f.sm,
       color: t.textMain,

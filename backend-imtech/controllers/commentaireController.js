@@ -1,10 +1,25 @@
 // Controller des commentaires sur les supports de cours.
 const commentaireService = require('../services/commentaireService');
+const { lireCurseur, reponseCurseur } = require('../utils/pagination');
 
-// GET /supports/:id/commentaires : commentaires principaux, chacun avec `reponses` et `nb_reponses`
+// Réponse commune aux deux fils : commentaires principaux, chacun avec `reponses` et `nb_reponses`.
+// ?limite=5&avant=<id_commentaire> : une page + { curseur, total_echanges } ; sinon tout le fil.
+async function repondreFil(req, res, cible) {
+  const curseur = lireCurseur(req.query);
+  const fil = await commentaireService.listerFil(cible, curseur);
+  if (!curseur) return res.json({ status: 'success', data: fil.lignes });
+  res.json(reponseCurseur(fil, curseur, 'id_commentaire'));
+}
+
+// GET /supports/:id/commentaires
 async function listerCommentaires(req, res) {
-  const commentaires = await commentaireService.listerCommentairesParSupport(req.params.id);
-  res.json({ status: 'success', data: commentaires });
+  await repondreFil(req, res, { id_support: req.params.id });
+}
+
+// GET /formations/:id/commentaires : commentaires de tous les supports publiés de la formation
+// (chacun avec `titre_support`), en une requête au lieu d'un appel par support
+async function listerCommentairesFormation(req, res) {
+  await repondreFil(req, res, { id_formation: req.params.id });
 }
 
 // POST /commentaires : `mentions` = id_etudiant des étudiants mentionnés (@) dans le commentaire,
@@ -26,6 +41,7 @@ async function deleteCommentaireController(req, res) {
 
 module.exports = {
   listerCommentaires,
+  listerCommentairesFormation,
   creerCommentaireController,
   deleteCommentaireController,
 };

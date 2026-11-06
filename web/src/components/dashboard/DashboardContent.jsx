@@ -1,31 +1,41 @@
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import Icon from '../icon/Icon'
 import Header from '../header/Header'
 import Tableau from '../tableau/Tableau'
 import AvisFormateurs from './AvisFormateurs'
+import FiltreDates from './FiltreDates'
 import BoutonExportCSV from '../tableau/BoutonExportCSV'
 import { useDashboard } from '../../hooks/useDashboard'
+import { useRetour } from '../retour/useRetour'
 
 import {
-  formatLabel,
+  labelDeuxLignes,
   formatPaymentDate,
   buildLineChartPoints ,
-  getPaymentStatus
+  getPaymentStatus,
+  montantCourt,
+  variation,
+  DESCRIPTION_PERIODE
 } from '../../utils/dashboardUtils'
 
+import { apiRequest } from '../../utils/api'
+import { formatMontant } from '../../utils/format'
+import { PERIODE_TOUT, libellePeriode, periodeInvalide, requetePeriode } from '../../utils/periodes'
 import './DashboardContent.css'
 
 // Page d'accueil du tableau de bord (Accueil / Super Admin), découpée en sous-composants :
 // KpiList, DashboardCharts, PopularFormations et PaymentTable.
 
-// Cartes des indicateurs clés ; `tone` donne la couleur de l'icône
+// Cartes des indicateurs clés ; `tone` donne la couleur de l'icône.
+// La période filtre l'argent encaissé (date du paiement) et les échéances (date de l'échéance).
 function KpiList({ kpis }) {
   const kpiCards = [
     { label: 'Nombre de formations', value: kpis.nombre_formations, icon: 'book', tone: 'neutral' },
     { label: 'Formations actives', value: kpis.formations_actives, icon: 'check', tone: 'success' },
     { label: 'Paiements en retard', value: kpis.paiements_en_retard, icon: 'alert', tone: 'danger' },
-    { label: 'Reste à encaisser', value: kpis.reste_a_encaisser, icon: 'wallet', tone: 'warning' },
-    { label: 'Montant encaissé', value: kpis.montant_encaisse, icon: 'cash', tone: 'success' },
+    { label: 'Reste à encaisser', value: formatMontant(kpis.reste_a_encaisser), icon: 'wallet', tone: 'warning' },
+    { label: 'Montant encaissé', value: formatMontant(kpis.montant_encaisse), icon: 'cash', tone: 'success' },
   ]
 
   return (
@@ -45,10 +55,56 @@ function KpiList({ kpis }) {
   )
 }
 
+// Détail du reste à encaisser : barre en trois couleurs + légende ; les trois montants redonnent le total
+function DetailReste({ kpis }) {
+  const parts = [
+    { cle: 'a-venir', label: 'À venir', montant: Number(kpis.montant_a_venir), nombre: kpis.nb_a_venir },
+    { cle: 'a-valider', label: 'À valider', montant: Number(kpis.montant_en_attente), nombre: kpis.nb_en_attente },
+    { cle: 'en-retard', label: 'En retard', montant: Number(kpis.montant_en_retard), nombre: kpis.nb_en_retard },
+  ]
+  const echeances = (n) => `${n} échéance${n > 1 ? 's' : ''}`
+  const total = parts.reduce((somme, part) => somme + part.montant, 0)
+
+  return (
+    <article className="dashboard-card reste-detail">
+      <div className="reste-detail-titre">
+        <span>Détail du reste à encaisser</span>
+        <strong>{formatMontant(kpis.reste_a_encaisser)}</strong>
+      </div>
+      <div className="reste-detail-barre">
+        {total > 0 && parts.map((part) => (
+          <span key={part.cle} className={part.cle} style={{ width: `${(part.montant / total) * 100}%` }} />
+        ))}
+      </div>
+      <ul className="reste-detail-legende">
+        {parts.map((part) => (
+          <li key={part.cle}>
+            <i className={part.cle} />
+            {part.label} : <strong>{formatMontant(part.montant)}</strong> ({echeances(part.nombre)})
+          </li>
+        ))}
+      </ul>
+    </article>
+  )
+}
+
+// Libellé d'une période sous l'axe, sur deux lignes (ex. « 26 » puis « sept. »)
+function LabelPeriode({ cle, periode }) {
+  const { haut, bas } = labelDeuxLignes(cle, periode)
+  return (
+    <>
+      <span>{haut}</span>
+      {bas && <span className="label-bas">{bas}</span>}
+    </>
+  )
+}
+
 // Deux graphiques :
-//  - histogramme des encaissements (période au choix) : hauteur de barre = total / plus grand total ;
-//  - courbe SVG des inscriptions par mois.
-function DashboardCharts({ evolution, inscriptionsParMois, onPeriodeChange }) {
+//  - histogramme des encaissements (période au choix) : hauteur de barre = total / plus grand total,
+//    montant au-dessus de chaque barre non vide et évolution par rapport à la période précédente
+//    (seulement si les deux ne sont pas vides) ;
+//  - courbe SVG des inscriptions par mois, sur la période du filtre « Du … au … », avec le nombre du mois.
+function DashboardCharts({ evolution, inscriptionsParMois, periode, onPeriodeChange }) {
   const periodes = ['quotidien', 'hebdomadaire', 'mensuel', 'annuel']
   const points = evolution.points || []
   const inscriptionPoints = inscriptionsParMois || []
@@ -68,7 +124,7 @@ function DashboardCharts({ evolution, inscriptionsParMois, onPeriodeChange }) {
         <div className="card-heading">
           <div>
             <h2>Evolution des paiements</h2>
-            <p>Suivi des encaissements ({evolution.periode || 'hebdomadaire'})</p>
+            <p>Encaissements {DESCRIPTION_PERIODE[evolution.periode] || ''}</p>
           </div>
           <div className="chart-tabs">
             {periodes.map((p) => (
@@ -88,23 +144,31 @@ function DashboardCharts({ evolution, inscriptionsParMois, onPeriodeChange }) {
           {points.length === 0 ? (
             <p>Aucune donnée</p>
           ) : (
-            points.map((point) => (
+            points.map((point, index) => (
               <div className="bar-column" key={point.periode}>
-                <span
-                  className="bar-value"
-                  style={{ height: `${(Number(point.total) / maxTotal) * 100}%` }}
-                  title={`${point.total} €`}
-                />
-                <small>
-                  {formatLabel(point.periode, evolution.periode)}
+                {/* Zone de hauteur fixe : la barre y occupe sa part de la hauteur utile (94 px) */}
+                <div className="bar-zone">
+                  <em className="bar-total">{Number(point.total) > 0 ? montantCourt(point.total) : ''}</em>
+                  <span
+                    className="bar-value"
+                    style={{ height: `calc(${Number(point.total) / maxTotal} * 94px)` }}
+                    title={formatMontant(point.total)}
+                  />
+                </div>
+                <small className="bar-label">
+                  <LabelPeriode cle={point.periode} periode={evolution.periode} />
                 </small>
+                {(() => {
+                  const evol = (Number(point.total) > 0 && variation(point.total, points[index - 1]?.total)) || ''
+                  return <small className={`bar-variation ${evol.startsWith('−') ? 'baisse' : ''}`}>{evol}</small>
+                })()}
               </div>
             ))
           )}
         </div>
 
         <p className="chart-summary">
-          Total période : {Number(evolution.total || 0).toLocaleString('fr-FR')} Ar
+          Total période : {formatMontant(evolution.total || 0)}
         </p>
       </article>
 
@@ -112,7 +176,7 @@ function DashboardCharts({ evolution, inscriptionsParMois, onPeriodeChange }) {
         <div className="card-heading">
           <div>
             <h2>Inscriptions par mois</h2>
-            <p>Evolution generale des inscriptions</p>
+            <p>Inscriptions {libellePeriode(periode)}</p>
           </div>
         </div>
 
@@ -129,7 +193,8 @@ function DashboardCharts({ evolution, inscriptionsParMois, onPeriodeChange }) {
             <div className="line-chart-labels">
               {inscriptionPoints.map((point) => (
                 <small key={point.periode}>
-                  {formatLabel(point.periode, 'mensuel')}
+                  <strong>{point.total}</strong>
+                  <LabelPeriode cle={point.periode} periode="mensuel" />
                 </small>
               ))}
             </div>
@@ -149,11 +214,27 @@ function DashboardContent({ user ,onProfile}) {
     isLoading,
     error,
     getEvolution,
+    chargerPeriode,
     topInscriptions,
     paymentTable,
     exporterCSV
   } = useDashboard()
+  const { notifier } = useRetour()
+  // Période « Du … au … » commune aux indicateurs, aux inscriptions et aux avis sur les formateurs
+  const [periode, setPeriode] = useState(PERIODE_TOUT)
   const displayUser = user || { prenom: 'Admin' }
+
+  // Une période impossible (début après la fin) est affichée mais pas envoyée à l'API
+  function changerPeriode(nouvelle) {
+    setPeriode(nouvelle)
+    if (!periodeInvalide(nouvelle)) chargerPeriode(nouvelle)
+  }
+  const periodeAppliquee = periodeInvalide(periode) ? PERIODE_TOUT : periode
+
+  async function exporterInscriptions() {
+    const limite = await exporterCSV()
+    if (limite) notifier(`Export limité aux ${limite.toLocaleString('fr-FR')} premières inscriptions.`)
+  }
 
   return (
     <section className="dashboard-main">
@@ -164,7 +245,7 @@ function DashboardContent({ user ,onProfile}) {
           <h1>Bonjour, {displayUser.prenom || 'Admin'}</h1>
           <p>Voici un aperçu de l'activité du centre de formation.</p>
         </div>
-        <button className="primary-button export-button" type="button" onClick={exporterCSV}>
+        <button className="primary-button export-button" type="button" onClick={exporterInscriptions}>
           <Icon name="download" /> Exporter les inscriptions (CSV)
         </button>
       </div>
@@ -172,16 +253,19 @@ function DashboardContent({ user ,onProfile}) {
       {isLoading && <p>Chargement...</p>}
       {error && <p className="error">{error}</p>}
 
+      <FiltreDates periode={periode} onChange={changerPeriode} />
       <KpiList kpis={kpis} />
+      <DetailReste kpis={kpis} />
       <DashboardCharts
         evolution={evolution}
         inscriptionsParMois={inscriptionsParMois}
+        periode={periodeAppliquee}
         onPeriodeChange={getEvolution}
       />
 
-      <PopularFormations topInscriptions={topInscriptions} />
-      <PaymentTable paymentTable={paymentTable}/>
-      <AvisFormateurs />
+      <PopularFormations topInscriptions={topInscriptions} periode={periodeAppliquee} />
+      <PaymentTable paymentTable={paymentTable} periode={periodeAppliquee} />
+      <AvisFormateurs periode={periodeAppliquee} />
       
     </section>
   )
@@ -190,7 +274,7 @@ function DashboardContent({ user ,onProfile}) {
 
 
 // Top 5 des formations : barre de progression proportionnelle à la formation la plus suivie
-function PopularFormations({ topInscriptions }) {
+function PopularFormations({ topInscriptions, periode }) {
   const formations = topInscriptions || []
   const maxInscriptions = Math.max(
     ...formations.map((formation) => Number(formation.total_inscriptions)),
@@ -203,7 +287,7 @@ function PopularFormations({ topInscriptions }) {
         <div>
           <h2>Formations les plus suivies</h2>
           <p>
-            Classement basé sur le nombre total d'étudiants inscrits actuellement
+            Classement par nombre d'inscriptions {libellePeriode(periode)}
           </p>
         </div>
       </div>
@@ -232,14 +316,26 @@ function PopularFormations({ topInscriptions }) {
   )
 }
 
-// Aperçu des 5 premières échéances ; alerte = échéance JAUNE ou ROUGE.
-// Les boutons renvoient vers la page Échéances, où le rappel est réellement envoyé.
-function PaymentTable({ paymentTable }) {
+// Ordre d'affichage : retards d'abord, puis J-2 à J, puis le reste (par date à l'intérieur)
+const ORDRE_ALERTE = { ROUGE: 0, JAUNE: 1, VERT: 2 }
+
+// Aperçu des 5 échéances les plus urgentes dont la date est dans la période ; alerte = JAUNE ou ROUGE.
+// paymentTable = { lignes (5 au plus, déjà dans l'ordre), total, alertes } calculé par le serveur.
+// Les boutons et « Filtres avancés » ouvrent la page Échéances avec la même période.
+function PaymentTable({ paymentTable, periode }) {
   const navigate = useNavigate()
-  const payments = paymentTable || []
-  const alertCount = payments.filter(
-    (payment) => payment.statut_paiement !== 'VERT'
-  ).length
+  const { lignes: payments = [], total = 0, alertes: alertCount = 0 } = paymentTable || {}
+  const lienEcheances = `/dashboard/echeances${requetePeriode(periode)}`
+
+  // Export : toutes les échéances de la période (plafonnées par le serveur), alertes d'abord.
+  // sort est stable : l'ordre par date renvoyé par l'API est gardé dans chaque couleur
+  async function toutesLesEcheances() {
+    const reponse = await apiRequest(`/echeances${requetePeriode(periode)}`)
+    const lignes = [...(reponse.data || [])].sort(
+      (a, b) => (ORDRE_ALERTE[a.statut_paiement] ?? 2) - (ORDRE_ALERTE[b.statut_paiement] ?? 2)
+    )
+    return { lignes, limite: reponse.tronque ? reponse.limite_export : null }
+  }
 
   const paymentColumns = [
     {
@@ -251,7 +347,7 @@ function PaymentTable({ paymentTable }) {
     {
       key: 'reste_a_payer',
       header: 'Montant',
-      render: (payment) => `${Number(payment.reste_a_payer).toLocaleString('fr-FR')} MGA`,
+      render: (payment) => formatMontant(payment.reste_a_payer),
       exportValue: (payment) => Number(payment.reste_a_payer),
     },
     {
@@ -279,7 +375,7 @@ function PaymentTable({ paymentTable }) {
           <button
             className={shouldRemind ? 'action danger' : 'action'}
             type="button"
-            onClick={() => navigate('/dashboard/echeances')}
+            onClick={() => navigate(lienEcheances)}
           >
             {shouldRemind ? 'Rappeler' : 'Voir'}
           </button>
@@ -295,24 +391,25 @@ function PaymentTable({ paymentTable }) {
           <h2>
             Paiements à surveiller <em>{alertCount} alertes</em>
           </h2>
+          <p>Échéances {libellePeriode(periode)}</p>
         </div>
         <div className="heading-actions">
           {/* Le tableau n'affiche que 5 lignes ; le fichier contient toutes les échéances */}
-          <BoutonExportCSV columns={paymentColumns} lignes={payments} nomFichier="paiements_a_surveiller" />
-          <a href="/dashboard/echeances">Filtres avancés</a>
+          <BoutonExportCSV columns={paymentColumns} charger={toutesLesEcheances} nomFichier="paiements_a_surveiller" />
+          <Link to={lienEcheances}>Filtres avancés</Link>
         </div>
       </div>
 
       <Tableau
         columns={paymentColumns}
-        rows={payments.slice(0, 5)}
+        rows={payments}
         rowKey="id_echeance"
         emptyMessage="Aucun paiement à surveiller"
         wrapperClassName="table-wrap"
       />
 
       <small className="table-footer">
-        Affichage {Math.min(payments.length, 5)} sur {payments.length} éléments
+        Affichage {payments.length} sur {total} éléments
       </small>
     </article>
   )

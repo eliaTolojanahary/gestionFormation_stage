@@ -12,18 +12,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { useFormationEtudiant } from '@/hooks/use-formation';
 import { useSupport, Support, Commentaire } from '@/hooks/use-support';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import {
   Search, ArrowRight, Code, Megaphone, FileText, Download, BookOpen,
-  CheckCircle2, Wallet, AlertCircle,
+  CheckCircle2, Wallet, AlertCircle, FolderOpen,
 } from 'lucide-react-native';
+import { useDossier } from '@/hooks/use-dossier';
 import { usePaiement } from '@/hooks/use-paiement';
 import  {PaiementModal} from "@/components/paiement/paiement-modal"
 import { getFileUrl,getInitiales,timestamp,formatMontant,formatRelativeDate,formatDateCourte } from '@/utils/format';
 import { createAccueilStyles } from '@/styles/acceuil.styles';
 import { RechercheGlobale } from '@/components/recherche/recherche-globale';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
+import { inscriptionValidee, ouvrirSiValidee } from '@/utils/inscription';
 
 // Couleurs de fond / d'icône utilisées en alternance pour les cartes
 const COLORS = ['#E8F5E9', '#FFF3E0', '#E3F2FD', '#FCE4EC', '#F3E5F5'];
@@ -37,9 +39,10 @@ const NB_COMMENTAIRES_AFFICHES = 3;
 // de toutes ses formations.
 export default function StudentHomeScreen() {
   const styles = useThemedStyles(createAccueilStyles);
+  const { palette } = useSettings();
   const { user } = useAuth();
   const { formations, isLoading, error, getFormations } = useFormationEtudiant();
-  const { getSupports, getCommentairesByFormation } = useSupport();
+  const { pageSupports, pageCommentairesFormation } = useSupport();
   const router = useRouter();
 
   // ⚠️ etudiantId doit être déclaré AVANT usePaiement
@@ -51,6 +54,11 @@ export default function StudentHomeScreen() {
   getResumePaiement,
   payerProchaineEcheance,   
 } = usePaiement(etudiantId);
+
+  // Dossier incomplet : bandeau vers Mon dossier (sans lui, l'inscription en ligne n'est pas validée)
+  // rechargé à chaque retour sur l'accueil (après un dépôt dans Mon dossier)
+  const { dossier, chargerDossier } = useDossier(false);
+  useFocusEffect(useCallback(() => { chargerDossier(); }, [chargerDossier]));
 
   const [refreshing, setRefreshing] = useState(false);
   const [supports, setSupports] = useState<Support[]>([]);
@@ -92,13 +100,15 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
     (async () => {
       setSupportsLoading(true);
       try {
-        const listes = await Promise.all(
-          formations.map((f) => getSupports(f.id_formation))
+        // Seulement les plus récents de chaque formation : le serveur n'envoie que NB_SUPPORTS_AFFICHES
+        // supports par formation (pas toute la liste). Formations validées par l'Accueil uniquement.
+        const pages = await Promise.all(
+          formations.filter(inscriptionValidee).map((f) => pageSupports(f.id_formation, null, NB_SUPPORTS_AFFICHES))
         );
         if (annule) return;
 
-        const tous = listes
-          .flat()
+        const tous = pages
+          .flatMap((page) => page.elements)
           .sort((a, b) => {
             const ta = timestamp(a.date_publication || a.date_ajout);
             const tb = timestamp(b.date_publication || b.date_ajout);
@@ -129,13 +139,16 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
     (async () => {
       setCommentairesLoading(true);
       try {
-        const listes = await Promise.all(
-          formations.map((f) => getCommentairesByFormation(f.id_formation))
+        // Une requête par formation validée, limitée aux NB_COMMENTAIRES_AFFICHES plus récents
+        const pages = await Promise.all(
+          formations
+            .filter(inscriptionValidee)
+            .map((f) => pageCommentairesFormation(f.id_formation, null, NB_COMMENTAIRES_AFFICHES))
         );
         if (annule) return;
 
-        const tous = listes
-          .flat()
+        const tous = pages
+          .flatMap((page) => page.elements)
           .sort((a, b) => {
             const ta = timestamp(a.date_commentaire || a.date_creation);
             const tb = timestamp(b.date_commentaire || b.date_creation);
@@ -201,11 +214,12 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
     try {
       await getFormations(etudiantId);
       await getResumePaiement();
+      await chargerDossier();
       // Les useEffect sur `formations` rechargeront supports + commentaires
     } finally {
       setRefreshing(false);
     }
-  }, [etudiantId, getFormations, getResumePaiement]);
+  }, [etudiantId, getFormations, getResumePaiement, chargerDossier]);
 
   // ─── Navigation ───
   function ouvrirSupport(idSupport: number, idFormation?: number) {
@@ -242,7 +256,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
               onPress={() => setRechercheVisible(true)}
               accessibilityLabel="Rechercher"
             >
-              <Search size={22} color="#6B7280" />
+              <Search size={22} color={palette.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity
   style={styles.avatarCircle}
@@ -269,9 +283,28 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
           </View>
         ) : null}
 
+        {dossier && !dossier.complet ? (
+          <TouchableOpacity
+            style={[styles.payCard, styles.payCardDue]}
+            activeOpacity={0.9}
+            onPress={() => router.push('/dossier' as any)}
+          >
+            <View style={styles.payIconWrapper}>
+              <FolderOpen size={22} color={palette.warning} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.payTitle}>Dossier incomplet ({dossier.fournies}/{dossier.total})</Text>
+              <Text style={styles.paySub}>
+                Votre inscription sera validée quand toutes vos pièces seront déposées.
+              </Text>
+              <Text style={styles.payCta}>Compléter mon dossier →</Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
         {isLoading && formations.length === 0 ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#072E4C" />
+            <ActivityIndicator size="large" color={palette.heading} />
             <Text style={styles.loadingText}>Chargement...</Text>
           </View>
         ) : (
@@ -282,17 +315,19 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
                 style={styles.heroCard}
                 activeOpacity={0.9}
                 onPress={() =>
-                  router.push({
-                    pathname: '/(tabs)/formations/[id]',
-                    params: { id: String(formationRecente.id_formation) },
-                  } as any)
+                  ouvrirSiValidee(formationRecente, () =>
+                    router.push({
+                      pathname: '/(tabs)/formations/[id]',
+                      params: { id: String(formationRecente.id_formation) },
+                    } as any)
+                  )
                 }
               >
                 <View style={styles.heroHeader}>
                   <View style={styles.badgeEnCours}>
                     <Text style={styles.badgeEnCoursText}>EN COURS</Text>
                   </View>
-                  <ArrowRight size={20} color="#FFFFFF" />
+                  <ArrowRight size={20} color={palette.onAccent} />
                 </View>
                 <Text style={styles.heroTitle}>{formationRecente.nom}</Text>
                 {formationRecente.prenom_formateur ||
@@ -305,7 +340,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
               </TouchableOpacity>
             ) : (
               <View style={styles.emptyBox}>
-                <BookOpen size={32} color="#8898AA" />
+                <BookOpen size={32} color={palette.textMuted} />
                 <Text style={styles.emptyText}>
                   Vous n'êtes inscrit à aucune formation.
                 </Text>
@@ -327,9 +362,9 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
   >
     <View style={styles.payIconWrapper}>
       {Number(paiement.prochaine.en_retard) === 1 ? (
-        <AlertCircle size={22} color="#C62828" />
+        <AlertCircle size={22} color={palette.danger} />
       ) : (
-        <Wallet size={22} color="#EF6C00" />
+        <Wallet size={22} color={palette.warning} />
       )}
     </View>
 
@@ -358,7 +393,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
   // Cas 2 : tout est réglé
   <View style={[styles.payCard, styles.payCardOk]}>
     <View style={styles.payIconWrapper}>
-      <CheckCircle2 size={22} color="#2E7D32" />
+      <CheckCircle2 size={22} color={palette.success} />
     </View>
     <View style={{ flex: 1 }}>
       <Text style={styles.payTitle}>Tous les paiements réglés</Text>
@@ -404,10 +439,12 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
                       key={formation.id_formation}
                       style={styles.formationCard}
                       onPress={() =>
-                        router.push({
-                          pathname: '/(tabs)/formations/[id]',
-                          params: { id: String(formation.id_formation) },
-                        } as any)
+                        ouvrirSiValidee(formation, () =>
+                          router.push({
+                            pathname: '/(tabs)/formations/[id]',
+                            params: { id: String(formation.id_formation) },
+                          } as any)
+                        )
                       }
                     >
                       <View
@@ -452,7 +489,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
 
             {supportsLoading ? (
               <View style={styles.supportLoadingBox}>
-                <ActivityIndicator size="small" color="#072E4C" />
+                <ActivityIndicator size="small" color={palette.heading} />
               </View>
             ) : supportsAffiches.length === 0 ? (
               <View style={styles.emptySupportBox}>
@@ -476,7 +513,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
                     }
                   >
                     <View style={styles.supportIconWrapper}>
-                      <FileText size={20} color="#E53935" />
+                      <FileText size={20} color={palette.danger} />
                     </View>
                     <View style={styles.supportDetails}>
                       <Text style={styles.supportTitle} numberOfLines={1}>
@@ -491,7 +528,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
                       </Text>
                     </View>
                     <View style={{ padding: 6 }}>
-                      <Download size={20} color="#5A6E85" />
+                      <Download size={20} color={palette.textMuted} />
                     </View>
                   </TouchableOpacity>
                 );
@@ -509,7 +546,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
 
             {commentairesLoading ? (
               <View style={styles.supportLoadingBox}>
-                <ActivityIndicator size="small" color="#072E4C" />
+                <ActivityIndicator size="small" color={palette.heading} />
               </View>
             ) : commentairesAffiches.length === 0 ? (
               <View style={styles.emptySupportBox}>
@@ -521,7 +558,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
               commentairesAffiches.map((commentaire, index) => {
                 const numero = String(index + 1).padStart(2, '0');
                 const supportLie = supportsParId[commentaire.id_support];
-                const nomSupport = supportLie?.titre || 'un support';
+                const nomSupport = commentaire.titre_support || supportLie?.titre || 'un support';
                 return (
                   <TouchableOpacity
                     key={commentaire.id_commentaire}

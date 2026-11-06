@@ -1,6 +1,8 @@
 // Controller des échéances (tranches de paiement d'une inscription).
 const echeanceService = require('../services/echeanceService');
-const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
+const { lirePagination, texteRecherche, reponsePaginee, reponseListe } = require('../utils/pagination');
+const { lireEtat } = require('../utils/etat');
+const { lirePeriode } = require('../utils/periode');
 
 // GET /inscriptions/:id/echeances : échéancier d'une inscription
 async function getEcheancesByInscriptionController(req, res) {
@@ -9,16 +11,18 @@ async function getEcheancesByInscriptionController(req, res) {
 }
 
 // GET /echeances : toutes les échéances (suivi par l'Accueil)
-// Query : ?recherche= (étudiant ou formation), ?statut=VERT|JAUNE|ROUGE ; ?page=&limite= pour une
-// liste paginée (un autre statut est ignoré)
+// Query : ?recherche= (étudiant ou formation), ?statut=VERT|JAUNE|ROUGE, ?debut=&fin= (date d'échéance) ;
+// ?page=&limite= pour une liste paginée (un autre statut est ignoré)
 async function listerEcheances(req, res) {
   const pagination = lirePagination(req.query);
   const filtres = {
     recherche: texteRecherche(req.query.recherche),
     statut: ['VERT', 'JAUNE', 'ROUGE'].includes(req.query.statut) ? req.query.statut : undefined,
+    etat: lireEtat(req.query), // route réservée au personnel
+    periode: lirePeriode(req.query),
   };
   const resultat = await echeanceService.listerToutesEcheances(filtres, pagination);
-  res.json(pagination ? reponsePaginee(resultat, pagination) : { status: 'success', data: resultat });
+  res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
 // PUT /echeances/:id
@@ -30,7 +34,7 @@ async function updateEcheanceController(req, res) {
 // POST /echeances/:id/rappeler : rappel manuel de l'Accueil (notification in-app + e-mail).
 // La notification est toujours créée ; `emailEnvoye` indique si l'e-mail est parti.
 async function rappelerEcheanceController(req, res) {
-  const { emailEnvoye } = await echeanceService.rappelerEcheance(req.params.id);
+  const { emailEnvoye } = await echeanceService.rappelerEcheance(req.params.id, req.user.id);
   res.json({
     status: 'success',
     emailEnvoye,

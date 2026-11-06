@@ -31,8 +31,7 @@ async function authentifier(email, mot_de_passe, { userAgent, ip }) {
   );
 
   // Session enregistrée en base : permet la déconnexion à distance et la liste des appareils
-  const expireLe = new Date(Date.now() + DUREE_SESSION_HEURES * 60 * 60 * 1000);
-  await userModel.createSession(user.id_utilisateur, token, userAgent, ip, expireLe);
+  await userModel.createSession(user.id_utilisateur, token, userAgent, ip, DUREE_SESSION_HEURES);
 
   return {
     token,

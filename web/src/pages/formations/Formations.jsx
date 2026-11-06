@@ -1,68 +1,132 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Header from '../../components/header/Header'
 import Tableau from '../../components/tableau/Tableau'
 import { useFormation } from '../../hooks/useFormation'
+import { useListePaginee } from '../../hooks/useListePaginee'
+import Pagination from '../../components/pagination/Pagination'
 import SearchFilterBar from '../../components/form/Filter'
 import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
+import BarreSelection from '../../components/tableau/BarreSelection'
+import { useRetour } from '../../components/retour/useRetour'
+import { useSelection, useActionsGroupees } from '../../hooks/useSelection'
+import { formatMontant } from '../../utils/format'
 import './Formations.css'
+import CouvertureFormation from './CouvertureFormation'
+import BadgeEtat from '../../components/etat/BadgeEtat'
+import { ETATS, ETAT_DEFAUT, filtreEtat } from '../../utils/etat'
 
-// Liste des formations avec recherche et filtre par statut.
-// Un formateur ne voit que ses formations ; seul le Super Admin peut créer / modifier / supprimer.
+// Liste des formations avec recherche (nom, description, formateur) et filtre « État » (actives par
+// défaut, désactivées, toutes), filtrée et paginée par le serveur (GET /formations?page=).
+// Un formateur ne voit que ses formations actives ; seul le Super Admin peut créer / modifier /
+// désactiver / réactiver, aussi plusieurs formations à la fois (sélection par clic sur les lignes).
 function Formations({ user, onCreate, onDetail, onEdit }) {
-  const { formations, isLoading, error, deleteFormation } = useFormation()
+  const [etat, setEtat] = useState(ETAT_DEFAUT)
+  const { deleteFormation, reactiverFormation } = useFormation({ charger: false })
+  const { confirmer, notifier } = useRetour()
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('Tous')
   const [actionError, setActionError] = useState('')
 
-  const userId = user?.id_utilisateur || user?.id
   const isFormateur = user?.role === 'Formateur'
   const canManage = user?.role === 'Super Admin'
 
-  // Formations visibles (l'API filtre déjà pour un formateur ; ce filtre est une sécurité en plus)
-  const ownFormations = useMemo(() => {
-    if (!isFormateur) return formations
-    return formations.filter(
-      (formation) => Number(formation.id_utilisateur) === Number(userId)
-    )
-  }, [formations, isFormateur, userId])
+  // L'API ne renvoie à un formateur que ses formations actives
+  const liste = useListePaginee('/formations', {
+    recherche: search.trim(),
+    etat: isFormateur ? '' : ETATS[etat],
+  })
+  const { lignes: filtered, isLoading, error } = liste
 
-  const filtered = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
+  const selection = useSelection(filtered, 'id_formation')
+  const groupe = useActionsGroupees({ selection, apres: liste.recharger, setErreur: setActionError })
+  const actives = selection.selection.filter((f) => f.etat)
+  const inactives = selection.selection.filter((f) => !f.etat)
 
-    return ownFormations.filter((formation) => {
-      const fullText = `${formation.nom} ${formation.description || ''}`.toLowerCase()
-      const matchesSearch = fullText.includes(normalizedSearch)
-      const matchesStatus =
-        status === 'Tous' ||
-        (status === 'Actif' && formation.etat) ||
-        (status === 'Inactif' && !formation.etat)
-
-      return matchesSearch && matchesStatus
-    })
-  }, [ownFormations, search, status])
+  const actionsGroupees = [
+    {
+      libelle: 'Désactiver',
+      danger: true,
+      nombre: actives.length,
+      onClick: () => groupe.lancer({
+        lignes: actives,
+        confirmation: {
+          titre: 'Désactiver les formations',
+          message: `${actives.length} formation(s) seront désactivées. Vous pourrez les réactiver avec le filtre « Désactivés ».`,
+          bouton: 'Désactiver',
+          danger: true,
+        },
+        action: (f) => deleteFormation(f.id_formation),
+        succes: (n) => `${n} formation(s) désactivée(s)`,
+      }),
+    },
+    {
+      libelle: 'Réactiver',
+      succes: true,
+      nombre: inactives.length,
+      onClick: () => groupe.lancer({
+        lignes: inactives,
+        action: (f) => reactiverFormation(f.id_formation),
+        succes: (n) => `${n} formation(s) réactivée(s)`,
+      }),
+    },
+  ]
 
   function handleReset() {
     setSearch('')
-    setStatus('Tous')
+    setEtat(ETAT_DEFAUT)
   }
 
   async function handleDelete(formation) {
-    if (!window.confirm(`Supprimer la formation « ${formation.nom} » ?`)) return
+    const ok = await confirmer({
+      titre: 'Désactiver la formation',
+      message: `La formation « ${formation.nom} » sera désactivée. Vous pourrez la réactiver avec le filtre « Désactivés ».`,
+      bouton: 'Désactiver',
+      danger: true,
+    })
+    if (!ok) return
     try {
       setActionError('')
       await deleteFormation(formation.id_formation)
+      notifier('Formation désactivée', { annuler: () => handleReactiver(formation) })
+      liste.recharger()
+    } catch (requestError) {
+      setActionError(requestError.message)
+    }
+  }
+
+  async function handleReactiver(formation) {
+    try {
+      setActionError('')
+      await reactiverFormation(formation.id_formation)
+      notifier('Formation réactivée')
+      liste.recharger()
     } catch (requestError) {
       setActionError(requestError.message)
     }
   }
 
   const columns = [
-    { key: 'nom', header: 'Formation' },
+    {
+      key: 'image',
+      header: 'Couverture',
+      export: false,
+      render: (row) => <CouvertureFormation formation={row} />,
+    },
+    {
+      key: 'nom',
+      header: 'Formation',
+      render: (row) => (
+        <>
+          {row.nom}
+          <BadgeEtat ligne={row} actif={row.etat} feminin />
+        </>
+      ),
+      exportValue: (row) => row.nom,
+    },
     { key: 'description', header: 'Description' },
     {
       key: 'tarif',
       header: 'Tarif',
-      render: (row) => `${Number(row.tarif || 0).toLocaleString('fr-FR')} MGA`,
+      render: (row) => formatMontant(row.tarif || 0),
       exportValue: (row) => Number(row.tarif || 0),
     },
     {
@@ -80,7 +144,16 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
     {
       key: 'actions',
       header: 'Actions',
-      render: (row) => (
+      render: (row) => !row.etat ? (
+        // Désactivée : seule action possible, la réactiver
+        canManage && (
+          <div className="table-actions">
+            <button type="button" className="row-action success-action" onClick={() => handleReactiver(row)}>
+              Réactiver
+            </button>
+          </div>
+        )
+      ) : (
         <div className="table-actions">
           {/* ✅ Callback au lieu de navigate() */}
           <button
@@ -105,7 +178,7 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
                 className="row-action danger-action"
                 onClick={() => handleDelete(row)}
               >
-                Supprimer
+                Désactiver
               </button>
             </>
           )}
@@ -123,13 +196,13 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
           <h1>{isFormateur ? 'Mes formations' : 'Formations'}</h1>
           <p>
             {isFormateur
-              ? `${ownFormations.length} formation(s) qui vous est/sont attribuée(s)`
-              : `${formations.length} formations enregistrées`}
+              ? `${liste.total} formation(s) qui vous est/sont attribuée(s)`
+              : `${liste.total} formation(s)`}
           </p>
         </div>
 
         <div className="heading-actions">
-          <BoutonExportCSV columns={columns} lignes={filtered} nomFichier="formations" />
+          <BoutonExportCSV columns={columns} charger={liste.toutesLesLignes} nomFichier="formations" />
           {canManage && (
             <button
               type="button"
@@ -148,19 +221,15 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="Rechercher une formation..."
-          filters={[
-            {
-              name: 'status',
-              label: 'Statut',
-              value: status,
-              onChange: setStatus,
-              options: ['Tous', 'Actif', 'Inactif'],
-            },
-          ]}
+          filters={isFormateur ? [] : [filtreEtat(etat, setEtat)]}
           onReset={handleReset}
         />
 
         {(error || actionError) && <p className="form-error">{error || actionError}</p>}
+
+        {canManage && (
+          <BarreSelection selection={selection} actions={actionsGroupees} enCours={groupe.enCours} libelle="formation(s)" />
+        )}
 
         {isLoading ? (
           <p className="gestion-loading">Chargement...</p>
@@ -169,6 +238,7 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
             columns={columns}
             rows={filtered}
             rowKey="id_formation"
+            selection={canManage ? selection : null}
             emptyMessage={
               isFormateur
                 ? 'Aucune formation ne vous est attribuée.'
@@ -178,6 +248,15 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
             className="gestion-table"
           />
         )}
+
+        <Pagination
+          page={liste.page}
+          pages={liste.pages}
+          total={liste.total}
+          limite={liste.limite}
+          onChange={liste.setPage}
+          libelle="formation(s)"
+        />
       </article>
     </section>
   )

@@ -68,22 +68,29 @@ export function buildHeaders(isFormData = false) {
 export async function apiRequest(path, options = {}) {
   const isFormData = options.body instanceof FormData
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...buildHeaders(isFormData),
-      ...(options.headers || {}),
-    },
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...buildHeaders(isFormData),
+        ...(options.headers || {}),
+      },
+    })
+  } catch {
+    // Serveur arrêté ou pas de réseau : fetch lève « Failed to fetch » (en anglais)
+    throw new Error(MESSAGE_HORS_LIGNE)
+  }
 
-  // Le corps peut être vide ou ne pas être du JSON (erreur proxy, page HTML...)
+  // Le corps peut être vide ou ne pas être du JSON (erreur proxy, page HTML...) :
+  // dans ce cas on ne l'affiche pas, on garde le message par défaut du code HTTP
   const text = await response.text()
   let data = {}
   if (text) {
     try {
       data = JSON.parse(text)
     } catch {
-      data = { message: text }
+      data = {}
     }
   }
 
@@ -94,8 +101,21 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.message || `Erreur ${response.status}`)
+    throw new Error(data.message || messageErreurHttp(response.status))
   }
 
   return data
+}
+
+export const MESSAGE_HORS_LIGNE = 'Impossible de joindre le serveur. Vérifiez votre connexion internet puis réessayez.'
+
+// Message compréhensible quand le serveur ne donne pas d'explication (au lieu de « Erreur 500 »)
+export function messageErreurHttp(status) {
+  if (status === 401) return 'Votre session a expiré. Veuillez vous reconnecter.'
+  if (status === 403) return "Vous n'avez pas le droit d'effectuer cette action."
+  if (status === 404) return "L'élément demandé est introuvable. Il a peut-être été supprimé."
+  if (status === 413) return 'Le fichier est trop volumineux.'
+  if (status === 429) return 'Trop de tentatives. Patientez quelques minutes puis réessayez.'
+  if (status >= 500) return 'Le serveur a rencontré un problème. Réessayez dans un instant.'
+  return "L'opération n'a pas pu aboutir. Réessayez."
 }

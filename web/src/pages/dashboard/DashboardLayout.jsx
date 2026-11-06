@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import logoImtech from '../../assets/logoImtech.png'
+import { useLogo } from '../../hooks/useLogo'
 import Sidebar from '../../components/sidebar/Sidebar'
 import ProfileModal from '../../components/profile/ProfileModal'
 import { ProfileProvider } from '../../components/profile/ProfileContext'
@@ -16,7 +16,6 @@ import Parametres from '../parametres/Parametres'
 import AccueilFormateur from '../formateur/AccueilFormateur'
 import SupportsFormateur from '../formateur/SupportsFormateur'
 import ProgrammesFormateur from '../formateur/ProgrammesFormateur'
-import { useNotification } from '../../hooks/useNotification'
 import { usePreferences } from '../../hooks/usePreferences'
 import { apiRequest } from '../../utils/api'
 import { cheminResultat, peutOuvrir } from '../../utils/navigation'
@@ -31,29 +30,43 @@ function DashboardLayout({ user, onLogout, updateCurrentUser }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   // Recherche globale : bouton du header ou Ctrl+K (⌘K sur Mac)
   const [isRechercheOpen, setIsRechercheOpen] = useState(false)
-  const [settings, setSettings] = usePreferences()
+  const [settings, setSettings, sidebarReduite] = usePreferences()
+  const logo = useLogo()
 
   // Notifications non lues -> badge de la cloche (header).
-  // `lu` vient de MySQL (0 / 1) : on teste donc !lu, pas lu === false.
+  // Seul le nombre est demandé au serveur (GET /notifications/compteur), pas la liste.
   const location = useLocation()
-  const { notifications, getNotifications } = useNotification()
-  const nbNonLues = notifications.filter((notification) => !notification.lu).length
+  const [nbNonLues, setNbNonLues] = useState(0)
   const peutVoirNotifs = peutOuvrir(currentUser.role, 'notifications')
 
-  // Compteur rafraîchi à chaque changement de page et toutes les minutes
+  function rafraichirCompteur() {
+    if (!peutVoirNotifs) return
+    apiRequest('/notifications/compteur')
+      .then((data) => setNbNonLues(data.data?.nonLues || 0))
+      .catch(() => {})
+  }
+
+  // Compteur rafraîchi à chaque changement de page et toutes les 10 secondes
   useEffect(() => {
-    if (peutVoirNotifs) getNotifications()
+    rafraichirCompteur()
   }, [location.pathname])
+
+  useEffect(() => {
+    const intervalle = window.setInterval(() => {
+      if (document.visibilityState === 'visible') rafraichirCompteur()
+    }, 10 * 1000)
+    return () => window.clearInterval(intervalle)
+  }, [])
 
   // Session révoquée depuis un autre appareil (« Se déconnecter partout ») : sans requête,
   // ce navigateur ne le saurait qu'au prochain clic. On vérifie donc la session quand l'onglet
   // revient au premier plan et toutes les minutes ; un 401 renvoie à la connexion (utils/api.js).
-  // Le compteur de notifications est rafraîchi au même rythme.
+  // Le compteur de notifications est aussi rafraîchi au retour sur l'onglet.
   useEffect(() => {
     function verifierSession() {
       if (document.visibilityState !== 'visible') return
       apiRequest('/auth/profil').catch(() => {})
-      if (peutVoirNotifs) getNotifications()
+      rafraichirCompteur()
     }
     document.addEventListener('visibilitychange', verifierSession)
     const intervalle = window.setInterval(verifierSession, 60 * 1000)
@@ -95,14 +108,15 @@ function DashboardLayout({ user, onLogout, updateCurrentUser }) {
         updateCurrentUser,
         nbNotifs: nbNonLues,
         onNotifications: peutVoirNotifs ? () => navigate('/dashboard/notifications') : null,
-        rafraichirNotifs: getNotifications,
+        rafraichirNotifs: rafraichirCompteur,
       }}
     >
       <main className="dashboard-page">
         <Sidebar
           user={currentUser}
           onLogout={onLogout}
-          logo={settings.logo || logoImtech}
+          logo={logo}
+          reduite={sidebarReduite}
         />
 
         <Routes>

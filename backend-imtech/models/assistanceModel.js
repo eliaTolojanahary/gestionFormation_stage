@@ -1,5 +1,7 @@
 // Model des demandes d'assistance des étudiants.
 const db = require('../config/db');
+const { clauseLimite } = require('../utils/pagination');
+const { motifPleinTexte, conditionEtudiant } = require('../utils/recherche');
 
 // Noms des statuts tels qu'insérés dans la table `statut` (migration 003)
 const STATUTS_ASSISTANCE = Object.freeze({
@@ -32,7 +34,9 @@ async function insertAssistance({ id_etudiant, objet, contenu }) {
 }
 
 // Filtres optionnels : { id_etudiant, statut }
-async function getAssistances({ id_etudiant, statut } = {}) {
+// recherche : objet, message (index plein texte ft_assistance) ou nom de l'étudiant (voir utils/recherche.js).
+// Les conditions ne portent que sur la table assistance : le total se compte sans jointure.
+function filtresAssistances({ id_etudiant, statut, recherche } = {}) {
   const conditions = ['a.etat = true'];
   const params = [];
   if (id_etudiant) {
@@ -40,14 +44,38 @@ async function getAssistances({ id_etudiant, statut } = {}) {
     params.push(id_etudiant);
   }
   if (statut) {
-    conditions.push('s.nom = ?');
+    conditions.push('a.id_statut IN (SELECT id_statut FROM statut WHERE nom = ?)');
     params.push(statut);
   }
+  if (recherche && !motifPleinTexte(recherche)) conditions.push('1 = 0'); // aucun mot à chercher
+  else if (recherche) {
+    const etudiant = conditionEtudiant('a.id_etudiant', recherche);
+    conditions.push(`(a.id_assistance IN (SELECT ra.id_assistance FROM assistance ra
+                       WHERE MATCH(ra.objet, ra.contenu) AGAINST (? IN BOOLEAN MODE))
+                     OR ${etudiant.sql})`);
+    params.push(motifPleinTexte(recherche), ...etudiant.params);
+  }
+  return { where: conditions.join(' AND '), params };
+}
+
+// Les plus récentes d'abord ; `pagination` = page demandée (ou null : toutes)
+async function getAssistances(filtres = {}, pagination = null) {
+  const { where, params } = filtresAssistances(filtres);
+  const limite = clauseLimite(pagination);
   const [rows] = await db.query(
-    `${SELECT_ASSISTANCE} WHERE ${conditions.join(' AND ')} ORDER BY a.date_envoi DESC`,
-    params
+    `${SELECT_ASSISTANCE} WHERE ${where} ORDER BY a.date_envoi DESC, a.id_assistance DESC${limite.sql}`,
+    [...params, ...limite.params]
   );
   return rows;
+}
+
+async function compterAssistances(filtres = {}) {
+  const { where, params } = filtresAssistances(filtres);
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) AS total FROM assistance a WHERE ${where}`,
+    params
+  );
+  return Number(total);
 }
 
 async function getAssistanceById(id_assistance) {
@@ -72,7 +100,7 @@ async function resoudreAssistance(id_assistance, id_utilisateur) {
 module.exports = {
   STATUTS_ASSISTANCE,
   insertAssistance,
-  getAssistances,
+  getAssistances, compterAssistances,
   getAssistanceById,
   resoudreAssistance,
 };

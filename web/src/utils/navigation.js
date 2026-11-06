@@ -8,22 +8,22 @@ const FO = 'Formateur'
 
 // [icône, libellé, chemin, rôles autorisés]
 export const NAVIGATION = [
-  ['book', 'Espace formateur', '/dashboard/formateur', [FO]],
+  ['home', 'Espace formateur', '/dashboard/formateur', [FO]],
   ['upload', 'Supports', '/dashboard/supports', [FO]],
-  ['calendar', 'Supports programmés', '/dashboard/programmes', [FO]],
+  ['clock', 'Supports programmés', '/dashboard/programmes', [FO]],
   ['chart', 'Tableau de bord', '/dashboard', [SA, AC]],
-  ['users', 'Etudiants', '/dashboard/etudiants', [SA, AC, FO]],
+  ['cap', 'Étudiants', '/dashboard/etudiants', [SA, AC, FO]],
   ['users', 'Utilisateurs', '/dashboard/utilisateurs', [SA]],
   ['book', 'Formations', '/dashboard/formations', [SA, AC, FO]],
-  ['card', 'Inscriptions', '/dashboard/inscriptions', [SA, AC]],
+  ['clipboard', 'Inscriptions', '/dashboard/inscriptions', [SA, AC]],
   ['wallet', 'Paiements', '/dashboard/paiements', [SA, AC]],
   ['calendar', 'Échéances', '/dashboard/echeances', [SA, AC]],
-  ['book', 'Documents', '/dashboard/documents', [SA, AC]],
+  ['file', 'Documents', '/dashboard/documents', [SA, AC]],
   // Le formateur en reçoit aussi (ex. envoi automatique de ses supports programmés)
   ['bell', 'Notifications', '/dashboard/notifications', [SA, AC, FO]],
   // L'assistance traite les demandes des étudiants : réservée à l'Accueil et au Super Admin
-  ['users', 'Assistance', '/dashboard/assistance', [SA, AC]],
-  ['gear', 'Parametres', '/dashboard/parametres', [SA, AC, FO]],
+  ['help', 'Assistance', '/dashboard/assistance', [SA, AC]],
+  ['gear', 'Paramètres', '/dashboard/parametres', [SA, AC, FO]],
 ]
 
 // Entrées du menu visibles pour un rôle

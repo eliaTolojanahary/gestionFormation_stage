@@ -15,7 +15,7 @@
 .students-panel {
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--surface);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
   overflow: hidden;
@@ -52,7 +52,7 @@
 .students-heading p,
 .page-heading p {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   margin: 4px 0 0;
 }
 
@@ -66,7 +66,7 @@
   gap: 8px;
   height: 45px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 
 .students-topbar strong {
@@ -102,7 +102,7 @@
   flex-direction: column;
   gap: 5px;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: var(--fs-xs);
 }
 
 .students-filters select {
@@ -113,11 +113,11 @@
   box-sizing: border-box;
   padding: 0 8px;
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   background: var(--surface);
   font: inherit;
-  font-size: 9px;
+  font-size: var(--fs-xs);
   outline: 0;
 }
 
@@ -143,7 +143,7 @@
 }
 
 .student-name strong {
-  font-size: 9px;
+  font-size: var(--fs-xs);
 }
 
 .student-top-avatar,
@@ -159,7 +159,7 @@
   height: 25px;
   color: var(--on-accent);
   background: var(--accent);
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 
 .student-avatar {
@@ -167,7 +167,7 @@
   height: 25px;
   color: var(--accent);
   background: var(--accent-soft);
-  font-size: 8px;
+  font-size: var(--fs-xs);
 }
 
 .student-avatar-image {
@@ -181,8 +181,8 @@
 
 .student-status {
   padding: 3px 7px;
-  border-radius: 10px;
-  font-size: 8px;
+  border-radius: var(--radius);
+  font-size: var(--fs-xs);
 }
 
 .student-status.actif {
@@ -198,20 +198,12 @@
 .students-loading {
   padding: 28px 14px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 
-.students-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* La carte n'a pas de marge (tableau bord à bord) : la pagination prend celle des filtres */
+.students-panel > .pagination-pied {
   padding: 12px 14px;
-  color: var(--text-muted);
-  font-size: 8px;
-}
-
-.students-footer strong {
-  color: var(--text-main);
 }
 
 .detail-layout {
@@ -285,10 +277,5 @@
   }
   .students-topbar span:first-child {
     display: none;
-  }
-  .students-footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
   }
 }

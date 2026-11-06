@@ -60,23 +60,6 @@ export const createFormationsStyles = ({
       marginLeft: 10,
     },
 
-    voirPlus: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      backgroundColor: t.accentSoft,
-      borderRadius: 14,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      marginTop: 8,
-    },
-    voirPlusText: {
-      fontSize: f.xs,
-      fontWeight: '700',
-      color: t.accent,
-      marginLeft: 6,
-    },
-
     formulaire: {
       marginTop: 14,
       paddingTop: 14,
@@ -157,6 +140,20 @@ export const createFormationsListStyles = ({
       lineHeight: 18,
       marginBottom: 14,
     },
+
+    // Bouton « Voir plus de formations » (vitrine en mode connecté)
+    autresFormations: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: t.accent,
+      borderRadius: 12,
+      paddingVertical: 11,
+      marginBottom: 14,
+    },
+    autresFormationsTexte: { color: t.accent, fontSize: f.sm, fontWeight: '700' },
 
     searchBox: {
       flexDirection: 'row',

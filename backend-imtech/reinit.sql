@@ -7,13 +7,14 @@
 --
 -- Les contrôles de clés étrangères sont coupés le temps du vidage : l'ordre des tables
 -- n'a donc plus d'importance (l'ancien script échouait sur `utilisateur`, référencée par `presence`).
--- Penser à ajouter ici toute nouvelle table créée dans alter2.sql.
+-- Penser à ajouter ici toute nouvelle table créée dans alter.sql.
 
 USE gestion_formation_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Journal et suivi
+-- Suivi
+TRUNCATE TABLE historique_etat;
 TRUNCATE TABLE alerte_envoyee;
 TRUNCATE TABLE presence;
 TRUNCATE TABLE reset_password;

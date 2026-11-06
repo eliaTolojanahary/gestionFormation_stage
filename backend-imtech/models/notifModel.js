@@ -1,16 +1,51 @@
 // Model des notifications : in-app (notification_inapp) et historique des e-mails (notification_email).
 const db = require('../config/db');
 
-// Notifications non supprimées de l'utilisateur, les plus récentes d'abord
-async function notifFindByUtilisateur(id_utilisateur) {
-  const sql = `
+// Notifications non supprimées de l'utilisateur, les plus récentes d'abord.
+// Pagination par curseur (id_notification, toujours croissant) plutôt que par OFFSET :
+// une notification qui arrive entre deux pages ne décale pas la suite (pas de doublon).
+//   avant   : seulement les plus anciennes que cet id (bouton « Notifications précédentes »)
+//   apres   : seulement les plus récentes que cet id (rafraîchissement automatique)
+//   nonLues : onglet « Non lues »
+//   limite  : nombre maximum de lignes (sans limite : toutes)
+async function notifFindByUtilisateur(id_utilisateur, { avant, apres, nonLues, limite } = {}) {
+  const conditions = ['id_utilisateur = ?', 'etat = true'];
+  const params = [id_utilisateur];
+
+  if (avant) { conditions.push('id_notification < ?'); params.push(avant); }
+  if (apres) { conditions.push('id_notification > ?'); params.push(apres); }
+  if (nonLues) conditions.push('lu = false');
+
+  let sql = `
     SELECT id_notification, message, lu, date_creation
     FROM notification_inapp
-    WHERE id_utilisateur = ? AND etat = true
-    ORDER BY date_creation DESC
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY id_notification DESC
   `;
-  const [rows] = await db.query(sql, [id_utilisateur]);
+  if (limite) { sql += ' LIMIT ?'; params.push(limite); }
+
+  const [rows] = await db.query(sql, params);
   return rows;
+}
+
+// Totaux pour les onglets et le badge de la cloche, sans charger la liste
+async function countByUtilisateur(id_utilisateur) {
+  const [rows] = await db.query(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(lu = false), 0) AS nonLues
+     FROM notification_inapp
+     WHERE id_utilisateur = ? AND etat = true`,
+    [id_utilisateur]
+  );
+  return { total: Number(rows[0].total), nonLues: Number(rows[0].nonLues) };
+}
+
+// « Tout marquer comme lu » en une seule requête (y compris les notifications pas encore affichées)
+async function updateToutLu(id_utilisateur) {
+  const [result] = await db.query(
+    `UPDATE notification_inapp SET lu = true WHERE id_utilisateur = ? AND etat = true AND lu = false`,
+    [id_utilisateur]
+  );
+  return result.affectedRows;
 }
 
 // Le filtre sur id_utilisateur empêche de toucher aux notifications d'un autre
@@ -37,11 +72,14 @@ async function insertNotificationInApp(id_utilisateur, message) {
   await db.query(sql, [id_utilisateur, message]);
 }
 
-// Même message pour plusieurs destinataires, en une seule requête INSERT
+// Même message pour plusieurs destinataires : un INSERT groupé par paquet de TAILLE_PAQUET_NOTIF
+// (une formation de 100 000 inscrits ferait sinon une requête trop grosse pour MySQL, max_allowed_packet)
+const TAILLE_PAQUET_NOTIF = 1000;
 async function insertNotificationsInApp(ids_utilisateurs, message) {
-  if (ids_utilisateurs.length === 0) return;
-  const values = ids_utilisateurs.map((id) => [id, message]);
-  await db.query(`INSERT INTO notification_inapp (id_utilisateur, message) VALUES ?`, [values]);
+  for (let debut = 0; debut < ids_utilisateurs.length; debut += TAILLE_PAQUET_NOTIF) {
+    const values = ids_utilisateurs.slice(debut, debut + TAILLE_PAQUET_NOTIF).map((id) => [id, message]);
+    await db.query(`INSERT INTO notification_inapp (id_utilisateur, message) VALUES ?`, [values]);
+  }
 }
 
 // Titre du support, formation et nom de l'auteur, pour composer le message de mention
@@ -70,6 +108,6 @@ async function getIdsUtilisateursEtudiants(ids_etudiants) {
 
 module.exports = {
   insertNotificationInApp, insertNotificationsInApp, insertNotificationEmail,
-  notifFindByUtilisateur, updateLu, deleteNotification,
+  notifFindByUtilisateur, countByUtilisateur, updateLu, updateToutLu, deleteNotification,
   getContexteMention, getIdsUtilisateursEtudiants,
 };

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Header from '../../components/header/Header'
 import Informations from '../../components/form/Informations'
 import InputReutilisable from '../../components/form/InputReutilisable'
-import { useEtudiant } from '../../hooks/useEtudiant'
+import ChampRecherche from '../../components/form/ChampRecherche'
 import { useFormation } from '../../hooks/useFormation'
 import { useInscription } from '../../hooks/useInscription'
 
@@ -16,11 +16,13 @@ const TRANCHE_OPTIONS = [
 
 // Nouvelle inscription : choix de l'étudiant, de la formation et du nombre de tranches.
 // À l'enregistrement, l'API crée l'inscription et calcule l'échéancier.
+// L'étudiant est cherché au serveur (nom, e-mail, téléphone) : la liste complète ne tiendrait pas
+// dans un menu déroulant avec des milliers d'étudiants.
 function InscriptionForm({ user, onBack, onSaved }) {
-  const { etudiants } = useEtudiant({ chargerListe: true })
+  const [etudiant, setEtudiant] = useState(null)
   const { formations } = useFormation()
   const { createInscription } = useInscription()
-  const [form, setForm] = useState({ id_etudiant: '', id_formation: '', nombre_tranches: 1, id_tranche: 1 })
+  const [form, setForm] = useState({ id_formation: '', nombre_tranches: 1, id_tranche: 1 })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -45,7 +47,7 @@ function InscriptionForm({ user, onBack, onSaved }) {
     try {
       await createInscription({
         ...form,
-        id_etudiant: Number(form.id_etudiant),
+        id_etudiant: etudiant.id_etudiant,
         id_formation: Number(form.id_formation),
         nombre_tranches: Number(form.nombre_tranches),
         id_tranche: Number(form.id_tranche),
@@ -57,11 +59,6 @@ function InscriptionForm({ user, onBack, onSaved }) {
       setSaving(false)
     }
   }
-
-  const etudiantOptions = etudiants.map((item) => ({
-    value: item.id_etudiant,
-    label: `${item.prenom} ${item.nom}`.trim(),
-  }))
 
   const formationOptions = formations.map((item) => ({
     value: item.id_formation,
@@ -83,13 +80,16 @@ function InscriptionForm({ user, onBack, onSaved }) {
       <form className="gestion-form" onSubmit={handleSubmit}>
         <Informations title="Détails de l'inscription">
           <div className="form-grid">
-            <InputReutilisable
+            <ChampRecherche
               label="Étudiant"
               name="id_etudiant"
-              as="select"
-              value={form.id_etudiant}
-              onChange={handleChange}
-              options={etudiantOptions}
+              chemin="/etudiants"
+              cle="id_etudiant"
+              libelle={(e) => `${e.prenom} ${e.nom}`.trim()}
+              sousTitre={(e) => [e.email, e.telephone].filter(Boolean).join(' · ')}
+              value={etudiant}
+              onChange={setEtudiant}
+              placeholder="Nom, e-mail ou téléphone"
               required
             />
             <InputReutilisable

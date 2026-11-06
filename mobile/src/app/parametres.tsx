@@ -32,7 +32,7 @@ import {
   type Density,
 } from '@/hooks/use-parametre';
 import { createParametreStyles } from '@/styles/parametre.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 import { formatDate, shortUserAgent, shortOS } from '@/utils/format';
 
 type Onglet = 'apparence' | 'securite';
@@ -46,6 +46,7 @@ export default function ParametresScreen() {
   // Styles reconstruits à chaque changement d'apparence
   // (thème, couleur principale, taille du texte, densité)
   const styles = useThemedStyles(createParametreStyles);
+  const { palette } = useSettings();
 
   const {
     settings,
@@ -287,7 +288,7 @@ export default function ParametresScreen() {
                 style={styles.voirMdpBtn}
                 onPress={() => setVoirMdp((v) => !v)}
               >
-                {voirMdp ? <EyeOff size={14} color="#5A6E85" /> : <Eye size={14} color="#5A6E85" />}
+                {voirMdp ? <EyeOff size={14} color={palette.textMuted} /> : <Eye size={14} color={palette.textMuted} />}
                 <Text style={styles.voirMdpText}>
                   {voirMdp ? 'Masquer' : 'Afficher'} les mots de passe
                 </Text>
@@ -299,7 +300,7 @@ export default function ParametresScreen() {
                 disabled={isUpdatingPassword}
               >
                 {isUpdatingPassword ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={palette.onAccent} />
                 ) : (
                   <Text style={styles.primaryBtnText}>Mettre à jour</Text>
                 )}
@@ -352,7 +353,7 @@ export default function ParametresScreen() {
               {isLoadingSessions ? (
                 <ActivityIndicator
                   size="small"
-                  color="#072E4C"
+                  color={palette.heading}
                   style={{ marginTop: 12 }}
                 />
               ) : sessions.length === 0 ? (
@@ -364,9 +365,9 @@ export default function ParametresScreen() {
                       <View style={styles.sessionIconWrap}>
                         {shortOS(s.user_agent) === 'iOS' ||
                         shortOS(s.user_agent) === 'Android' ? (
-                          <Smartphone size={18} color="#0A3B66" />
+                          <Smartphone size={18} color={palette.heading} />
                         ) : (
-                          <Monitor size={18} color="#0A3B66" />
+                          <Monitor size={18} color={palette.heading} />
                         )}
                       </View>
                       <View style={{ flex: 1 }}>
@@ -399,7 +400,7 @@ export default function ParametresScreen() {
 
         {saved ? (
           <View style={styles.savedLabel}>
-            <Check size={14} color="#2E7D32" />
+            <Check size={14} color={palette.success} />
             <Text style={styles.savedLabelText}>Modifications enregistrées !</Text>
           </View>
         ) : null}

@@ -1,6 +1,8 @@
 // Service des formations.
 const formationModel = require('../models/formationModel');
-const { ROLES } = require('../config/roles');
+const etatService = require('./etatService');
+const { ROLES, STAFF } = require('../config/roles');
+const { lireEtat } = require('../utils/etat');
 const { badRequest, forbidden, notFound } = require('../utils/errors');
 
 // duree_jours sert à répartir les échéances : il doit être strictement positif s'il est fourni
@@ -10,10 +12,22 @@ function verifierDuree(duree_jours) {
   }
 }
 
-// Un formateur ne voit que ses propres formations
-async function listerFormations(auteur) {
-  const idFormateur = auteur?.role === ROLES.FORMATEUR ? auteur.id : undefined;
-  return await formationModel.getAllFormations(idFormateur);
+// Un formateur ne voit que ses propres formations ; seul le personnel peut demander
+// les formations désactivées (etat = 'inactif' ou 'tous')
+// Un formateur ne reçoit que ses formations ; ?etat= réservé au personnel.
+// pagination { page, limite, offset } : une page + le total ; null : toute la liste
+async function listerFormations(auteur, { etat, recherche } = {}, pagination = null) {
+  const filtres = {
+    idUtilisateur: auteur?.role === ROLES.FORMATEUR ? auteur.id : undefined,
+    etat: lireEtat({ etat }, STAFF.includes(auteur?.role)),
+    recherche,
+  };
+  if (!pagination) return await formationModel.getAllFormations(filtres);
+  const [lignes, total] = await Promise.all([
+    formationModel.getAllFormations(filtres, pagination),
+    formationModel.compterFormations(filtres),
+  ]);
+  return { lignes, total };
 }
 
 async function recupererFormation(id) {
@@ -22,13 +36,19 @@ async function recupererFormation(id) {
   return formation;
 }
 
-// Un formateur ne peut lister que les étudiants de SES formations
-async function recupererEtudiantsFormation(id, auteur) {
+// Un formateur ne peut lister que les étudiants de SES formations.
+// filtres = { recherche } ; pagination = { page, limite, offset } ou null (toute la liste, sans total)
+async function recupererEtudiantsFormation(id, auteur, filtres = {}, pagination = null) {
   const formation = await recupererFormation(id);
   if (auteur?.role === ROLES.FORMATEUR && Number(formation.id_utilisateur) !== Number(auteur.id)) {
     throw forbidden("Cette formation ne vous est pas attribuée.");
   }
-  return await formationModel.getEtudiantsByFormation(id);
+  if (!pagination) return await formationModel.getEtudiantsByFormation(id, filtres);
+  const [lignes, total] = await Promise.all([
+    formationModel.getEtudiantsByFormation(id, filtres, pagination),
+    formationModel.compterEtudiantsFormation(id, filtres),
+  ]);
+  return { lignes, total };
 }
 
 async function creerFormation({ nom, description, engagement_formateur, tarif, duree, duree_jours, id_utilisateur }) {
@@ -51,8 +71,7 @@ async function modifierImageFormation(id, fichier) {
 }
 
 async function supprimerFormation(id) {
-  const ok = await formationModel.deleteFormation(id);
-  if (!ok) throw notFound('Formation introuvable.');
+  await etatService.desactiverFormation(id);
 }
 
 module.exports = {

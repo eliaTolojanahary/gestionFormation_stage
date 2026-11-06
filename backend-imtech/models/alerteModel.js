@@ -5,7 +5,7 @@ const { ECHEANCE_PROCHE, MONTANT_ENVOYE } = require('./echeanceModel');
 
 const TYPES_ALERTE = Object.freeze({
   ECHEANCE_J2: 'echeance_j2',
-  FIN_FORMATION: 'fin_formation',
+  NOTE_MANQUANTE: 'note_manquante',       // formateur prévenu : note de présentation à attribuer
 });
 
 // Échéances passées au statut JAUNE (non soldées, J-2, J-1 ou J), pas encore signalées à l'Accueil.
@@ -33,28 +33,6 @@ async function getEcheancesARappeler() {
   return rows;
 }
 
-// Inscriptions validées dont la formation est terminée
-// (date d'inscription + durée en jours dépassée), sans attestation et pas encore signalées.
-async function getFormationsTerminees() {
-  const sql = `
-    SELECT i.id_inscription, f.nom AS formation_nom,
-           u.nom AS etudiant_nom, u.prenom AS etudiant_prenom
-    FROM inscription i
-    JOIN formation f ON f.id_formation = i.id_formation
-    JOIN etudiant et ON et.id_etudiant = i.id_etudiant
-    JOIN utilisateur u ON u.id_utilisateur = et.id_utilisateur
-    WHERE i.etat = true AND i.valide = true
-      AND DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY) <= CURDATE()
-      AND NOT EXISTS (SELECT 1 FROM attestation a WHERE a.id_inscription = i.id_inscription)
-      AND NOT EXISTS (
-        SELECT 1 FROM alerte_envoyee a
-        WHERE a.type = '${TYPES_ALERTE.FIN_FORMATION}' AND a.id_reference = i.id_inscription
-      )
-  `;
-  const [rows] = await db.query(sql);
-  return rows;
-}
-
 // Réserve l'alerte : renvoie false si elle a déjà été envoyée (contrainte UNIQUE),
 // ce qui garantit qu'une même alerte ne part jamais deux fois.
 async function reserverAlerte(type, id_reference) {
@@ -65,4 +43,4 @@ async function reserverAlerte(type, id_reference) {
   return result.affectedRows > 0;
 }
 
-module.exports = { TYPES_ALERTE, getEcheancesARappeler, getFormationsTerminees, reserverAlerte };
+module.exports = { TYPES_ALERTE, getEcheancesARappeler, reserverAlerte };

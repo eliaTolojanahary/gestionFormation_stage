@@ -13,12 +13,13 @@ import { PaiementModal } from '@/components/paiement/paiement-modal';
 import { DetailHeader } from '@/components/detail-header';
 import { formatMontant, formatDateCourte } from '@/utils/format';
 import { createPaiementsStyles } from '@/styles/paiements.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 
 // Écran Paiements de l'étudiant : totaux (dû / payé / reste), paiements en attente de validation,
 // dernier paiement validé et prochaine tranche avec le bouton Payer.
 export default function HistoriquePaiementScreen() {
   const styles = useThemedStyles(createPaiementsStyles);
+  const { palette } = useSettings();
   const { user } = useAuth();
   const router = useRouter();
   const etudiantId = user?.id_etudiant;
@@ -89,14 +90,14 @@ export default function HistoriquePaiementScreen() {
 
         {!etudiantId ? (
           <View style={styles.emptyBox}>
-            <Wallet size={30} color="#8898AA" />
+            <Wallet size={30} color={palette.textMuted} />
             <Text style={styles.emptyText}>
               Profil étudiant introuvable. Reconnectez-vous.
             </Text>
           </View>
         ) : isLoading && !paiement ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#072E4C" />
+            <ActivityIndicator size="large" color={palette.heading} />
             <Text style={styles.loadingText}>
               Chargement de vos paiements...
             </Text>
@@ -143,7 +144,7 @@ export default function HistoriquePaiementScreen() {
                 {enAttente.map((p) => (
                   <View key={p.id_paiement} style={[styles.paiementCard, styles.paiementCardAttente]}>
                     <View style={[styles.paiementIconWrap, styles.paiementIconWrapAttente]}>
-                      <Clock size={20} color="#EF6C00" />
+                      <Clock size={20} color={palette.warning} />
                     </View>
                     <View style={styles.paiementBody}>
                       <Text style={styles.paiementLabel}>Envoyé le {formatDateCourte(p.date_paiement)}</Text>
@@ -167,7 +168,7 @@ export default function HistoriquePaiementScreen() {
                 <View
                   style={[styles.paiementIconWrap, styles.paiementIconWrapOk]}
                 >
-                  <CheckCircle2 size={20} color="#2E7D32" />
+                  <CheckCircle2 size={20} color={palette.success} />
                 </View>
 
                 <View style={styles.paiementBody}>
@@ -257,7 +258,7 @@ export default function HistoriquePaiementScreen() {
                     activeOpacity={0.85}
                     onPress={() => setModalPaiementVisible(true)}
                   >
-                    <Wallet size={18} color="#FFFFFF" />
+                    <Wallet size={18} color={palette.onAccent} />
                     <Text style={styles.payerBtnText}>
                       Payer {formatMontant(prochaine.montant_prevu)}
       
@@ -284,7 +285,7 @@ export default function HistoriquePaiementScreen() {
               </>
             ) : (
               <View style={styles.okCard}>
-                <CheckCircle2 size={22} color="#2E7D32" />
+                <CheckCircle2 size={22} color={palette.success} />
                 <Text style={styles.okText}>
                   Vous êtes à jour de vos paiements.
                 </Text>

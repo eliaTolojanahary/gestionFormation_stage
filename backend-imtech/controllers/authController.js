@@ -5,6 +5,7 @@ const authService = require('../services/authService');
 const userService = require('../services/userService');
 const userModel = require('../models/userModel');
 const { envoyerEmail } = require('../utils/mailer');
+const { salutation } = require('../utils/modeleEmail');
 const { exigerChamps, badRequest, unauthorized } = require('../utils/errors');
 
 const LONGUEUR_MIN_MOT_DE_PASSE = 8;
@@ -44,8 +45,14 @@ async function forgotPasswordController(req, res) {
   if (resetRequest) {
     await envoyerEmail({
       to: resetRequest.email,
-      subject: 'Réinitialisation de votre mot de passe IMTECH INFO',
-      html: `<p>Bonjour ${resetRequest.prenom || ''},</p><p>Votre code de réinitialisation est :</p><p><strong>${resetRequest.token}</strong></p><p>Ce code expire dans 30 minutes.</p>`,
+      subject: 'IMTECH INFO — Réinitialisation de votre mot de passe',
+      html: `${salutation(resetRequest.prenom, resetRequest.nom)}
+        <p>Vous avez demandé la réinitialisation du mot de passe de votre compte IMTECH INFO.
+        Voici votre code de vérification :</p>
+        <p style="font-size:22px;font-weight:bold;letter-spacing:4px;">${resetRequest.token}</p>
+        <p>Ce code est valable <strong>30 minutes</strong>.</p>
+        <p>Si vous n'êtes pas à l'origine de cette demande, ignorez simplement ce message :
+        votre mot de passe reste inchangé.</p>`,
     });
   }
   // Réponse identique que l'email existe ou non (évite de révéler les comptes existants)
@@ -58,8 +65,8 @@ async function resetPasswordController(req, res) {
   const { token, nouveau_mot_de_passe } = req.body;
   verifierLongueurMotDePasse(nouveau_mot_de_passe);
 
-  const ok = await userService.reinitialiserMotDePasse(token, nouveau_mot_de_passe);
-  if (!ok) throw badRequest('Token invalide ou expiré.');
+  // Code refusé : erreur 400 levée par le service avec la raison précise
+  await userService.reinitialiserMotDePasse(token, nouveau_mot_de_passe);
 
   res.json({ status: 'success', message: 'Mot de passe réinitialisé avec succès.' });
 }

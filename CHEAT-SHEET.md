@@ -4,7 +4,8 @@ Aide-mémoire pour travailler **sans IA** (panne, démo, question du jury) : dé
 où se trouve quoi, ajouter une fonctionnalité dans le style du projet, interroger la base, dépanner.
 
 > Le front du projet est en **React** (web, avec Vite) et **React Native / Expo** (mobile), pas en
-> Vue. Le fonctionnement complet est dans [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md).
+> Vue. Le fonctionnement complet est dans [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md) : démarrage (§2),
+> organisation du code (§3), parcours A → Z (§4), modules (§5), règles (§7), base (§8), pièges (§9).
 >
 > Aide-mémoires généraux de syntaxe (créer une fonction, un composant, une requête…) :
 > [`cheat-sheets/node.md`](cheat-sheets/node.md) · [`cheat-sheets/react.md`](cheat-sheets/react.md) (+ React Native) · [`cheat-sheets/mysql.md`](cheat-sheets/mysql.md)
@@ -20,7 +21,7 @@ où se trouve quoi, ajouter une fonctionnalité dans le style du projet, interro
 | Web | `cd web` → `npm run dev` | <http://localhost:5173> |
 | Mobile | `cd mobile` → `npx expo start` (puis QR code avec Expo Go) | port 8081 |
 | Mobile, cache vidé | `npx expo start -c` | |
-| Tests backend | `cd backend-imtech` → `npm test` | 101 tests, sans base |
+| Tests backend | `cd backend-imtech` → `npm test` | 135 tests, sans base |
 | Lint / build web | `cd web` → `npx eslint src` · `npx vite build` | |
 | Vérif mobile | `cd mobile` → `npx tsc --noEmit` · `npx expo lint` | |
 | Arrêter un serveur | `Ctrl + C` dans son terminal | |
@@ -30,7 +31,7 @@ où se trouve quoi, ajouter une fonctionnalité dans le style du projet, interro
 
 | Dossier | Variables essentielles |
 |---|---|
-| `backend-imtech/.env` | `PORT=3000`, `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME=gestion_formation_db`, **`JWT_SECRET`** (obligatoire), `EMAIL_USER`, `EMAIL_PASSWORD` (mot de passe d'application Gmail) |
+| `backend-imtech/.env` | `PORT=3000`, `URL_BASE` (adresse publique, imprimée dans le QR code), `APP_NAME`, `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME=gestion_formation_db`, **`JWT_SECRET`** (obligatoire), `EMAIL_USER`, `EMAIL_PASSWORD` (mot de passe d'application Gmail) |
 | `web/.env` | `VITE_URL_BASE=http://localhost:3000/api` |
 | `mobile/.env` | `EXPO_PUBLIC_API_URL=http://<IP du PC>:3000/api` (optionnel : sinon l'IP est déduite d'Expo) |
 
@@ -44,12 +45,12 @@ mysql -u root -p < reinit.sql         # vide toutes les tables
 mysql -u root -p < donneesTest.sql    # recharge les données
 node scripts/fichiersDemo.js          # photos, pièces, supports PDF
 ```
-Comptes : `tljelia374@gmail.com` (Super Admin), `hanitra.rasoanaivo@imtech.test` (Accueil),
-`tiana.randrianarisoa@imtech.test` (Formateur), `toky.ravelojaona@imtech.test` (Étudiant).
+Comptes : `tljelia374@gmail.com` (Super Admin), `test123acceuil@gmail.com` (Accueil),
+`tolojanaharyelia845@gmail.com` (Formateur), `toky.ravelojaona@imtech.test` (Étudiant).
 
 ---
 
-## 2. Où est quoi
+## 2. Où est quoi (détail : flux §3)
 
 ```
 Requête :  Page / écran  →  hook (apiRequest)  →  routes.js  →  middlewares  →  controller  →  service  →  model  →  MySQL
@@ -67,15 +68,19 @@ Requête :  Page / écran  →  hook (apiRequest)  →  routes.js  →  middlewa
 | Erreurs HTTP | `utils/errors.js` (`badRequest`, `notFound`, `forbidden`, `conflict`, `exigerChamps`) |
 | Transaction SQL | `utils/transaction.js` (`avecTransaction`) |
 | Pagination / recherche `LIKE` | `utils/pagination.js` |
+| Filtre actif / désactivé (`?etat=`), réactivation | `utils/etat.js`, `services/etatService.js`, `controllers/etatController.js` ; web : `utils/etat.js`, `components/etat/BadgeEtat.jsx` |
+| Refuser une action si l'étudiant / la formation / l'inscription est désactivé | `services/dependanceService.js` (`verifierInscription`, `verifierEcheance`, `verifierPaiement`) |
+| Afficher un montant (« 150 000 Ar ») | `formatMontant` : `backend-imtech/utils/format.js`, `web/src/utils/format.js`, `mobile/src/utils/format.ts` |
+| Contacts de la vitrine (site, Facebook, e-mail) | `backend-imtech/config/vitrine.js` (`CONTACTS`, remplaçables par le `.env`) |
 | Limite d'essais (429) | `middlewares/limiteRequetes.js` |
 | Noms des rôles | `config/roles.js` (`ROLES.ETUDIANT` = `'Étudiant'`, avec accent) |
 | Connexion MySQL | `config/db.js` (pool, lit le `.env`) |
-| Schéma de la base | `base.sql` ; évolutions : **`alter2.sql`** (blocs numérotés) |
+| Schéma de la base | `base.sql` (installation neuve) ; évolutions : **`alter.sql`** (rejouable). `alter2.sql` = anciennes migrations 001 à 010, ne plus y toucher |
 | Menu et pages par rôle (web) | `web/src/utils/navigation.js` (`NAVIGATION`, `peutOuvrir`, `CHEMINS`) |
 | Routes du web | `web/src/App.jsx` (connexion), `pages/dashboard/DashboardLayout.jsx` (pages), `pages/dashboard/SectionsRoutes.jsx` (fiches) |
 | Appel API web / mobile | `web/src/utils/api.js`, `mobile/src/utils/api.ts` (`apiRequest`) ; chemins mobile : `mobile/src/constants/api.ts` (`ENDPOINTS`) |
 | Écrans mobiles | `mobile/src/app/` (Expo Router : un fichier = un écran ; `(tabs)/` = barre du bas) |
-| Thème mobile | `mobile/src/context/SettingsContext.tsx`, styles dans `mobile/src/styles/` |
+| Thème mobile | `mobile/src/context/SettingsContext.tsx`, couleurs dans `mobile/src/constants/theme.ts` (`buildPalette`, `ACCENT_SOMBRE`), styles dans `mobile/src/styles/` ; dans un écran : `const { palette } = useSettings()` |
 
 ---
 
@@ -83,15 +88,15 @@ Requête :  Page / écran  →  hook (apiRequest)  →  routes.js  →  middlewa
 
 Exemple : « l'Accueil peut **archiver** une demande d'assistance ».
 
-**① Base** — nouveau bloc à la **fin** de `alter2.sql` (et la même colonne dans `base.sql`) :
+**① Base** — nouveau bloc **rejouable** à la fin de `alter.sql` (et la même colonne dans `base.sql`) :
 ```sql
 -- ============================================
--- MIGRATION 011 : archivage des demandes d'assistance
+-- Archivage des demandes d'assistance
 -- ============================================
-USE gestion_formation_db;
-ALTER TABLE assistance ADD COLUMN archivee BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE assistance ADD COLUMN IF NOT EXISTS archivee BOOLEAN NOT NULL DEFAULT FALSE;
 ```
-Exécuter **seulement ce bloc** sur la base existante (copier-coller dans MySQL Workbench ou le client `mysql`).
+Puis exécuter **tout** `alter.sql` sur la base locale : `C:\xampp\mysql\bin\mysql -u root < alter.sql`
+(le fichier est rejoué en entier, d'où `IF NOT EXISTS` et `INSERT … WHERE NOT EXISTS`).
 
 **② Model** (`models/assistanceModel.js`) — SQL seulement, toujours avec des `?` :
 ```js
@@ -151,7 +156,9 @@ async function archiverDemande(id) {
 </button>
 ```
 
-**⑧ Doc** : flux (§2.2 : tableau page → action → métier → base et règles du module ; fonctionnement actuel seulement, pas d'historique) + un scénario dans `SCENARIOS-TESTS.md`.
+**⑧ Doc** : `FLUX-APPLICATION.md` (une ligne dans le tableau des modules §5, ou l'étape du parcours §4
+concernée ; §6 si c'est une tâche automatique ; fonctionnement actuel seulement, pas d'historique),
+`FLUX-MEMOIRE.md` (§2.2 du module) et un scénario dans `SCENARIOS-TESTS.md`.
 
 ---
 
@@ -249,6 +256,8 @@ function MaPage() {
 | Rediriger | `<Navigate to="/dashboard" replace />` |
 | Liste paginée par le serveur | `const liste = useListePaginee('/paiements', { recherche, statut })` → `liste.lignes`, `liste.page`, `liste.setPage`, `liste.recharger()` |
 | Pied de pagination | `<Pagination page={liste.page} pages={liste.pages} total={liste.total} limite={liste.limite} onChange={liste.setPage} />` |
+| Demander confirmation | `import { useRetour } from '../../components/retour/useRetour'` ; `const { confirmer, notifier } = useRetour()` puis `if (!(await confirmer({ titre: 'Supprimer…', message: '« X » sera…', bouton: 'Supprimer', danger: true }))) return` (jamais `window.confirm`) |
+| Message de réussite | `notifier('Formation créée')` (bandeau vert 3,5 s) |
 | Ajouter une page au menu | une ligne dans `NAVIGATION` (`utils/navigation.js`) + une `<Route>` dans `DashboardLayout.jsx` |
 | Couleurs | toujours `var(--accent)`, `var(--success)`, `var(--danger)`, `var(--on-accent)` (jamais de `#xxxxxx` en dur : sinon le mode sombre casse) |
 
@@ -362,24 +371,29 @@ node -e "console.log(require('bcryptjs').hashSync('admin123', 10))"
 UPDATE utilisateur SET mot_de_passe = '<hash affiché>' WHERE email = 'x@imtech.test';
 ```
 
-**Modifier le schéma** : jamais directement « pour voir » → un bloc numéroté à la fin de
-`alter2.sql` + même changement dans `base.sql` ; nouvelle table → l'ajouter aussi dans `reinit.sql`.
+**Modifier le schéma** : jamais directement « pour voir » → un bloc rejouable à la fin de
+`alter.sql` + même changement dans `base.sql`, puis exécuter `alter.sql` ; nouvelle table → l'ajouter
+aussi dans `reinit.sql` (flux §7).
 
 ---
 
-## 9. Dépannage
+## 9. Dépannage (pièges du code : flux §9)
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
 | Backend : `JWT_SECRET manquant` | `.env` absent ou incomplet | Copier `.env.example` en `.env`, remplir `JWT_SECRET` |
 | `ER_ACCESS_DENIED_ERROR` | Mauvais utilisateur / mot de passe MySQL | Corriger `DB_USER` / `DB_PASSWORD` |
-| `ER_BAD_DB_ERROR` | Base pas créée | `mysql -u root -p < base.sql` puis `donneesTest.sql` |
-| `ER_BAD_FIELD_ERROR` / `Unknown column` | Bloc de `alter2.sql` pas exécuté | Exécuter le bloc manquant |
+| `ER_BAD_DB_ERROR` / `No database selected` | Base pas créée | `mysql -u root -e "CREATE DATABASE IF NOT EXISTS gestion_formation_db CHARACTER SET utf8mb4"`, puis `mysql -u root gestion_formation_db < base.sql`, puis `donneesTest.sql` |
+| Accents bizarres (« ├® ») après avoir chargé un `.sql` | Client mysql en latin1 | `--default-character-set=utf8mb4` (déjà réglé dans `donneesTest.sql` par `SET NAMES`) |
+| `ER_BAD_FIELD_ERROR` / `Unknown column` | `alter.sql` pas exécuté sur cette base | `mysql -u root < alter.sql` (rejouable) |
 | `EADDRINUSE :3000` | Backend déjà lancé ailleurs | Fermer l'autre terminal (ou `npx kill-port 3000`) |
-| Web : « Failed to fetch » | Backend arrêté, ou `VITE_URL_BASE` faux | Lancer le backend ; vérifier `web/.env` puis relancer `npm run dev` |
-| Mobile : « Network request failed » | Téléphone pas sur le même Wi-Fi, IP changée, pare-feu | Même Wi-Fi ; `ipconfig` ; autoriser le port 3000 dans le pare-feu Windows ; `npx expo start -c` |
+| Web : « Impossible de joindre le serveur » (console : « Failed to fetch ») | Backend arrêté, ou `VITE_URL_BASE` faux | Lancer le backend ; vérifier `web/.env` puis relancer `npm run dev` |
+| Mobile : « Impossible de joindre le serveur » (console : « Network request failed ») | Téléphone pas sur le même Wi-Fi, IP changée, pare-feu | Même Wi-Fi ; `ipconfig` ; autoriser le port 3000 dans le pare-feu Windows ; `npx expo start -c` |
 | 401 partout | Session expirée ou révoquée | Se reconnecter |
 | 403 | Mauvais rôle, ou données d'un autre | Normal : vérifier le compte utilisé |
+| 409 « … est désactivé(e). Réactivez-le d'abord » | L'étudiant, la formation, l'inscription ou l'échéance de cette ligne est désactivé | Sa page → filtre « État » : Désactivés → **Réactiver** |
+| Une ligne a « disparu » d'une liste | Elle a été désactivée | Filtre « État » : Désactivés (ou Tous) |
+| Mobile : icône invisible en mode sombre | Couleur écrite en dur (`color="#072E4C"`) | `color={palette.heading}` (ou `textMuted`, `success`…) |
 | 429 « Trop de tentatives » | Limite d'essais atteinte | Attendre 15 min ou **redémarrer le backend** (compteurs en mémoire) |
 | E-mails non reçus | `EMAIL_USER` / `EMAIL_PASSWORD` faux | Mot de passe d'application Gmail ; en démo, lire le code dans `reset_password` (§8) |
 | Images / PDF absents en démo | Fichiers de démo pas générés | `node scripts/fichiersDemo.js` |

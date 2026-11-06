@@ -1,14 +1,14 @@
 // components/support-block.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Download, ArrowRight } from 'lucide-react-native';
+import { Download, ArrowRight, BookOpen, User } from 'lucide-react-native';
 import { Support } from '@/hooks/use-support';
 import { Reaction, REACTION_TYPES, TypeReaction } from '@/hooks/use-reaction';
 import { getSupportVisual } from '@/hooks/use-support-visual';
 import { texteBrut } from '@/components/doc/texte-riche';
 import { formatAjout, getFileTypeLabel } from '@/utils/format';
 import { createSupportBlockStyles } from '@/styles/components/support-block.styles';
-import { useThemedStyles } from '@/context/SettingsContext';
+import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 
 interface Props {
   support: Support;
@@ -42,6 +42,7 @@ export function SupportBlock({
   onOuvrir,
   compact = false,
 }: Props) {
+  const { palette } = useSettings();
   const styles = useThemedStyles(createSupportBlockStyles);
   const { Icone, fond, couleur } = getSupportVisual(support.fichier);
   const datePublication = support.date_publication || support.date_ajout;
@@ -63,15 +64,17 @@ export function SupportBlock({
           </Text>
 
           {nomFormation ? (
-            <Text style={styles.supportContext} numberOfLines={1}>
-              📚 {nomFormation}
-            </Text>
+            <View style={styles.supportContextLigne}>
+              <BookOpen size={12} color={palette.accent} />
+              <Text style={[styles.supportContext, styles.supportContextTexte]} numberOfLines={1}>{nomFormation}</Text>
+            </View>
           ) : null}
 
           {nomFormateur ? (
-            <Text style={styles.supportContext} numberOfLines={1}>
-              👤 {nomFormateur}
-            </Text>
+            <View style={styles.supportContextLigne}>
+              <User size={12} color={palette.accent} />
+              <Text style={[styles.supportContext, styles.supportContextTexte]} numberOfLines={1}>{nomFormateur}</Text>
+            </View>
           ) : null}
 
           {!nomFormation && !nomFormateur ? (
@@ -93,9 +96,9 @@ export function SupportBlock({
           onPress={onOuvrir}
         >
           {onPress ? (
-            <ArrowRight size={17} color="#0A3B66" />
+            <ArrowRight size={17} color={palette.heading} />
           ) : (
-            <Download size={17} color="#0A3B66" />
+            <Download size={17} color={palette.heading} />
           )}
         </TouchableOpacity>
       </View>

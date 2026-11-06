@@ -2,18 +2,41 @@
 const notifService = require('../services/notifService');
 const { exigerChamps, notFound, badRequest } = require('../utils/errors');
 
-// Nom et e-mail de l'utilisateur connecté, affichés comme expéditeur des e-mails
-function getExpediteur(req) {
-  return {
-    nom: `${req.user.prenom || ''} ${req.user.nom || ''}`.trim() || req.user.email,
-    email: req.user.email,
-  };
+// Coordonnées de l'utilisateur connecté : expéditeur et signature des e-mails
+const getExpediteur = (req) => notifService.expediteurDe(req.user.id);
+
+// Paramètre de requête entier positif facultatif (?limite=20) ; 400 s'il est invalide
+function entierPositif(valeur, nom) {
+  if (valeur === undefined || valeur === '') return undefined;
+  const n = Number(valeur);
+  if (!Number.isInteger(n) || n < 1) throw badRequest(`Paramètre ${nom} invalide.`);
+  return n;
 }
 
-// GET /notifications : notifications de l'utilisateur connecté
+// GET /notifications : notifications de l'utilisateur connecté, les plus récentes d'abord.
+// Paramètres facultatifs : ?limite=20, ?avant=<id> (plus anciennes), ?apres=<id> (nouvelles),
+// ?nonLues=1. Sans paramètre : toute la liste.
 async function listerNotifications(req, res) {
-  const notifications = await notifService.listerNotifications(req.user.id);
-  res.json({ status: 'success', data: notifications });
+  const limite = entierPositif(req.query.limite, 'limite');
+  const { notifications, meta } = await notifService.listerNotifications(req.user.id, {
+    limite: limite && Math.min(limite, 100),
+    avant: entierPositif(req.query.avant, 'avant'),
+    apres: entierPositif(req.query.apres, 'apres'),
+    nonLues: req.query.nonLues === '1' || req.query.nonLues === 'true',
+  });
+  res.json({ status: 'success', data: notifications, meta });
+}
+
+// GET /notifications/compteur : { total, nonLues } pour le badge de la cloche
+async function compterNotifications(req, res) {
+  const compteur = await notifService.compterNotifications(req.user.id);
+  res.json({ status: 'success', data: compteur });
+}
+
+// PUT /notifications/lu-tout
+async function lireToutesNotifications(req, res) {
+  const nombre = await notifService.marquerToutCommeLu(req.user.id);
+  res.json({ status: 'success', message: `${nombre} notification(s) marquée(s) comme lue(s).` });
 }
 
 // PUT /notifications/:id/lu (404 si la notification n'appartient pas à l'utilisateur)
@@ -42,7 +65,7 @@ async function envoyerEmailController(req, res) {
   exigerChamps(req.body, ['email', 'sujet', 'contenuHtml']);
   const { id_destinataire, email, sujet, contenuHtml } = req.body;
 
-  await notifService.notifierEmail(id_destinataire, email, sujet, contenuHtml, getExpediteur(req));
+  await notifService.notifierEmail(id_destinataire, email, sujet, contenuHtml, await getExpediteur(req));
   res.json({ status: 'success', message: 'E-mail envoyé avec succès.' });
 }
 
@@ -54,13 +77,15 @@ async function envoyerEmailPieceJointeController(req, res) {
 
   await notifService.notifierEmailAvecPieceJointe(
     id_destinataire, email, sujet, contenuHtml,
-    req.file.path, req.file.originalname, getExpediteur(req)
+    req.file.path, req.file.originalname, await getExpediteur(req)
   );
   res.json({ status: 'success', message: 'E-mail avec pièce jointe envoyé.' });
 }
 
 module.exports = {
   listerNotifications,
+  compterNotifications,
+  lireToutesNotifications,
   lireNotification,
   retirerNotification,
   envoyerNotifInApp,

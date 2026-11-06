@@ -31,7 +31,7 @@ function Parametres({ user, settings, onSettingsChange }) {
 
   return (
     <section className="workspace-page">
-      <Header user={user} activeItem="Parametres" />
+      <Header user={user} activeItem="Paramètres" />
 
       <div className="workspace-heading">
         <div>
