@@ -4,7 +4,7 @@ const { PAIEMENT_ACTIF } = require('./paiementModel');
 
 // Données de chaque étudiant inscrit à une formation, pour calculer sa note système :
 // - date_debut / duree_jours : période de la formation (début = date d'inscription)
-// - nb_presences : jours de semaine (lundi à vendredi) où l'étudiant a utilisé l'application
+// - nb_presences : jours de semaine (lundi à vendredi) où l'étudiant a ouvert un support, réagi ou commenté
 //   pendant la formation (table presence, remplie automatiquement)
 // - échéances dont le jour suivant la date d'échéance est passé :
 //   nb_payees_en_retard : pas soldées le jour de l'échéance, mais soldées le jour suivant ;

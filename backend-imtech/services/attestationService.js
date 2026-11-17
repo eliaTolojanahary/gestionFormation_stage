@@ -55,4 +55,13 @@ async function envoyerPretes(options = {}) {
   return { envoyees, echecs };
 }
 
-module.exports = { raisonsBlocage, listerAttestations, envoyerPretes };
+// Envoie l'attestation d'une inscription si elle est prête (ex. dès que l'étudiant a commenté
+// son formateur, sans attendre la tâche horaire). Renvoie true si elle est partie.
+async function envoyerSiPrete(id_inscription) {
+  const { pretes } = await listerAttestations({ idInscription: id_inscription });
+  if (!pretes.length) return false;
+  await documentService.envoyerAttestation(id_inscription);
+  return true;
+}
+
+module.exports = { raisonsBlocage, listerAttestations, envoyerPretes, envoyerSiPrete };

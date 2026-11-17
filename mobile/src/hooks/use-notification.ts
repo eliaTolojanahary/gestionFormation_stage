@@ -122,9 +122,12 @@ export function useNotification() {
   const [isLoadingPlus, setIsLoadingPlus] = useState(false);
   const [error, setError] = useState('');
 
-  // Liste courante lue par l'intervalle (sa fonction garderait sinon la liste du premier rendu)
+  // Liste courante lue par l'intervalle (sa fonction garderait sinon la liste du premier rendu).
+  // Mise à jour après chaque affichage, dans un effet : React interdit d'écrire une ref pendant le rendu.
   const listeRef = useRef<Notification[]>(notifications);
-  listeRef.current = notifications;
+  useEffect(() => {
+    listeRef.current = notifications;
+  }, [notifications]);
 
   function lireListe(params: Record<string, number>) {
     const query = Object.entries(params).map(([cle, valeur]) => `${cle}=${valeur}`).join('&');
@@ -273,7 +276,7 @@ export function useNotification() {
     return apiRequest('/notifications/email/piece-jointe', {
       method: 'POST',
       body: formData,
-      // ⚠️ Ne PAS mettre Content-Type : apiRequest doit le détecter
+      // Ne PAS mettre Content-Type : apiRequest doit le détecter
     });
   }
 

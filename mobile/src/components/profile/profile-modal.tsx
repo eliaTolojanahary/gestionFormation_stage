@@ -68,7 +68,7 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
 
         setProfile({
           ...data,
-          // 🔑 id_role conservé en string, comme dans le web
+          // id_role conservé en string, comme dans le web
           id_role: String(data?.id_role ?? user?.id_role ?? ''),
         });
       } catch {
@@ -187,7 +187,7 @@ export function ProfileModal({ visible, onClose, onUpdated }: Props) {
 
     setMessage('Profil mis à jour avec succès.');
 
-    // ⚠️ Petit délai pour laisser le temps au refresh
+    // Petit délai pour laisser le temps au refresh
     setTimeout(() => {
       onUpdated?.(profilFrais);
       onClose();

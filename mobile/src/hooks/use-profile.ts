@@ -81,7 +81,7 @@ export function useProfil() {
           method: 'PUT',
           body: isFormData ? (profile as FormData) : JSON.stringify(profile),
           headers: isFormData ? {} : undefined,
-          // ⚠️ Pour FormData, laisser fetch définir le Content-Type
+          // Pour FormData, laisser fetch définir le Content-Type
         });
 
         return result?.data ?? result;

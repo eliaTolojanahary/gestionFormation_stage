@@ -18,11 +18,10 @@ function Sidebar({ user, onLogout, logo, reduite = false }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <img src={logo} alt="IMTECH INFO" />
+        <img src={logo} alt="Logo IMTECH INFO" />
         <span>
-          PLATEFORME<br />
-          DE GESTION<br />
-          DE FORMATION
+          IMTEACHING<br />
+          FORMATION
         </span>
       </div>
 

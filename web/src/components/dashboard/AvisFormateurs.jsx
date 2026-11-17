@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Avatar from '../avatar/Avatar'
+import Icon from '../icon/Icon'
 import Tableau from '../tableau/Tableau'
 import SearchFilterBar from '../form/Filter'
 import BoutonExportCSV from '../tableau/BoutonExportCSV'
 import { useAvisFormateurs } from '../../hooks/useAvisFormateurs'
 import { PERIODE_TOUT, libellePeriode } from '../../utils/periodes'
+import { CHEMINS } from '../../utils/navigation'
 import './AvisFormateurs.css'
 
 const TOUS = 'Tous'
@@ -26,6 +29,29 @@ const REACTIONS = [
 
 // Note sur 10 ou sur 20 ; « — » tant qu'elle n'est pas calculable
 const afficherNote = (note) => (note === null || note === undefined ? '—' : String(note).replace('.', ','))
+
+// Note des commentaires, ou ce qui manque : elle ne compte que quand tous les étudiants attendus ont
+// commenté et que tous les commentaires sont notés (formateurNoteService.classerFormateurs).
+// « x/y commentés » ou « n à noter » mène à la page Formateurs, qui détaille ce qui reste
+// (étudiants sans commentaire, commentaires à noter).
+function NoteCommentaires({ row }) {
+  if (row.note_commentaires !== null && row.note_commentaires !== undefined) return afficherNote(row.note_commentaires)
+  const commentes = row.nb_commentaires ?? 0
+  const attendus = row.nb_attendus ?? 0
+  if (attendus === 0) return <span className="avis-vide">—</span>
+  const texte = commentes < attendus
+    ? `${commentes}/${attendus} commentés`
+    : `${commentes - (row.nb_notes ?? 0)} à noter`
+  return (
+    <Link to={CHEMINS.formateurs} className="avis-manquants-bouton" title="Voir le détail sur la page Formateurs">
+      <Icon name="users" className="icon-inline" />
+      {texte}
+    </Link>
+  )
+}
+
+const listeManquants = (row) =>
+  (row.etudiants_manquants ?? []).map((e) => `${e.etudiant_prenom} ${e.etudiant_nom} (${e.formation_nom})`).join(', ')
 
 // Libellé affiché dans le filtre -> champ trié (null = ordre de l'API : meilleure note sur 20 d'abord)
 const TRIS = {
@@ -132,9 +158,10 @@ function AvisFormateurs({ periode = PERIODE_TOUT, version = 0 }) {
     {
       key: 'note_commentaires',
       header: 'Commentaires / 10',
-      render: (row) => afficherNote(row.note_commentaires),
+      render: (row) => <NoteCommentaires row={row} />,
       exportValue: (row) => row.note_commentaires,
     },
+    { key: 'etudiants_manquants', header: 'Étudiants sans commentaire', exportSeulement: true, exportValue: listeManquants },
     {
       key: 'note_finale',
       header: 'Note / 20',
@@ -167,11 +194,16 @@ function AvisFormateurs({ periode = PERIODE_TOUT, version = 0 }) {
           <h2>Classement des formateurs</h2>
           <p>
             Note sur 20 : réactions sur leurs supports (10 points, à partir de 5 réactions) + moyenne des
-            commentaires notés (10 points). Compétent : au moins 60 % de réactions positives (👍 ❤️ 💡).
+            commentaires notés (10 points, une fois que tous ses étudiants ont commenté et que tout est noté). Compétent : au moins 60 % de réactions positives (👍 ❤️ 💡).
             {` Données ${libellePeriode(periode)}.`}
           </p>
         </div>
-        <BoutonExportCSV columns={columns} lignes={lignes} nomFichier="classement_formateurs" />
+        <div className="avis-actions">
+          <Link to={CHEMINS.formateurs} className="row-action avis-lien-notation">
+            <Icon name="quote" className="icon-inline" /> Noter les commentaires
+          </Link>
+          <BoutonExportCSV columns={columns} lignes={lignes} nomFichier="classement_formateurs" />
+        </div>
       </div>
 
       <SearchFilterBar
@@ -200,7 +232,7 @@ function AvisFormateurs({ periode = PERIODE_TOUT, version = 0 }) {
       {error && <p className="form-error">{error}</p>}
 
       {isLoading ? (
-        <p className="gestion-loading">Chargement...</p>
+        <p className="gestion-loading carte-chargement">Chargement...</p>
       ) : (
         <Tableau
           columns={columns}

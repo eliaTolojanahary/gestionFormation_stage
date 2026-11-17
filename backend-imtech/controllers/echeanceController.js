@@ -25,10 +25,22 @@ async function listerEcheances(req, res) {
   res.json(pagination ? reponsePaginee(resultat, pagination) : reponseListe(resultat));
 }
 
-// PUT /echeances/:id
+// PUT /echeances/:id (Super Admin) : body { date_echeance?: 'AAAA-MM-JJ', montant_prevu?: nombre }.
+// La différence de montant est reportée sur la dernière échéance non réglée (`report`) ;
+// l'étudiant est prévenu (notification + e-mail, `emailEnvoye`).
 async function updateEcheanceController(req, res) {
-  await echeanceService.modifierEcheance(req.params.id, req.body);
-  res.json({ status: 'success', message: 'Échéance mise à jour.' });
+  const { date_echeance, montant_prevu } = req.body || {};
+  const { emailEnvoye, report } = await echeanceService.modifierEcheance(
+    req.params.id, { date_echeance, montant_prevu }, req.user.id
+  );
+  res.json({
+    status: 'success',
+    emailEnvoye,
+    report,
+    message: emailEnvoye
+      ? "Échéance modifiée. L'étudiant a été prévenu (notification et e-mail)."
+      : "Échéance modifiée. L'étudiant a reçu une notification, mais l'e-mail n'a pas pu partir.",
+  });
 }
 
 // POST /echeances/:id/rappeler : rappel manuel de l'Accueil (notification in-app + e-mail).

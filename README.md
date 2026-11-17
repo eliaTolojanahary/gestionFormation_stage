@@ -1,4 +1,4 @@
-# IMTECH INFO — Plateforme de gestion de formation
+# Imteaching Formation — Plateforme de gestion de formation d'IMTECH INFO
 
 Application qui remplace les cahiers et les fichiers Excel d'un centre de formation : **inscriptions**,
 **paiements en plusieurs tranches**, **cours en ligne** et **attestations**, sur le web pour le

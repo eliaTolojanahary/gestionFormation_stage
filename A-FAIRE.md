@@ -67,9 +67,11 @@ Dans ce fichier, « flux §N » = partie N de `FLUX-APPLICATION.md`, « mémoire
 ### 1.0 Priorité (06/11/2026)
 - [ ] **PDF publics** : retirés de `preproduct`, mais toujours dans son historique et sur `sprint1/testAPI`, dépôt public.
       Reste : passer le dépôt en privé, purger l'historique (push forcé à lancer par le propriétaire du dépôt).
-- [ ] À faire valider par IMTECH : présence comptée sur l'usage de l'application, retard de paiement qui baisse la note,
+- [ ] À faire valider par IMTECH : présence = un jour où l'étudiant ouvre un support, réagit ou commente (cours en salle ? sinon appel par QR code), retard de paiement qui baisse la note,
       absence de session / promotion, traitement d'une erreur sur un paiement facturé (pas d'avoir).
 - [ ] Reporter dans le mémoire `.docx`, les slides et les schémas MCD / MLD : `historique_etat`, `formateur_note` et `paiement.id_utilisateur` (28 tables).
+- [ ] Tester à l'écran la carte « Étudiants à risque » (A11 : Sitraka, Andry, Relancer, 409 au 2e clic) la page Formateurs (A12 : ce qui reste, notation) et le classement revenu sur le tableau de bord ; capture Figure 21 pour le mémoire.
+- [ ] Faire valider par IMTECH les seuils du risque de décrochage (`REGLES` dans `decrochageService.js`).
 - [ ] Tester à l'écran : bouton « Désactiver » masqué, « Traité par », bouton « Facture », note refusée après attestation, écran mobile du commentaire, classement sur 20.
 
 Fait le 06/11/2026 :
@@ -79,7 +81,7 @@ Fait le 06/11/2026 :
 - [x] Agent d'un paiement (`paiement.id_utilisateur`, exception au schéma figé)
 - [x] Une attestation par inscription ; note de présentation figée après délivrance
 - [x] Note des formateurs sur 20 : commentaire de fin de formation (`formateur_note`), obligatoire pour l'attestation
-- [x] Données de démo : 12 commentaires (`donneesTest.sql` §13)
+- [x] Données de démo : 14 commentaires (`donneesTest.sql` §13)
 
 ### 1.1 Pour viser 8,5 (par ordre de rapport effort / gain)
 - [ ] **Tests front** (Vitest sur le web) : `utils/navigation.js` (`peutOuvrir`, `cheminResultat`),

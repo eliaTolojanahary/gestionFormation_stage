@@ -29,6 +29,8 @@ function Icon({ name, className = '' }) {
     x: 'M6 6l12 12M18 6 6 18',
     link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     quote: 'M5 7h5v5c0 3-1.5 5-4.5 6M14 7h5v5c0 3-1.5 5-4.5 6',
+    // Formateur : une personne au tableau qui pointe avec une règle (page Formateurs)
+    formateur: 'M11 3h10v8H11ZM6 9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM2 21v-3.5A4.5 4.5 0 0 1 6.5 13H8l6-4M10 15v6',
     cash: 'M3 6h18v12H3zM7 12h.01M17 12h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
     home: 'M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10',
     cap: 'M2 9l10-5 10 5-10 5L2 9ZM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6',

@@ -59,6 +59,16 @@ function lireContenu(valeur) {
   return contenu;
 }
 
+const TITRE_MAX = 150; // colonne support.titre VARCHAR(150)
+
+// Titre d'un support créé par creerSupports (voir plus bas)
+function titreSupport(titre, fichier, plusieurs) {
+  if (!fichier) return titre;
+  const nom = fichier.originalname;
+  if (!titre) return nom.slice(0, TITRE_MAX);
+  return (plusieurs ? `${titre} — ${nom}` : titre).slice(0, TITRE_MAX);
+}
+
 // Un formateur ne publie que dans SES formations.
 // Il faut un texte, un fichier, ou les deux ; le titre est obligatoire sans fichier.
 async function creerSupports({ id_formation, titre, contenu, fichiers = [], date_envoi_prevue }, auteur) {
@@ -74,14 +84,15 @@ async function creerSupports({ id_formation, titre, contenu, fichiers = [], date
   if (!titrePropre && fichiers.length === 0) throw badRequest('Le titre est obligatoire.');
 
   // Un support par fichier (le texte va avec chacun) ; sans fichier, un seul support texte.
-  // Sans titre, on prend le nom du fichier.
+  // Sans titre, on prend le nom du fichier ; plusieurs fichiers avec un titre :
+  // « Titre — nom du fichier », pour les distinguer dans la liste.
   const pieces = fichiers.length ? fichiers : [null];
   const ids = [];
   for (const fichier of pieces) {
     const support = {
       id_formation,
       id_utilisateur: auteur.id,
-      titre: titrePropre || fichier.originalname,
+      titre: titreSupport(titrePropre, fichier, pieces.length > 1),
       contenu: texte,
       fichier: fichier ? `supports/${fichier.filename}` : null,
       date_envoi_prevue: dateEnvoi,

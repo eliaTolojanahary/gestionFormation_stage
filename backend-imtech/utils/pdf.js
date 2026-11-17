@@ -50,7 +50,7 @@ function dessinerLogo(doc, x, y, largeur) {
   }
 }
 
-// Bandeau bleu en haut de page : logo + "IMTECH INFO" à gauche, titre du document à droite
+// Bandeau bleu en haut de page : logo + "IMTEACHING FORMATION" à gauche, titre du document à droite
 function dessinerEntete(doc, titre) {
   doc.rect(0, 0, doc.page.width, 110).fill(COULEURS.primaire);
 
@@ -58,8 +58,8 @@ function dessinerEntete(doc, titre) {
 
   doc.fillColor('#FFFFFF')
     .font('Helvetica-Bold')
-    .fontSize(20)
-    .text('IMTECH INFO', 120, 35);
+    .fontSize(17)
+    .text('IMTEACHING FORMATION', 120, 38);
 
   doc.font('Helvetica')
     .fontSize(9)
@@ -128,7 +128,7 @@ async function genererFichePDF(donnees, nomFichier) {
   ligneInfo(doc, 70, y, 'Formation', donnees.formation_nom); y += 26;
   ligneInfo(doc, 70, y, 'Tarif', formatMontant(donnees.tarif));
 
-  dessinerPiedDePage(doc, `IMTECH INFO — Fiche générée le ${formatDate(new Date())} — Document à usage administratif`);
+  dessinerPiedDePage(doc, `Imteaching Formation — Fiche générée le ${formatDate(new Date())} — Document à usage administratif`);
 
   doc.end();
   await ecriture;
@@ -296,7 +296,7 @@ async function genererFacturePDF(donnees, nomFichier) {
 
   dessinerPiedDePage(
     doc,
-    'IMTECH INFO — Merci pour votre confiance — Document généré automatiquement'
+    'Imteaching Formation — Merci pour votre confiance — Document généré automatiquement'
   );
 
   doc.end();
@@ -323,7 +323,7 @@ async function genererAttestationPDF(donnees, qrCodeBuffer, nomFichier) {
   dessinerLogo(doc, doc.page.width / 2 - 35, 50, 70);
 
   doc.font('Helvetica-Bold').fontSize(14).fillColor(COULEURS.gris)
-    .text('IMTECH INFO', 0, 125, { align: 'center' });
+    .text('IMTEACHING FORMATION', 0, 125, { align: 'center' });
 
   doc.font('Helvetica-Bold').fontSize(28).fillColor(COULEURS.primaire)
     .text('ATTESTATION DE FORMATION', 0, 155, { align: 'center' });
@@ -359,7 +359,7 @@ async function genererAttestationPDF(donnees, qrCodeBuffer, nomFichier) {
     .text("Scannez pour vérifier\nl'authenticité de ce document", 80, qrY + 95, { width: 110 });
 
   doc.font('Helvetica-Bold').fontSize(11).fillColor(COULEURS.primaire)
-    .text('IMTECH INFO', doc.page.width - 220, qrY + 40, { width: 140, align: 'center' });
+    .text('Imteaching Formation', doc.page.width - 220, qrY + 40, { width: 140, align: 'center' });
   doc.moveTo(doc.page.width - 220, qrY + 60).lineTo(doc.page.width - 80, qrY + 60)
     .strokeColor(COULEURS.gris).lineWidth(1).stroke();
   doc.font('Helvetica').fontSize(9).fillColor(COULEURS.gris)

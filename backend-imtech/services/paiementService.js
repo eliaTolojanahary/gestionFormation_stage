@@ -222,7 +222,7 @@ async function traiterPaiementEnAttente(id_paiement, statut, id_auteur = null) {
         id_utilisateur: paiement.id_utilisateur_etudiant,
         email: paiement.email_etudiant,
         message: `Votre paiement de ${montant} (${paiement.formation_nom}) a été refusé. Contactez l'accueil.`,
-        sujet: `IMTECH INFO — Paiement non validé : ${paiement.formation_nom}`,
+        sujet: `Imteaching Formation — Paiement non validé : ${paiement.formation_nom}`,
         contenuHtml: `${titre('Paiement non validé')}
           ${salutation(paiement.etudiant_prenom, paiement.etudiant_nom)}
           <p>Nous n'avons malheureusement <strong>pas pu valider</strong> le paiement que vous nous avez

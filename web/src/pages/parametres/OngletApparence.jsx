@@ -23,6 +23,7 @@ function Choix({ options, valeur, onChange }) {
           key={value}
           className={valeur === value ? 'selected' : ''}
           type="button"
+          aria-pressed={valeur === value}
           onClick={() => onChange(value)}
         >
           {label}
@@ -82,6 +83,8 @@ function OngletApparence({ user, settings, changeSetting, onEnregistre }) {
               className={settings.color === color.value ? 'selected' : ''}
               type="button"
               title={color.name}
+              aria-label={color.name}
+              aria-pressed={settings.color === color.value}
               style={{ '--swatch': color.value }}
               onClick={() => changeSetting('color', color.value)}
             >

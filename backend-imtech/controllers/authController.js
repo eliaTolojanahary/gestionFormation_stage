@@ -45,9 +45,9 @@ async function forgotPasswordController(req, res) {
   if (resetRequest) {
     await envoyerEmail({
       to: resetRequest.email,
-      subject: 'IMTECH INFO — Réinitialisation de votre mot de passe',
+      subject: 'Imteaching Formation — Réinitialisation de votre mot de passe',
       html: `${salutation(resetRequest.prenom, resetRequest.nom)}
-        <p>Vous avez demandé la réinitialisation du mot de passe de votre compte IMTECH INFO.
+        <p>Vous avez demandé la réinitialisation du mot de passe de votre compte Imteaching Formation.
         Voici votre code de vérification :</p>
         <p style="font-size:22px;font-weight:bold;letter-spacing:4px;">${resetRequest.token}</p>
         <p>Ce code est valable <strong>30 minutes</strong>.</p>

@@ -1,0 +1,85 @@
+/* ==========================================================================
+   Étudiants à risque de décrochage (tableau de bord)
+   ========================================================================== */
+
+.risque-card {
+  margin-bottom: 4px;
+}
+
+.risque-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.risque-compteurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.risque-table {
+  min-width: 640px;
+}
+
+.risque-table td {
+  vertical-align: middle;
+}
+
+.risque-lien {
+  color: var(--heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.risque-lien:hover {
+  text-decoration: underline;
+}
+
+.risque-raisons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-main);
+  font-size: var(--fs-xs);
+}
+
+.risque-raisons li::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--text-muted);
+}
+
+.risque-relance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.risque-relance button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.risque-relance span {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+/* Badges : mêmes couleurs que les statuts (rouge = à contacter, orange = à surveiller) */
+.risque-contacter {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.risque-surveiller {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+}

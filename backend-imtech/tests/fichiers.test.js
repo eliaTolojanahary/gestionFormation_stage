@@ -103,6 +103,8 @@ test('un étudiant inscrit reçoit le PDF filigrané, sans cache', async () => {
   assert.match(res.headers.get('content-type'), /application\/pdf/);
   assert.match(res.headers.get('cache-control'), /no-store/);
   assert.deepEqual(verif.mock.calls[0].arguments, [`supports/${PDF_SUPPORT}`, 7]);
+  // Ouvrir le fichier d'un support compte comme présence (middlewares/presence.js)
+  assert.deepEqual(presenceModel.marquerPresence.mock.calls.map((c) => c.arguments), [[10]]);
 
   const original = fs.readFileSync(path.join(UPLOADS, 'supports', PDF_SUPPORT));
   const recu = Buffer.from(await res.arrayBuffer());
@@ -126,6 +128,8 @@ test('les documents administratifs sont refusés aux étudiants', async () => {
   sessionActive();
   assert.equal((await get(`/documents/${DOC_ADMIN}`, etudiant)).status, 403);
   assert.equal((await get(`/documents/${DOC_ADMIN}`, formateur)).status, 200);
+  // Ni un accès refusé, ni un document qui n'est pas un cours ne comptent comme présence
+  assert.equal(presenceModel.marquerPresence.mock.callCount(), 0);
 });
 
 test("les routes de l'API sous le même préfixe fonctionnent toujours", async () => {
@@ -170,4 +174,62 @@ test('couverture de formation : publique (vitrine sans connexion), sans filigran
 test('les routes /formations/:id restent protégées malgré le dossier public', async () => {
   const res = await get('/formations/1');
   assert.equal(res.status, 401);
+});
+
+// POST /supports avec plusieurs fichiers (champ « fichier » répété)
+const formationModel = require('../models/formationModel');
+const supportProgrammeService = require('../services/supportProgrammeService');
+
+function envoyerSupport(fichiers, token = formateur) {
+  const form = new FormData();
+  form.append('id_formation', '4');
+  form.append('titre', 'Chapitre 3');
+  fichiers.forEach((nom) => form.append('fichier', new Blob([Buffer.from('%PDF-1.4 test')], { type: 'application/pdf' }), nom));
+  return fetch(`${baseUrl}/supports`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+}
+
+function fichiersRecus(creation) {
+  return creation.mock.calls.map((c) => path.join(UPLOADS, c.arguments[0].fichier));
+}
+
+test('un formateur publie 3 fichiers en une fois : 3 supports créés', async () => {
+  sessionActive();
+  mock.method(formationModel, 'getFormationById', async () => ({ id_formation: 4, id_utilisateur: 3, nom: 'React' }));
+  mock.method(supportProgrammeService, 'notifierSupportEnvoye', async () => {});
+  let id = 100;
+  const creation = mock.method(supportModel, 'createSupport', async () => id++);
+
+  const res = await envoyerSupport(['partie-1.pdf', 'partie-2.pdf', 'partie-3.pdf']);
+  const corps = await res.json();
+  const chemins = fichiersRecus(creation);
+  crees.push(...chemins);
+
+  assert.equal(res.status, 201);
+  assert.deepEqual(corps.ids, [100, 101, 102]);
+  assert.deepEqual(
+    creation.mock.calls.map((c) => c.arguments[0].titre),
+    ['Chapitre 3 — partie-1.pdf', 'Chapitre 3 — partie-2.pdf', 'Chapitre 3 — partie-3.pdf']
+  );
+  assert.ok(chemins.every((c) => fs.existsSync(c)), 'les fichiers sont enregistrés dans uploads/supports');
+});
+
+test("plus de 10 fichiers : refusé (400), rien n'est créé", async () => {
+  sessionActive();
+  const creation = mock.method(supportModel, 'createSupport', async () => 1);
+
+  const res = await envoyerSupport(Array.from({ length: 11 }, (_, i) => `p${i}.pdf`));
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).message, /Trop de fichiers/);
+  assert.equal(creation.mock.callCount(), 0);
+});
+
+test("formation d'un autre formateur : refusé (403) et fichiers reçus supprimés du disque", async () => {
+  sessionActive();
+  mock.method(formationModel, 'getFormationById', async () => ({ id_formation: 4, id_utilisateur: 99, nom: 'React' }));
+  const avant = new Set(fs.readdirSync(path.join(UPLOADS, 'supports')));
+
+  const res = await envoyerSupport(['intrus-1.pdf', 'intrus-2.pdf']);
+  assert.equal(res.status, 403);
+  const nouveaux = fs.readdirSync(path.join(UPLOADS, 'supports')).filter((n) => !avant.has(n));
+  assert.deepEqual(nouveaux, []);
 });

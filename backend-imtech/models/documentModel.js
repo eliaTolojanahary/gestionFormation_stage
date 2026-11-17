@@ -91,10 +91,12 @@ async function insertAttestation(id_inscription, uuid, dateDelivrance, cheminRel
 // Vérification publique : ne renvoie que la formation et la date (aucune donnée personnelle)
 async function findAttestationParUuid(uuid) {
   const sql = `
-    SELECT at.date_delivrance, f.nom AS formation_nom
+    SELECT at.date_delivrance, f.nom AS formation_nom, f.duree, u.prenom, u.nom
     FROM attestation at
     JOIN inscription i ON at.id_inscription = i.id_inscription
     JOIN formation f ON i.id_formation = f.id_formation
+    JOIN etudiant e ON e.id_etudiant = i.id_etudiant
+    JOIN utilisateur u ON u.id_utilisateur = e.id_utilisateur
     WHERE at.uuid_verification = ?
   `;
   const [rows] = await db.query(sql, [uuid]);

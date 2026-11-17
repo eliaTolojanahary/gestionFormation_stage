@@ -13,6 +13,9 @@ const notifService = require('../services/notifService');
 const assistanceModel = require('../models/assistanceModel');
 const classementModel = require('../models/classementModel');
 const presenceModel = require('../models/presenceModel');
+const supportService = require('../services/supportService');
+const supportModel = require('../models/supportModel');
+const fichierModel = require('../models/fichierModel');
 const { ROLES } = require('../config/roles');
 
 let server;
@@ -247,14 +250,43 @@ test('le formateur de la formation note la présentation (sur 10 au maximum)', a
   assert.deepEqual(setNote.mock.calls[0].arguments, ['5', 7.5]);
 });
 
-test("une requête d'étudiant le marque présent ; pas celle du personnel", async () => {
+// Laisse passer l'événement « finish » de la réponse, où la présence est marquée
+const apresReponse = () => new Promise((resolve) => setImmediate(resolve));
+
+// Étudiant inscrit (inscription validée) à la formation 4 du support 5
+function accesSupport({ valide = 1 } = {}) {
+  mock.method(fichierModel, 'formationDuSupport', async () => 4);
+  mock.method(fichierModel, 'inscriptionEtudiantFormation', async () => ({ valide }));
+  mock.method(supportModel, 'getSupportById', async () => ({ id_support: 5, titre: 'Cours 1' }));
+}
+
+test("présence : seulement quand l'étudiant ouvre un cours, pas pour une liste, une requête automatique ni le personnel", async () => {
   sessionActive();
+  accesSupport();
   const presence = presenceModel.marquerPresence;
-  // Routes refusées (403) juste après l'authentification : aucune requête SQL
-  await appel('PUT', '/inscriptions/5/note', { token: accueil, body: {} });
-  assert.equal(presence.mock.callCount(), 0);
+  mock.method(supportService, 'listerSupports', async () => ({ lignes: [], total: 0 }));
+
+  // Requête sans rapport avec un cours, liste des supports (chargée par l'accueil du mobile), personnel
   await appel('GET', '/etudiants/999/dashboard-paiement', { token: etudiant });
-  assert.deepEqual(presence.mock.calls[0].arguments, [10]);
+  await appel('GET', '/supports?page=1&limite=5', { token: etudiant });
+  await appel('GET', '/supports/5', { token: accueil });
+  await apresReponse();
+  assert.equal(presence.mock.callCount(), 0);
+
+  // Ouvrir un support : présent
+  const res = await appel('GET', '/supports/5', { token: etudiant });
+  assert.equal(res.status, 200);
+  await apresReponse();
+  assert.deepEqual(presence.mock.calls.map((c) => c.arguments), [[10]]);
+});
+
+test('présence : un support refusé (inscription pas encore validée) ne compte pas', async () => {
+  sessionActive();
+  accesSupport({ valide: 0 });
+  const res = await appel('GET', '/supports/5', { token: etudiant });
+  assert.equal(res.status, 403);
+  await apresReponse();
+  assert.equal(presenceModel.marquerPresence.mock.callCount(), 0);
 });
 
 test("l'accueil ne peut pas noter la présentation", async () => {
@@ -277,4 +309,10 @@ test("commentaires sur les formateurs : réservés à l'Accueil et au Super Admi
   const note = await appel('PUT', '/formateurs/commentaires/1/note', { token: formateur, body: { note: 10 } });
   const classement = await appel('GET', '/formateurs/avis', { token: formateur });
   assert.deepEqual([lecture.status, note.status, classement.status], [403, 403, 403]);
+});
+
+test("l'Accueil ne peut pas modifier une échéance (réservé au Super Admin) : 403", async () => {
+  sessionActive();
+  const res = await appel('PUT', '/echeances/1', { token: accueil, body: { date_echeance: '2026-12-31' } });
+  assert.equal(res.status, 403);
 });

@@ -16,10 +16,10 @@ const transporter = nodemailer.createTransport({
 
 // Envoie un email. `expediteur` ({ prenom, nom, email, telephone, role }) optionnel : la personne
 // qui envoie. Son nom s'affiche comme expéditeur, son adresse sert à la réponse, et ses coordonnées
-// signent le message. Le contenu est toujours habillé avec la présentation IMTECH INFO (utils/modeleEmail.js).
+// signent le message. Le contenu est toujours habillé avec la présentation Imteaching Formation (utils/modeleEmail.js).
 async function envoyerEmail({ to, subject, html, attachments, expediteur }) {
   const nom = expediteur ? nomComplet(expediteur.prenom, expediteur.nom) : '';
-  const nomExpediteur = nom ? `${nom} (IMTECH INFO)` : 'IMTECH INFO';
+  const nomExpediteur = nom ? `${nom} (Imteaching Formation)` : 'Imteaching Formation';
 
   await transporter.sendMail({
     from: `"${nomExpediteur}" <${process.env.EMAIL_USER}>`, // toujours le compte authentifié

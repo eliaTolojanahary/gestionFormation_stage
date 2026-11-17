@@ -6,6 +6,8 @@ const router = express.Router();
 const { ROLES, STAFF, TOUS } = require('../config/roles');
 const { verifyToken, checkRole, exigerEtudiantProprietaire, exigerSoiOuAdmin } = require('../middlewares/authMiddleware');
 const createUploader = require('../middlewares/docUpload');
+// Photo de profil réduite à 400 px après l'upload (avatars plus légers)
+const reduirePhoto = require('../middlewares/reduirePhoto');
 // Étudiant : contenu d'une formation seulement si son inscription est validée par l'Accueil
 const { exigerAccesFormation, exigerAccesSupport } = require('../middlewares/accesFormation');
 
@@ -28,7 +30,9 @@ const classement = require('../controllers/classementController');
 const vitrine = require('../controllers/vitrineController');
 const recherche = require('../controllers/rechercheController');
 const etat = require('../controllers/etatController');
+const decrochage = require('../controllers/decrochageController');
 const { limiteRequetes } = require('../middlewares/limiteRequetes');
+const { presenceSurCours } = require('../middlewares/presence');
 const attestationCtrl = require('../controllers/attestationController');
 
 const { CHAMPS_DOSSIER, TYPES_PIECE } = require('../config/dossier');
@@ -40,6 +44,7 @@ const staff = [verifyToken, checkRole(...STAFF)];
 const roles = (...liste) => [verifyToken, checkRole(...liste)];
 
 // ─── Uploads ────────────────────────────────
+const MAX_FICHIERS_SUPPORT = 10;
 const utilisateurUpload = createUploader('utilisateurs');
 const etudiantUpload = createUploader('etudiants');
 const documentUpload = createUploader('documents', { maxSizeMb: 10 });
@@ -101,7 +106,7 @@ router.get('/public/vitrine', vitrine.vitrineController);
 router.get('/public/formations', vitrine.formationsPubliquesController);
 router.get('/public/formateurs', vitrine.formateursPublicsController);
 // JSON, ou multipart quand l'étudiant joint ses pièces tout de suite (sinon : Mon dossier après connexion)
-router.post('/public/inscriptions', limiteInscription, piecesDossier, vitrine.inscriptionEnLigneController);
+router.post('/public/inscriptions', limiteInscription, piecesDossier, reduirePhoto, vitrine.inscriptionEnLigneController);
 // Fond du bandeau « Découvrir » choisi par le Super Admin (Paramètres > Apparence)
 router.put('/vitrine/fond', roles(SUPER_ADMIN), vitrineUpload.single('image'), vitrine.modifierFondController);
 router.delete('/vitrine/fond', roles(SUPER_ADMIN), vitrine.supprimerFondController);
@@ -149,8 +154,8 @@ router.put('/auth/logout-all', verifyToken, auth.logoutAllController);
 // Chacun peut lire / modifier son propre compte ; le Super Admin gère tous les comptes.
 router.get('/utilisateurs', roles(SUPER_ADMIN), user.getAllUsers);
 router.get('/utilisateurs/:id', verifyToken, exigerSoiOuAdmin(), user.getUserById);
-router.post('/utilisateurs', roles(SUPER_ADMIN), utilisateurUpload.single('photo'), user.createUserController);
-router.put('/utilisateurs/:id', verifyToken, exigerSoiOuAdmin(), utilisateurUpload.single('photo'), user.updateUserController);
+router.post('/utilisateurs', roles(SUPER_ADMIN), utilisateurUpload.single('photo'), reduirePhoto, user.createUserController);
+router.put('/utilisateurs/:id', verifyToken, exigerSoiOuAdmin(), utilisateurUpload.single('photo'), reduirePhoto, user.updateUserController);
 router.delete('/utilisateurs/:id', roles(SUPER_ADMIN), user.deleteUserController);
 router.put('/utilisateurs/:id/reactiver', roles(SUPER_ADMIN), etat.reactiverUtilisateur);
 
@@ -162,13 +167,13 @@ router.get('/etudiants/:id/formations', roles(...TOUS), exigerEtudiantProprietai
 router.get('/etudiants/:id/formations-disponibles', roles(ETUDIANT), exigerEtudiantProprietaire(), vitrine.formationsDisponiblesController);
 router.post('/etudiants/:id/inscriptions', roles(ETUDIANT), exigerEtudiantProprietaire(), vitrine.inscriptionCompteController);
 router.get('/etudiants/:id/dashboard-paiement', roles(SUPER_ADMIN, ACCUEIL, ETUDIANT), exigerEtudiantProprietaire(), paiement.dashboardPaiementEtudiantController);
-router.post('/etudiants', staff, piecesEtudiant, etudiant.creerEtudiantController);
-router.put('/etudiants/:id', staff, piecesEtudiant, etudiant.updateEtudiantController);
+router.post('/etudiants', staff, piecesEtudiant, reduirePhoto, etudiant.creerEtudiantController);
+router.put('/etudiants/:id', staff, piecesEtudiant, reduirePhoto, etudiant.updateEtudiantController);
 router.delete('/etudiants/:id', staff, etudiant.deleteEtudiantController);
 router.put('/etudiants/:id/reactiver', staff, etat.reactiverEtudiant);
 // Mon dossier (étudiant connecté) : consulter, déposer ou remplacer ses pièces ; l'Accueil est notifié
 router.get('/mon-dossier', roles(ETUDIANT), etudiant.monDossier);
-router.put('/mon-dossier', roles(ETUDIANT), piecesDossier, etudiant.deposerPieces);
+router.put('/mon-dossier', roles(ETUDIANT), piecesDossier, reduirePhoto, etudiant.deposerPieces);
 
 // ─── Recherche globale (barre du tableau de bord web) ───
 router.get('/recherche', roles(...TOUS), recherche.rechercheController);
@@ -196,10 +201,11 @@ router.post('/inscriptions/:id/valid', staff, inscription.validerInscriptionCont
 router.delete('/inscriptions/:id', staff, inscription.deleteInscriptionController);
 router.put('/inscriptions/:id/reactiver', staff, etat.reactiverInscription);
 router.get('/inscriptions/:id/echeances', staff, echeance.getEcheancesByInscriptionController);
+router.post('/inscriptions/:id/relancer', staff, decrochage.relancerController); // risque de décrochage : in-app + e-mail
 router.put('/inscriptions/:id/note', roles(SUPER_ADMIN, FORMATEUR), classement.definirNoteController);
 
 router.get('/echeances', staff, echeance.listerEcheances);
-router.put('/echeances/:id', staff, echeance.updateEcheanceController);
+router.put('/echeances/:id', roles(SUPER_ADMIN), echeance.updateEcheanceController); // date / montant, différence reportée
 router.delete('/echeances/:id', staff, etat.desactiverEcheance);
 router.put('/echeances/:id/reactiver', staff, etat.reactiverEcheance);
 router.post('/echeances/:id/rappeler', staff, echeance.rappelerEcheanceController); // in-app + e-mail à l'étudiant
@@ -237,8 +243,9 @@ router.put('/documents/:id/reactiver', roles(SUPER_ADMIN), etat.reactiverDocumen
 router.get('/supports/programmes', roles(FORMATEUR, SUPER_ADMIN), support.listerSupportsProgrammesController);
 // Supports visibles par l'utilisateur, toutes formations (recherche, filtres, pagination)
 router.get('/supports', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), support.listerSupportsController);
-router.get('/supports/:id', roles(...TOUS), exigerAccesSupport, support.detailSupportController);
-router.post('/supports', roles(FORMATEUR), supportUpload.single('fichier'), support.creerSupportController);
+router.get('/supports/:id', roles(...TOUS), exigerAccesSupport, presenceSurCours, support.detailSupportController);
+// Jusqu'à 10 fichiers d'un coup (champ « fichier » répété) : un support par fichier
+router.post('/supports', roles(FORMATEUR), supportUpload.array('fichier', MAX_FICHIERS_SUPPORT), support.creerSupportController);
 router.put('/supports/:id', roles(FORMATEUR, SUPER_ADMIN), supportUpload.single('fichier'), support.modifierSupportProgrammeController);
 router.post('/supports/:id/envoyer', roles(FORMATEUR, SUPER_ADMIN), support.envoyerSupportController);
 router.delete('/supports/:id', roles(FORMATEUR, SUPER_ADMIN), support.deleteSupportController);
@@ -246,11 +253,11 @@ router.put('/supports/:id/reactiver', roles(FORMATEUR, SUPER_ADMIN), etat.reacti
 
 // ─── Commentaires & réactions ───────────────
 router.get('/supports/:id/commentaires', roles(...TOUS), exigerAccesSupport, commentaire.listerCommentaires);
-router.post('/commentaires', roles(ETUDIANT, FORMATEUR, SUPER_ADMIN), exigerAccesSupport, commentaire.creerCommentaireController);
+router.post('/commentaires', roles(ETUDIANT, FORMATEUR, SUPER_ADMIN), exigerAccesSupport, presenceSurCours, commentaire.creerCommentaireController);
 router.delete('/commentaires/:id', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), commentaire.deleteCommentaireController);
 
 router.get('/supports/:id/reactions', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), exigerAccesSupport, reaction.listerReactionsSupportController);
-router.post('/supports/:id/reactions', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), exigerAccesSupport, reaction.reagir);
+router.post('/supports/:id/reactions', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), exigerAccesSupport, presenceSurCours, reaction.reagir);
 router.delete('/supports/:id/reactions', roles(SUPER_ADMIN, FORMATEUR, ETUDIANT), reaction.retirerReaction);
 // Back-office : avis des étudiants sur les formateurs (compétent / non compétent selon les réactions)
 router.get('/formateurs/avis', roles(SUPER_ADMIN, ACCUEIL), formateurNote.classementFormateursController);
@@ -278,6 +285,7 @@ router.put('/assistances/:id/resoudre', staff, assistance.resoudreAssistanceCont
 
 // ─── Tableau de bord ────────────────────────
 router.get('/dashboard/kpi', staff, dashboard.kpi);
+router.get('/decrochage', staff, decrochage.listerController); // étudiants à risque, situation actuelle
 router.get('/dashboard/evolution', staff, dashboard.evolution);
 router.get('/dashboard/export-csv', staff, dashboard.exportCSV);
 router.get('/dashboard/inscriptionParMois', staff, dashboard.getDonneesInscriptionsParMois);

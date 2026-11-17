@@ -1,4 +1,5 @@
-// Model de la présence : un jour où l'étudiant a utilisé l'application.
+// Model de la présence : un jour où l'étudiant a ouvert un support, réagi ou commenté
+// (appelé par middlewares/presence.js, voir les règles là-bas).
 const db = require('../config/db');
 
 // Utilisateurs déjà marqués présents aujourd'hui (évite une requête SQL à chaque appel API).

@@ -7,6 +7,7 @@ const path = require('path');
 const userModel = require('../models/userModel');
 const fichierModel = require('../models/fichierModel');
 const { verifyFileToken } = require('./authMiddleware');
+const { marquerPresenceEtudiant } = require('./presence');
 const { filigraner, peutFiligraner } = require('../utils/filigrane');
 const { ROLES, STAFF } = require('../config/roles');
 const { forbidden } = require('../utils/errors');
@@ -35,8 +36,10 @@ const REGLES = {
     acces: async () => true,
     filigrane: false,
   },
-  // Supports de cours : l'étudiant ne voit que ceux des formations où il est inscrit
+  // Supports de cours : l'étudiant ne voit que ceux des formations où il est inscrit ;
+  // les ouvrir le marque présent ce jour-là
   supports: {
+    presence: true,
     acces: async (user, chemin) =>
       user.role !== ROLES.ETUDIANT || fichierModel.etudiantPeutVoirSupport(chemin, user.id_etudiant),
     filigrane: true,
@@ -103,6 +106,8 @@ function servirFichiers(dossier) {
     if (!(await regle.acces(req.user, chemin))) {
       throw forbidden("Vous n'avez pas accès à ce fichier.");
     }
+    // Ouvrir le fichier d'un support de cours compte comme présence (middlewares/presence.js)
+    if (regle.presence) marquerPresenceEtudiant(req.user);
 
     // Jamais de copie dans le cache du navigateur ou d'un proxy
     res.set({
@@ -120,7 +125,7 @@ function servirFichiers(dossier) {
         if (contenu) return res.type(extension).send(contenu);
       } catch (err) {
         // Fichier illisible pour pdf-lib / sharp (PDF corrompu...) : servi tel quel plutôt que bloqué
-        console.error(`⚠️ Filigrane impossible pour ${chemin} :`, err.message);
+        console.error(`Filigrane impossible pour ${chemin} :`, err.message);
       }
     }
 

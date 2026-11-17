@@ -19,6 +19,8 @@ function Avatar({ photo, prenom, nom, size = 'md', shape = 'square', fallback = 
         className={`${classes} avatar-image`}
         src={getFileUrl(photo)}
         alt={label}
+        loading="lazy"
+        decoding="async"
         // Image introuvable : on la cache (et on affiche l'élément suivant s'il existe)
         onError={(event) => {
           event.currentTarget.style.display = 'none'

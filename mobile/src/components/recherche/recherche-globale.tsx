@@ -55,7 +55,7 @@ interface Props {
   onClose: () => void;
 }
 
-// Recherche globale de l'étudiant (bouton 🔍 des en-têtes) : écrans de l'application,
+// Recherche globale de l'étudiant (bouton loupe des en-têtes) : écrans de l'application,
 // ses formations et les supports de ses formations. Un résultat ouvre directement l'écran.
 export function RechercheGlobale({ visible, onClose }: Props) {
   const styles = useThemedStyles(createRechercheGlobaleStyles);
@@ -85,7 +85,8 @@ export function RechercheGlobale({ visible, onClose }: Props) {
   // Ferme la fenêtre puis ouvre l'écran (le temps que la fenêtre se ferme)
   function ouvrir(destination: Parameters<typeof router.push>[0]) {
     fermer();
-    setTimeout(() => router.push(destination), 150);
+    // withAnchor : la liste de l'onglet (Formations, Documents) reste sous le détail ouvert
+    setTimeout(() => router.push(destination, { withAnchor: true }), 150);
   }
 
   const ouvrirFormation = (f: FormationTrouvee) =>

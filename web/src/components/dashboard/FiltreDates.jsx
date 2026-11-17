@@ -4,7 +4,7 @@ import './FiltreDates.css'
 // Filtre « Du … au … » : deux dates libres, chacune facultative (tableau de bord, page Échéances).
 // periode = { debut, fin } en 'AAAA-MM-JJ' ; onChange reçoit la nouvelle période ;
 // legende = ce que la période filtre, suivi de « du … au … ».
-function FiltreDates({ periode, onChange, legende = 'Indicateurs, inscriptions, paiements à surveiller et avis' }) {
+function FiltreDates({ periode, onChange, legende = 'Indicateurs, inscriptions, paiements à surveiller et classement des formateurs' }) {
   const invalide = periodeInvalide(periode)
 
   return (

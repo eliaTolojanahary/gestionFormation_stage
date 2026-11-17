@@ -108,7 +108,7 @@ export function useAuth() {
     })();
   }, []);
 
-  // 🔑 LOGIN
+  // LOGIN
   async function login(email: string, password: string, rememberMe: boolean = true) {
     setError('');
     setIsLoading(true);
@@ -119,7 +119,7 @@ export function useAuth() {
         body: JSON.stringify({ email: email.trim(), mot_de_passe: password }),
       });
 
-      // 🔒 Vérification du rôle AVANT tout enregistrement
+      // Vérification du rôle AVANT tout enregistrement
       if (!isAllowedRole(data.user)) {
         throw new Error(
           "Accès réservé aux administrateurs et aux étudiants. Contactez le support IMTECH."
@@ -246,7 +246,7 @@ export function useAuth() {
     }
   }
 
-  // 🔍 Helpers dérivés (normalisés)
+  // Helpers dérivés (normalisés)
   const roleName = normalizeRole(user?.role || user?.role_nom);
 
   // Recharge le profil depuis le serveur (exposé mais utilisé nulle part pour l'instant)

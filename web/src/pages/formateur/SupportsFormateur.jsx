@@ -10,6 +10,9 @@ import { toDatetimeLocal } from '../../utils/time'
 import { ACCEPT_SUPPORT, contenuVide } from '../../utils/texteRiche'
 import './SupportsFormateur.css'
 
+// Même limite que la route POST /supports du serveur
+const MAX_FICHIERS = 10
+
 // Page « Supports » du formateur : rédaction / dépôt d'un support (texte mis en forme, PDF, image,
 // audio, vidéo ; envoi immédiat ou programmé) et supports publiés avec réactions et commentaires
 // (recherche, filtres, tri et pagination par le serveur : ListeSupports). Les brouillons
@@ -26,7 +29,8 @@ function SupportsFormateur({ user }) {
   const [title, setTitle] = useState('')
   // Texte mis en forme (HTML de l'éditeur) ; le fichier est facultatif s'il y a un texte
   const [contenu, setContenu] = useState('')
-  const [file, setFile] = useState(null)
+  // Un ou plusieurs fichiers (10 max) : le serveur crée un support par fichier
+  const [files, setFiles] = useState([])
   // Envoi programmé : vide = envoi immédiat
   const [programmer, setProgrammer] = useState(false)
   const [dateEnvoi, setDateEnvoi] = useState('')
@@ -41,7 +45,9 @@ function SupportsFormateur({ user }) {
 
   // Un support = un texte, un fichier, ou les deux ; sans fichier, le titre est obligatoire
   const aUnTexte = !contenuVide(contenu)
-  const supportComplet = Boolean(selectedFormation) && (Boolean(file) || (aUnTexte && Boolean(title.trim())))
+  const aDesFichiers = files.length > 0
+  const tropDeFichiers = files.length > MAX_FICHIERS
+  const supportComplet = Boolean(selectedFormation) && !tropDeFichiers && (aDesFichiers || (aUnTexte && Boolean(title.trim())))
 
   // Envoi d'un support : envoyé tout de suite, ou programmé à l'heure choisie (brouillon modifiable jusque-là)
   async function handleUpload(event) {
@@ -51,9 +57,10 @@ function SupportsFormateur({ user }) {
 
     const formData = new FormData()
     formData.append('id_formation', selectedFormation)
-    formData.append('titre', title.trim() || file.name)
+    // Sans titre, le serveur prend le nom de chaque fichier
+    if (title.trim()) formData.append('titre', title.trim())
     if (aUnTexte) formData.append('contenu', contenu)
-    if (file) formData.append('fichier', file)
+    files.forEach((fichier) => formData.append('fichier', fichier))
     // Heure locale du navigateur convertie en ISO : le serveur reçoit l'instant exact
     if (programmer) formData.append('date_envoi_prevue', new Date(dateEnvoi).toISOString())
 
@@ -62,7 +69,7 @@ function SupportsFormateur({ user }) {
       setConfirmation(programmer ? 'programme' : 'envoye')
       setTitle('')
       setContenu('')
-      setFile(null)
+      setFiles([])
       setProgrammer(false)
       setDateEnvoi('')
       if (fileRef.current) fileRef.current.value = ''
@@ -129,7 +136,7 @@ function SupportsFormateur({ user }) {
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder={file ? 'Titre du support (nom du fichier par défaut)' : 'Titre du support'}
+          placeholder={aDesFichiers ? 'Titre du support (nom du fichier par défaut)' : 'Titre du support'}
         />
 
         <EditeurTexte
@@ -140,15 +147,26 @@ function SupportsFormateur({ user }) {
         />
 
         <label className="support-fichier">
-          <span>Pièce jointe (facultative) : PDF, image, audio ou vidéo</span>
+          <span>
+            Pièces jointes (facultatives) : PDF, image, audio ou vidéo, {MAX_FICHIERS} au plus.
+            Plusieurs fichiers = un support par fichier.
+          </span>
           <input
             ref={fileRef}
             type="file"
             accept={ACCEPT_SUPPORT}
-            onChange={(event) => setFile(event.target.files?.[0] || null)}
+            multiple
+            onChange={(event) => setFiles(Array.from(event.target.files || []))}
             disabled={!selectedFormation || supportLoading}
           />
         </label>
+        {files.length > 1 && (
+          <p className={tropDeFichiers ? 'form-error' : 'form-message'}>
+            {tropDeFichiers
+              ? `${files.length} fichiers choisis : ${MAX_FICHIERS} au plus par envoi.`
+              : `${files.length} fichiers : ${files.length} supports seront créés${title.trim() ? ' (« titre — nom du fichier »)' : ''}.`}
+          </p>
+        )}
 
         <label className="support-programmer">
           <input

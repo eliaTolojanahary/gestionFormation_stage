@@ -76,10 +76,10 @@ async function verifierSansPlanter() {
   try {
     const { envois, annonces } = await verifierSupportsProgrammes();
     if (envois || annonces) {
-      console.log(`📚 Supports programmés : ${envois} envoyé(s), ${annonces} annonce(s).`);
+      console.log(`Supports programmés : ${envois} envoyé(s), ${annonces} annonce(s).`);
     }
   } catch (error) {
-    console.error('❌ Vérification des supports programmés échouée :', error.message);
+    console.error('Vérification des supports programmés échouée :', error.message);
   } finally {
     verificationEnCours = false;
   }

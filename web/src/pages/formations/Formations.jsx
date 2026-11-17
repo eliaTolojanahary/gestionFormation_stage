@@ -155,7 +155,6 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
         )
       ) : (
         <div className="table-actions">
-          {/* ✅ Callback au lieu de navigate() */}
           <button
             type="button"
             className="row-action"
@@ -207,7 +206,6 @@ function Formations({ user, onCreate, onDetail, onEdit }) {
             <button
               type="button"
               className="primary-button"
-              /* ✅ Callback au lieu de navigate() */
               onClick={() => onCreate && onCreate()}
             >
               + Nouvelle formation

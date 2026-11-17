@@ -81,7 +81,7 @@ async function envoyerFacture(id_paiement, id_auteur = null) {
     id_utilisateur: p.id_utilisateur,
     email: p.email,
     message: `Votre paiement de ${montant} (${p.formation_nom}) a été validé. Votre facture ${numeroFacture} vous a été envoyée par e-mail.`,
-    sujet: `IMTECH INFO — Facture ${numeroFacture}`,
+    sujet: `Imteaching Formation — Facture ${numeroFacture}`,
     contenuHtml: `${titre('Confirmation de paiement')}
       ${salutation(p.prenom, p.nom)}
       <p>Nous avons bien reçu votre paiement pour la formation ${formation(p.formation_nom)}, et nous
@@ -97,7 +97,7 @@ async function envoyerFacture(id_paiement, id_auteur = null) {
       <p>Votre facture est jointe à ce message au format <strong>PDF</strong>. Nous vous conseillons de la
       <strong>conserver</strong> : elle fait foi de votre règlement.</p>
       <p>Vous retrouvez à tout moment vos paiements et vos prochaines échéances dans l'application
-      mobile <strong>IMTECH INFO</strong>.</p>`,
+      mobile <strong>Imteaching Formation</strong>.</p>`,
     id_auteur,
     pieceJointe: {
       chemin: path.join(DOSSIER_UPLOADS, cheminRelatif),
@@ -162,11 +162,11 @@ async function envoyerAttestation(id_inscription, id_auteur = null) {
     id_utilisateur: donnees.id_utilisateur,
     email: donnees.email,
     message: `Votre attestation de la formation ${donnees.formation_nom} est disponible. Elle vous a été envoyée par e-mail.`,
-    sujet: `IMTECH INFO — Attestation de formation : ${donnees.formation_nom}`,
+    sujet: `Imteaching Formation — Attestation de formation : ${donnees.formation_nom}`,
     contenuHtml: `${titre('Votre attestation de formation')}
       ${salutation(donnees.prenom, donnees.nom)}
       <p><strong>FÉLICITATIONS !</strong> Vous avez achevé avec succès la formation
-      ${formation(donnees.formation_nom)}. Toute l'équipe IMTECH INFO est fière de votre parcours.</p>
+      ${formation(donnees.formation_nom)}. Toute l'équipe Imteaching Formation est fière de votre parcours.</p>
       ${encadre([
         ['Formation', donnees.formation_nom],
         ['Durée', donnees.duree],
@@ -203,11 +203,11 @@ async function envoyerConfirmationInscription(id_inscription, id_auteur = null) 
     id_utilisateur: donnees.id_utilisateur,
     email: donnees.email,
     message: `Votre inscription à la formation ${donnees.formation_nom} est confirmée. Vos supports de cours sont accessibles.`,
-    sujet: `IMTECH INFO — Inscription confirmée : ${donnees.formation_nom}`,
+    sujet: `Imteaching Formation — Inscription confirmée : ${donnees.formation_nom}`,
     contenuHtml: `${titre('Confirmation d\'inscription')}
       ${salutation(donnees.prenom, donnees.nom)}
       <p>Nous avons le <strong>plaisir</strong> de vous confirmer votre inscription à la formation
-      ${formation(donnees.formation_nom)}. <strong>Bienvenue chez IMTECH INFO !</strong></p>
+      ${formation(donnees.formation_nom)}. <strong>Bienvenue chez Imteaching Formation !</strong></p>
       ${encadre([
         ['Formation', donnees.formation_nom],
         ['Durée', donnees.duree],
@@ -216,7 +216,7 @@ async function envoyerConfirmationInscription(id_inscription, id_auteur = null) 
         ['Échéancier', echeancier],
       ])}
       <p>Votre <strong>fiche d'inscription</strong> est jointe à ce message. Vos <strong>supports de cours</strong>
-      sont dès à présent disponibles dans l'application mobile IMTECH INFO, où vous pourrez aussi suivre
+      sont dès à présent disponibles dans l'application mobile Imteaching Formation, où vous pourrez aussi suivre
       vos paiements. La facture de votre premier paiement vous est envoyée séparément.</p>
       <p>Nous vous souhaitons une <strong>excellente formation</strong> !</p>`,
     pieceJointe: {

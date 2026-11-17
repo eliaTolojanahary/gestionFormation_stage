@@ -9,7 +9,8 @@ const { PAIEMENT_VALIDE } = require('./paiementModel');
 // depuisJours : seulement les formations terminées depuis au plus ce nombre de jours (tâche
 // automatique : sans cette borne, elle relirait chaque heure toutes les inscriptions depuis
 // l'ouverture). La borne sur date_inscription utilise l'index idx_inscription_date.
-async function getInscriptionsTerminees({ depuisJours = null } = {}) {
+// idInscription : une seule inscription (envoi dès que l'étudiant a commenté son formateur).
+async function getInscriptionsTerminees({ depuisJours = null, idInscription = null } = {}) {
   const fenetre = depuisJours === null ? '' : `
       AND i.date_inscription >= DATE_SUB(CURDATE(), INTERVAL ? + (SELECT IFNULL(MAX(duree_jours), 0) FROM formation) DAY)
       AND DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`;
@@ -32,10 +33,12 @@ async function getInscriptionsTerminees({ depuisJours = null } = {}) {
     JOIN utilisateur u ON u.id_utilisateur = et.id_utilisateur
     WHERE i.etat = true AND i.valide = true AND et.etat = true AND f.etat = true
       AND DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY) <= CURDATE()
-      AND NOT EXISTS (SELECT 1 FROM attestation a WHERE a.id_inscription = i.id_inscription)${fenetre}
+      AND NOT EXISTS (SELECT 1 FROM attestation a WHERE a.id_inscription = i.id_inscription)${fenetre}${idInscription === null ? '' : ' AND i.id_inscription = ?'}
     ORDER BY date_fin, u.nom, u.prenom
   `;
-  const [rows] = await db.query(sql, depuisJours === null ? [] : [depuisJours, depuisJours]);
+  const params = depuisJours === null ? [] : [depuisJours, depuisJours];
+  if (idInscription !== null) params.push(idInscription);
+  const [rows] = await db.query(sql, params);
   return rows;
 }
 

@@ -7,6 +7,7 @@ import { ProfileProvider } from '../../components/profile/ProfileContext'
 import DashboardContent from '../../components/dashboard/DashboardContent'
 import RechercheGlobale from '../../components/recherche/RechercheGlobale'
 import { EtudiantsRoutes, UtilisateursRoutes, FormationsRoutes, InscriptionsRoutes } from './SectionsRoutes'
+import Formateurs from '../formateurs/Formateurs'
 import Paiements from '../paiements/Paiements'
 import Echeances from '../echeances/Echeances'
 import Documents from '../documents/Documents'
@@ -128,7 +129,8 @@ function DashboardLayout({ user, onLogout, updateCurrentUser }) {
               : <DashboardContent user={currentUser} />}
           />
           {/* Sections avec fiches : /etudiants/12, /formations/3/modifier... (SectionsRoutes.jsx) */}
-          <Route path="etudiants/*" element={pageAutorisee('etudiants', <EtudiantsRoutes user={currentUser} />)} />
+          <Route path="formateurs" element={pageAutorisee('formateurs', <Formateurs user={currentUser} />)} />
+          <Route path="etudiants/*"element={pageAutorisee('etudiants', <EtudiantsRoutes user={currentUser} />)} />
           <Route path="utilisateurs/*" element={pageAutorisee('utilisateurs', <UtilisateursRoutes user={currentUser} />)} />
           <Route path="formations/*" element={pageAutorisee('formations', <FormationsRoutes user={currentUser} />)} />
           <Route path="inscriptions/*" element={pageAutorisee('inscriptions', <InscriptionsRoutes user={currentUser} />)} />

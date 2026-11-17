@@ -141,15 +141,31 @@ async function compterEcheances(filtres = {}) {
   return Number(total);
 }
 
-async function updateEcheance(id_echeance, { montant_prevu, date_echeance, etat }) {
+// Toutes les échéances d'une inscription avec le montant déjà envoyé (validé + en attente),
+// verrouillées jusqu'à la fin de la transaction (FOR UPDATE) : un paiement ou une autre
+// modification ne peut pas changer les montants pendant que l'admin modifie l'échéancier.
+async function getEcheancesPourModification(connection, id_inscription) {
+  const sql = `
+    SELECT e.id_echeance, e.montant_prevu, e.date_echeance, e.etat,
+           ${MONTANT_ENVOYE()} AS montant_envoye
+    FROM echeance e
+    WHERE e.id_inscription = ?
+    ORDER BY e.date_echeance ASC, e.id_echeance ASC
+    FOR UPDATE
+  `;
+  const [rows] = await connection.query(sql, [id_inscription]);
+  return rows;
+}
+
+// Modification par l'admin : genere_auto passe à false (l'échéance n'est plus celle calculée
+// à l'inscription)
+async function modifierMontantEtDate(connection, { id_echeance, montant_prevu, date_echeance }) {
   const sql = `
     UPDATE echeance
-    SET montant_prevu = COALESCE(?, montant_prevu),
-        date_echeance = COALESCE(?, date_echeance),
-        etat = COALESCE(?, etat)
+    SET montant_prevu = ?, date_echeance = ?, genere_auto = false
     WHERE id_echeance = ?
   `;
-  const [result] = await db.query(sql, [montant_prevu ?? null, date_echeance ?? null, etat ?? null, id_echeance]);
+  const [result] = await connection.query(sql, [montant_prevu, date_echeance, id_echeance]);
   return result.affectedRows > 0;
 }
 
@@ -157,7 +173,7 @@ async function updateEcheance(id_echeance, { montant_prevu, date_echeance, etat 
 // reste_non_envoye = montant prévu - (validé + en attente) : ce que l'étudiant n'a pas encore payé du tout
 async function getEcheancePourRappel(id_echeance) {
   const sql = `
-    SELECT e.id_echeance, e.montant_prevu, e.date_echeance,
+    SELECT e.id_echeance, e.id_inscription, e.montant_prevu, e.date_echeance,
            u.id_utilisateur, u.email, u.nom, u.prenom, f.nom AS formation_nom,
            e.montant_prevu - ${MONTANT_VALIDE()} AS reste_a_payer,
            e.montant_prevu - ${MONTANT_ENVOYE()} AS reste_non_envoye
@@ -179,8 +195,10 @@ async function marquerRappelEnvoye(id_echeance) {
 
 module.exports = {
   ECHEANCE_PROCHE,
+  CONDITION_STATUT,
   MONTANT_ENVOYE,
   MONTANT_VALIDE,
-  insertEcheances, getEcheancesByInscription, getAllEcheances, compterEcheances, updateEcheance,
+  insertEcheances, getEcheancesByInscription, getAllEcheances, compterEcheances,
+  getEcheancesPourModification, modifierMontantEtDate,
   getEcheancePourRappel, marquerRappelEnvoye,
 };

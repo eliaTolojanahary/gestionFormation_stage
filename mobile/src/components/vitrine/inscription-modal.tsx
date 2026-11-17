@@ -11,10 +11,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { CircleCheck, Eye, EyeOff, Trash2, X } from 'lucide-react-native';
+import { CircleCheck, Eye, EyeOff, Square, SquareCheck, Trash2, X } from 'lucide-react-native';
 import { FormationPublique, ResultatInscription, useVitrine, Vitrine } from '@/hooks/use-vitrine';
 import { PIECES_DOSSIER, type ChampPiece, type PiecesLocales } from '@/hooks/use-dossier';
 import { PiecesDossier } from '@/components/dossier/pieces-dossier';
+import { ConditionsTexte, type OngletConditions } from '@/components/conditions/conditions-texte';
+import { accepterConditionsInscription } from '@/utils/conditions';
 import { createVitrineStyles } from '@/styles/vitrine.styles';
 import { useThemedStyles, useSettings } from '@/context/SettingsContext';
 import { formatAriary, premierPaiementEstime } from './format-vitrine';
@@ -39,8 +41,11 @@ interface Props {
 //   3. premier paiement déclaré (mode + référence), en attente de validation par l'Accueil ;
 //   4. dossier (4 pièces obligatoires) : joint maintenant, ou déposé plus tard depuis Mon dossier (menu ⋮).
 //      L'Accueil ne valide l'inscription qu'avec un dossier complet.
+//   Puis case « J'accepte les Conditions d'utilisation et la Politique de confidentialité »,
+//   obligatoire pour envoyer ; les liens ouvrent le texte. L'accord est gardé sur le téléphone
+//   (par e-mail) et reconnu à la première connexion (voir utils/conditions.ts).
 // Étudiant déjà connecté (etudiantConnecte) : seulement les étapes 1 et 3 ; son compte et son
-// dossier existent déjà (POST /etudiants/:id/inscriptions).
+// dossier existent déjà (POST /etudiants/:id/inscriptions), et il a déjà accepté les conditions.
 export function InscriptionModal({
   formations, modesPaiement, onRetirer, onFermer, onConnexion, etudiantConnecte, onTermine,
 }: Props) {
@@ -63,6 +68,9 @@ export function InscriptionModal({
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState('');
   const [resultat, setResultat] = useState<ResultatInscription | null>(null);
+  const [conditionsCochees, setConditionsCochees] = useState(false);
+  // Onglet du texte des conditions ouvert par un lien (null = fermé)
+  const [conditionsOuvertes, setConditionsOuvertes] = useState<OngletConditions | null>(null);
 
   const nombreTranches = (id: number) => tranches[id] || 1;
   const totalEstime = formations.reduce(
@@ -74,7 +82,8 @@ export function InscriptionModal({
   const compteRempli =
     !!etudiantConnecte ||
     (nom.trim() && prenom.trim() && email.trim() && telephone.trim() && motDePasse.length >= 8 && confirmation === motDePasse);
-  const complet = formations.length > 0 && compteRempli && idModePaiement;
+  const complet = formations.length > 0 && compteRempli && idModePaiement
+    && (!!etudiantConnecte || conditionsCochees);
   const choixFormations = () =>
     formations.map((f) => ({ id_formation: f.id_formation, nombre_tranches: nombreTranches(f.id_formation) }));
 
@@ -95,7 +104,7 @@ export function InscriptionModal({
         }));
         return;
       }
-      setResultat(await inscrire({
+      const reponse = await inscrire({
         nom: nom.trim(),
         prenom: prenom.trim(),
         email: email.trim(),
@@ -105,7 +114,10 @@ export function InscriptionModal({
         formations: choixFormations(),
         id_mode_paiement: idModePaiement as number,
         reference_virement: reference.trim() || undefined,
-      }, dossierMaintenant ? pieces : {}));
+      }, dossierMaintenant ? pieces : {});
+      // Compte créé : l'accord coché ici ne sera pas redemandé à la première connexion
+      await accepterConditionsInscription(reponse.email || email.trim());
+      setResultat(reponse);
     } catch (requestError: any) {
       setErreur(requestError.message || "L'inscription n'a pas pu être envoyée.");
     } finally {
@@ -326,6 +338,32 @@ export function InscriptionModal({
                 </>
                 )}
 
+                {/* Accord aux conditions (nouveau compte seulement) */}
+                {etudiantConnecte ? null : (
+                  <TouchableOpacity
+                    style={styles.caseLigne}
+                    onPress={() => setConditionsCochees((v) => !v)}
+                    activeOpacity={0.8}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: conditionsCochees }}
+                  >
+                    {conditionsCochees
+                      ? <SquareCheck size={22} color={palette.accent} />
+                      : <Square size={22} color={palette.textMuted} />}
+                    <Text style={styles.caseTexte}>
+                      J’ai lu et j’accepte les{' '}
+                      <Text style={styles.caseLien} onPress={() => setConditionsOuvertes('conditions')}>
+                        Conditions d’utilisation
+                      </Text>
+                      {' '}(présence, paiement, note de formation, attestation) et la{' '}
+                      <Text style={styles.caseLien} onPress={() => setConditionsOuvertes('confidentialite')}>
+                        Politique de confidentialité
+                      </Text>
+                      .
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
                 {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
 
                 <View style={styles.detailBoutons}>
@@ -348,6 +386,40 @@ export function InscriptionModal({
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Texte des conditions, ouvert par les liens de la case à cocher */}
+      <Modal
+        visible={conditionsOuvertes !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setConditionsOuvertes(null)}
+      >
+        <View style={styles.modalFond}>
+          <View style={styles.conditionsFeuille}>
+            <View style={[styles.modalEntete, { paddingHorizontal: 20, paddingTop: 16 }]}>
+              <Text style={styles.modalTitre}>Conditions</Text>
+              <TouchableOpacity onPress={() => setConditionsOuvertes(null)} accessibilityLabel="Fermer">
+                <X size={22} color={palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {conditionsOuvertes ? <ConditionsTexte ongletInitial={conditionsOuvertes} /> : null}
+            <View style={styles.conditionsBoutons}>
+              <TouchableOpacity
+                style={styles.boutonSecondaire}
+                onPress={() => { setConditionsCochees(false); setConditionsOuvertes(null); }}
+              >
+                <Text style={styles.boutonSecondaireTexte}>Je refuse</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.boutonPrincipal}
+                onPress={() => { setConditionsCochees(true); setConditionsOuvertes(null); }}
+              >
+                <Text style={styles.boutonPrincipalTexte}>J’accepte</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }

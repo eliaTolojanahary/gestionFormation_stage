@@ -4,6 +4,7 @@ const alerteModel = require('../models/alerteModel');
 const notifService = require('./notifService');
 const attestationService = require('./attestationService');
 const formateurNoteModel = require('../models/formateurNoteModel');
+const decrochageService = require('./decrochageService');
 const { salutation, titre, formation } = require('../utils/modeleEmail');
 const { formatMontant } = require('../utils/format');
 
@@ -32,8 +33,11 @@ function messageRappels(echeances) {
  *  - attestations PRÊTES (date de fin atteinte, tout payé, note attribuée) : envoyées toutes seules
  *    à l'étudiant, dès le jour de fin (ou dès qu'elles deviennent prêtes), l'Accueil en est prévenu ;
  *  - formation terminée sans note de présentation : le formateur est prévenu ;
- *  - veille de la fin de formation : l'étudiant doit commenter son formateur pour avoir son attestation.
- * Chaque alerte n'est envoyée qu'une seule fois (table alerte_envoyee).
+ *  - à partir de J-2 avant la fin : l'étudiant doit commenter son formateur pour avoir son attestation
+ *    (relancé chaque jour tant qu'il ne l'a pas fait) ; l'Accueil est prévenu que l'attestation l'attend ;
+ *  - étudiant passé « à contacter » (risque de décrochage) : l'Accueil est prévenu.
+ * Chaque alerte n'est envoyée qu'une seule fois (table alerte_envoyee) ; pour le décrochage, une fois
+ * par épisode : l'alerte est oubliée quand l'étudiant revient à la normale.
  */
 async function verifierAlertes() {
   const aRappeler = [];
@@ -45,7 +49,31 @@ async function verifierAlertes() {
 
   const commentairesDemandes = await demanderCommentaires();
   const { attestations, notesDemandees } = await verifierAttestations();
-  return { rappels: aRappeler.length, commentairesDemandes, attestations, notesDemandees };
+  const decrochages = await signalerDecrochages();
+  return { rappels: aRappeler.length, commentairesDemandes, attestations, notesDemandees, decrochages };
+}
+
+// Étudiants passés « à contacter » depuis la dernière vérification : une notification groupée à l'Accueil.
+// Les alertes des étudiants qui ne sont plus « à contacter » sont oubliées : s'ils rechutent, l'Accueil
+// sera de nouveau prévenu.
+async function signalerDecrochages() {
+  const aContacter = (await decrochageService.listerEtudiantsARisque())
+    .filter((i) => i.niveau === decrochageService.NIVEAUX.A_CONTACTER);
+  await alerteModel.oublierAlertesSauf(TYPES_ALERTE.DECROCHAGE, aContacter.map((i) => i.id_inscription));
+
+  const nouveaux = [];
+  for (const i of aContacter) {
+    if (await alerteModel.reserverAlerte(TYPES_ALERTE.DECROCHAGE, i.id_inscription)) nouveaux.push(i);
+  }
+  if (nouveaux.length) await notifService.notifierPersonnel(messageDecrochages(nouveaux));
+  return nouveaux.length;
+}
+
+function messageDecrochages(inscriptions) {
+  const noms = inscriptions.slice(0, MAX_NOMS_RAPPEL).map((i) => `${i.prenom} ${i.nom} (${i.formation_nom})`).join(', ');
+  const reste = inscriptions.length - MAX_NOMS_RAPPEL;
+  const debut = inscriptions.length === 1 ? '1 étudiant à contacter' : `${inscriptions.length} étudiants à contacter`;
+  return `${debut}, risque de décrochage (tableau de bord) : ${noms}${reste > 0 ? ` et ${reste} autre(s)` : ''}.`;
 }
 
 const libelle = (i) => `${i.etudiant_prenom} ${i.etudiant_nom} (${i.formation_nom})`;
@@ -54,27 +82,70 @@ const libelle = (i) => `${i.etudiant_prenom} ${i.etudiant_nom} (${i.formation_no
 // une attestation devenue prête plus tard s'envoie depuis la page Attestations de l'Accueil.
 const JOURS_ATTESTATIONS = 180;
 
-// À partir de J-1 : chaque étudiant est prévenu une fois qu'il doit commenter son formateur
+// Les relances quotidiennes du commentaire s'arrêtent JOURS_RELANCE_COMMENTAIRE jours après la fin
+// (ensuite l'Accueil voit l'attestation bloquée, avec la raison, sur sa page Attestations)
+const JOURS_RELANCE_COMMENTAIRE = 30;
+
+const formatJour = (texte) => texte.split('-').reverse().join('/'); // 'AAAA-MM-JJ' -> 'JJ/MM/AAAA'
+
+// À partir de J-2 avant la fin, tant que l'étudiant n'a pas commenté son formateur :
+//  - l'étudiant est prévenu, puis relancé une fois par jour (notification mobile + e-mail) :
+//    son attestation n'est envoyée qu'après son commentaire ;
+//  - l'Accueil est prévenu une fois (notification groupée) : attestation bientôt prête, en attente du commentaire.
 async function demanderCommentaires() {
+  const inscriptions = await formateurNoteModel.getInscriptionsARappeler(JOURS_RELANCE_COMMENTAIRE);
   let demandes = 0;
-  for (const i of await formateurNoteModel.getInscriptionsARappeler(JOURS_ATTESTATIONS)) {
-    if (!(await alerteModel.reserverAlerte(TYPES_ALERTE.COMMENTAIRE_FORMATEUR, i.id_inscription))) continue;
-    const formateur = `${i.formateur_prenom} ${i.formateur_nom}`;
-    await notifService.notifierEtudiant({
-      id_utilisateur: i.id_utilisateur,
-      email: i.email,
-      message: `Votre formation ${i.formation_nom} se termine : commentez votre formateur, ${formateur}, dans l'application (onglet Formations). C'est obligatoire pour recevoir votre attestation.`,
-      sujet: `IMTECH INFO — Votre avis sur la formation : ${i.formation_nom}`,
-      contenuHtml: `${titre('Votre avis nous intéresse')}
-        ${salutation(i.prenom, i.nom)}
-        <p>Votre formation ${formation(i.formation_nom)} se termine. Merci de <strong>commenter votre
-        formateur</strong>, ${formateur}, depuis l'application mobile (onglet Formations).</p>
-        <p>Ce commentaire est <strong>obligatoire</strong> pour recevoir votre attestation. Il est lu par
-        l'Accueil et la direction, pas par le formateur.</p>`,
-    });
-    demandes += 1;
+  const aSignaler = [];
+  for (const i of inscriptions) {
+    const envoi = await alerteModel.reserverAlerteDuJour(TYPES_ALERTE.COMMENTAIRE_FORMATEUR, i.id_inscription);
+    if (envoi) {
+      await notifService.notifierEtudiant(messageCommentaire(i, envoi === 'relance'));
+      demandes += 1;
+    }
+    if (await alerteModel.reserverAlerte(TYPES_ALERTE.ATTESTATION_PROCHE, i.id_inscription)) aSignaler.push(i);
   }
+  if (aSignaler.length) await notifService.notifierPersonnel(messageAttestationsProches(aSignaler));
   return demandes;
+}
+
+// Message à l'étudiant : première demande (J-2) ou relance des jours suivants
+function messageCommentaire(i, relance) {
+  const formateur = `${i.formateur_prenom} ${i.formateur_nom}`;
+  const fin = formatJour(i.date_fin);
+  return {
+    id_utilisateur: i.id_utilisateur,
+    email: i.email,
+    message: relance
+      ? `Rappel : votre attestation de ${i.formation_nom} attend votre commentaire sur votre formateur, ${formateur}. Commentez-le dans l'application (onglet Formations) pour la recevoir.`
+      : `Votre formation ${i.formation_nom} se termine le ${fin} : commentez votre formateur, ${formateur}, dans l'application (onglet Formations). C'est obligatoire pour recevoir votre attestation.`,
+    sujet: relance
+      ? `Imteaching Formation — Votre attestation attend votre commentaire : ${i.formation_nom}`
+      : `Imteaching Formation — Votre avis sur la formation : ${i.formation_nom}`,
+    contenuHtml: `${titre(relance ? 'Votre attestation vous attend' : 'Votre avis nous intéresse')}
+      ${salutation(i.prenom, i.nom)}
+      <p>${relance
+        ? `Votre attestation de la formation ${formation(i.formation_nom)} est <strong>en attente de votre commentaire</strong>.`
+        : `Votre formation ${formation(i.formation_nom)} se termine le <strong>${fin}</strong>.`}
+      Merci de <strong>commenter votre formateur</strong>, ${formateur}, depuis l'application mobile
+      (onglet Formations).</p>
+      <p>Ce commentaire est <strong>obligatoire</strong> pour recevoir votre attestation : elle vous est
+      envoyée dès qu'il est écrit (et la formation terminée). Il est lu par l'Accueil et la direction,
+      pas par le formateur.</p>`,
+  };
+}
+
+function messageAttestationsProches(inscriptions) {
+  // Formation déjà terminée (serveur éteint à J-2, ou commentaire jamais écrit) : « terminée le »
+  const aujourdhui = new Date().toLocaleDateString('sv-SE'); // 'AAAA-MM-JJ' en heure locale
+  const detail = (i) =>
+    `${i.prenom} ${i.nom} (${i.formation_nom}, ${i.date_fin < aujourdhui ? 'terminée' : 'fin'} le ${formatJour(i.date_fin)})`;
+  if (inscriptions.length === 1) {
+    return `${detail(inscriptions[0])} va bientôt recevoir son attestation : en attente de son commentaire sur le formateur.`;
+  }
+  const noms = inscriptions.slice(0, MAX_NOMS_RAPPEL).map(detail).join(', ');
+  const reste = inscriptions.length - MAX_NOMS_RAPPEL;
+  return `${inscriptions.length} étudiants vont bientôt recevoir leur attestation, en attente de leur commentaire ` +
+    `sur le formateur : ${noms}${reste > 0 ? ` et ${reste} autre(s)` : ''}.`;
 }
 
 // Fins de formation : envoi des attestations prêtes et notes de présentation manquantes
@@ -118,12 +189,12 @@ async function verifierSansPlanter() {
   if (verificationEnCours) return;
   verificationEnCours = true;
   try {
-    const { rappels, attestations, notesDemandees } = await verifierAlertes();
-    if (rappels || attestations || notesDemandees) {
-      console.log(`🔔 Tâches automatiques : ${rappels} rappel(s), ${attestations} attestation(s), ${notesDemandees} note(s) demandée(s).`);
+    const { rappels, attestations, notesDemandees, decrochages } = await verifierAlertes();
+    if (rappels || attestations || notesDemandees || decrochages) {
+      console.log(`Tâches automatiques : ${rappels} rappel(s), ${attestations} attestation(s), ${notesDemandees} note(s) demandée(s), ${decrochages} étudiant(s) à contacter.`);
     }
   } catch (error) {
-    console.error('❌ Vérification des alertes échouée :', error.message);
+    console.error('Vérification des alertes échouée :', error.message);
   } finally {
     verificationEnCours = false;
   }
@@ -137,4 +208,4 @@ function demarrerAlertesAutomatiques() {
   return minuterie;
 }
 
-module.exports = { verifierAlertes, messageRappels, demarrerAlertesAutomatiques };
+module.exports = { verifierAlertes, messageRappels, messageDecrochages, messageAttestationsProches, demarrerAlertesAutomatiques };

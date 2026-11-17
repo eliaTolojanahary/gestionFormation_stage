@@ -1,15 +1,18 @@
 // Model des commentaires de fin de formation sur les formateurs : un par inscription, écrit par
-// l'étudiant à partir de J-1, puis noté sur 10 par l'Accueil ou le Super Admin.
+// l'étudiant à partir de J-2, puis noté sur 10 par l'Accueil ou le Super Admin.
 const db = require('../config/db');
 const { clauseLimite, motifLike } = require('../utils/pagination');
 const { conditionPeriode, paramsPeriode } = require('../utils/periode');
 
 const DATE_FIN = 'DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY)';
 
-// Inscription validée, active, à partir de la veille de la fin de formation, sans commentaire
+// Le commentaire ouvre JOURS_AVANT_FIN jours avant la fin de la formation (J-2)
+const JOURS_AVANT_FIN = 2;
+
+// Inscription validée, active, à partir de J-2 avant la fin de formation, sans commentaire
 const COMMENTAIRE_ATTENDU = `
   i.etat = true AND i.valide = true AND et.etat = true AND f.etat = true
-  AND DATE_SUB(${DATE_FIN}, INTERVAL 1 DAY) <= CURDATE()
+  AND DATE_SUB(${DATE_FIN}, INTERVAL ${JOURS_AVANT_FIN} DAY) <= CURDATE()
   AND NOT EXISTS (SELECT 1 FROM formateur_note fn WHERE fn.id_inscription = i.id_inscription)`;
 
 const JOINTURES_INSCRIPTION = `
@@ -35,9 +38,11 @@ async function getACommenter(id_etudiant) {
 async function getInscriptionsARappeler(depuisJours) {
   const [rows] = await db.query(
     `SELECT i.id_inscription, f.nom AS formation_nom, u.id_utilisateur, u.email, u.prenom, u.nom,
-            fo.prenom AS formateur_prenom, fo.nom AS formateur_nom
+            fo.prenom AS formateur_prenom, fo.nom AS formateur_nom,
+            DATE_FORMAT(${DATE_FIN}, '%Y-%m-%d') AS date_fin
      FROM inscription i ${JOINTURES_INSCRIPTION}
-     WHERE ${COMMENTAIRE_ATTENDU} AND ${DATE_FIN} >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+     WHERE ${COMMENTAIRE_ATTENDU} AND ${DATE_FIN} >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     ORDER BY ${DATE_FIN}, u.nom, u.prenom`,
     [depuisJours]
   );
   return rows;
@@ -49,7 +54,7 @@ async function getInscriptionACommenter(id_inscription) {
     `SELECT i.id_inscription, i.id_etudiant, i.valide, f.id_utilisateur AS id_formateur, f.nom AS formation_nom,
             u.prenom AS etudiant_prenom, u.nom AS etudiant_nom,
             fo.prenom AS formateur_prenom, fo.nom AS formateur_nom,
-            DATE_SUB(${DATE_FIN}, INTERVAL 1 DAY) <= CURDATE() AS ouvert,
+            DATE_SUB(${DATE_FIN}, INTERVAL ${JOURS_AVANT_FIN} DAY) <= CURDATE() AS ouvert,
             EXISTS (SELECT 1 FROM formateur_note fn WHERE fn.id_inscription = i.id_inscription) AS commentaire_existe
      FROM inscription i ${JOINTURES_INSCRIPTION}
      WHERE i.id_inscription = ? AND i.etat = true`,
@@ -130,7 +135,23 @@ async function getMoyennes(periode = {}) {
   return rows;
 }
 
+// Commentaires attendus mais pas encore écrits (fin de formation dans la période) : une ligne par
+// inscription, avec le formateur (id_utilisateur) et l'étudiant, pour que l'Accueil sache qui relancer
+// ou dont désactiver l'inscription (abandon)
+async function getCommentairesManquants(periode = {}) {
+  const [rows] = await db.query(
+    `SELECT f.id_utilisateur, i.id_inscription, u.prenom AS etudiant_prenom, u.nom AS etudiant_nom,
+            f.nom AS formation_nom, ${DATE_FIN} AS date_fin
+     FROM inscription i ${JOINTURES_INSCRIPTION}
+     WHERE ${COMMENTAIRE_ATTENDU} AND ${conditionPeriode(DATE_FIN)}
+     ORDER BY date_fin, u.nom, u.prenom`,
+    paramsPeriode(periode)
+  );
+  return rows;
+}
+
 module.exports = {
+  JOURS_AVANT_FIN,
   getACommenter, getInscriptionsARappeler, getInscriptionACommenter, commentaireExiste, insererCommentaire,
-  getCommentaires, compterCommentaires, setNote, getMoyennes,
+  getCommentaires, compterCommentaires, setNote, getMoyennes, getCommentairesManquants,
 };

@@ -296,7 +296,7 @@ CREATE TABLE alerte_envoyee (
     CONSTRAINT uq_alerte UNIQUE (type, id_reference)
 );
 
--- Présence : un jour où l'étudiant a utilisé l'application (rempli automatiquement)
+-- Présence : un jour où l'étudiant a ouvert un support, réagi ou commenté (rempli automatiquement)
 CREATE TABLE presence (
     id_presence INT AUTO_INCREMENT PRIMARY KEY,
     id_utilisateur INT NOT NULL,

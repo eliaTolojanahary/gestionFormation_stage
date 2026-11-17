@@ -6,7 +6,7 @@
   min-height: 100svh;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  align-items: center;              /* ⭐ centre les 2 panneaux verticalement */
+  align-items: center;              /* centre les 2 panneaux verticalement */
 }
 
 /* ==========================================================================
@@ -16,14 +16,14 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;          /* ⭐ centre le contenu verticalement */
+  justify-content: center;          /* centre le contenu verticalement */
   gap: 40px;
   padding: 60px 8%;
   overflow: hidden;
   color: #fff;
   background: #063a5c;
   min-height: 100svh; 
-                /* ⭐ même hauteur que la page */
+                /* même hauteur que la page */
 }
 
 .brand-content {
@@ -114,8 +114,8 @@
   padding: 32px;
   background: #f4f6f8;
   min-height: 100svh;
-  width: 100%;          /* ⭐ prend toute la largeur de la cellule */
-  height: 100%;         /* ⭐ prend toute la hauteur */
+  width: 100%;          /* prend toute la largeur de la cellule */
+  height: 100%;         /* prend toute la hauteur */
   box-sizing: border-box;
 }
 
@@ -304,7 +304,7 @@ position: relative;
 
 .text-button {
   display: block;
-  margin: 16px auto 0;              /* ⭐ centré sous le bouton submit */
+  margin: 16px auto 0;              /* centré sous le bouton submit */
 }
 
 .back-login-button {

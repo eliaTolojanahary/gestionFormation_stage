@@ -7,6 +7,7 @@ import Modal from '../../components/modal/Modal'
 import { useRetour } from '../../components/retour/useRetour'
 import SearchFilterBar from '../../components/form/Filter'
 import PaymentFormModal from '../../components/paiements/PaymentFormModal'
+import ModifierEcheanceModal from './ModifierEcheanceModal'
 import Pagination from '../../components/pagination/Pagination'
 import BoutonExportCSV from '../../components/tableau/BoutonExportCSV'
 import BarreSelection from '../../components/tableau/BarreSelection'
@@ -35,20 +36,27 @@ const CODE_STATUT = Object.fromEntries(['VERT', 'JAUNE', 'ROUGE'].map((code) => 
 const peutRappeler = (e) =>
   Number(e.echeance_active) > 0 && Number(e.reste_a_payer) > 0 && Number(e.montant_en_attente) <= 0
 
+// Le Super Admin peut modifier une échéance active pas encore réglée (validé + en attente < prévu)
+const peutModifier = (e) =>
+  Number(e.echeance_active) > 0 &&
+  Number(e.montant_paye) + Number(e.montant_en_attente) < Number(e.montant_prevu)
+
 // Page Échéances : suivi de toutes les échéances avec leur statut de couleur,
 // paiement au guichet (bouton Payer) et rappel manuel à l'étudiant (bouton Rappeler).
 // Liste paginée côté serveur : recherche, couleur et période (date d'échéance, ex. « en retard du X au Y »)
 // sont envoyées à GET /echeances. La période peut venir du tableau de bord (?debut=&fin= dans l'adresse).
-// Filtre « État » : échéances actives par défaut ; le Super Admin désactive / réactive.
+// Filtre « État » : échéances actives par défaut ; le Super Admin désactive / réactive,
+// et modifie la date ou le montant d'une échéance non réglée (bouton Modifier).
 // Sélection multiple (clic sur les lignes) : rappeler, désactiver ou réactiver en une fois.
 function Echeances({ user }) {
-  const { rappelerEcheance, desactiverEcheance, reactiverEcheance } = useEcheance()
+  const { updateEcheance, rappelerEcheance, desactiverEcheance, reactiverEcheance } = useEcheance()
   const { createPaiement } = usePaiement()
   const { confirmer, notifier } = useRetour()
   const canManage = user?.role === 'Super Admin'
 
   const [selectedEcheance, setSelectedEcheance] = useState(null)
   const [paymentEcheance, setPaymentEcheance] = useState(null)
+  const [echeanceAModifier, setEcheanceAModifier] = useState(null)
   const [actionError, setActionError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [rappelEnCours, setRappelEnCours] = useState(null)
@@ -175,6 +183,21 @@ function Echeances({ user }) {
       setActionError(requestError.message)
       throw requestError
     }
+  }
+
+  // Modification par le Super Admin ; l'erreur est relancée pour s'afficher dans la fenêtre.
+  // Le serveur reporte la différence de montant sur la dernière échéance non réglée.
+  async function handleModification(payload) {
+    setActionError('')
+    setActionMessage('')
+    const result = await updateEcheance(echeanceAModifier.id_echeance, payload)
+    setEcheanceAModifier(null)
+    setActionMessage(
+      result.report
+        ? `${result.message} La différence a été reportée sur l'échéance du ${formatDate(`${result.report.date_echeance}T00:00:00`)} (désormais ${formatMontant(result.report.montant_prevu)}).`
+        : result.message
+    )
+    liste.recharger()
   }
 
   // Réinitialiser les filtres
@@ -310,6 +333,12 @@ function Echeances({ user }) {
                 {rappelEnCours === row.id_echeance ? 'Envoi...' : 'Rappeler'}
               </button>
             </>
+          )}
+
+          {canManage && peutModifier(row) && (
+            <button type="button" className="row-action" onClick={() => setEcheanceAModifier(row)}>
+              Modifier
+            </button>
           )}
 
           {canManage && (
@@ -473,6 +502,13 @@ function Echeances({ user }) {
 
           </div>
         </Modal>
+      )}
+      {echeanceAModifier && (
+        <ModifierEcheanceModal
+          echeance={echeanceAModifier}
+          onClose={() => setEcheanceAModifier(null)}
+          onSubmit={handleModification}
+        />
       )}
       {paymentEcheance && (
         <PaymentFormModal

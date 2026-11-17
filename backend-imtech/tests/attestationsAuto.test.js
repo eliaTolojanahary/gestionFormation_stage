@@ -11,9 +11,20 @@ const classementModel = require('../models/classementModel');
 const classementService = require('../services/classementService');
 const dependanceModel = require('../models/dependanceModel');
 const attestationService = require('../services/attestationService');
-const { verifierAlertes } = require('../services/alerteService');
+const decrochageService = require('../services/decrochageService');
+const { verifierAlertes, messageAttestationsProches } = require('../services/alerteService');
 
-afterEach(() => mock.restoreAll());
+afterEach(() => {
+  mock.restoreAll();
+  mock.timers.reset();
+});
+
+// Fixe « aujourd'hui » (heure locale) : les messages disent « fin le » avant la date de fin,
+// « terminée le » après. Sans cela, un test écrit avant la date échouerait le lendemain.
+function fixerAujourdhui(date) {
+  mock.timers.reset();
+  mock.timers.enable({ apis: ['Date'], now: new Date(`${date}T10:00:00`) });
+}
 
 // Formation terminée : prête par défaut (note attribuée, tout payé)
 function terminee(champs = {}) {
@@ -29,7 +40,10 @@ function simulerTache({ terminees }) {
   mock.method(alerteModel, 'getEcheancesARappeler', async () => []);
   mock.method(attestationModel, 'getInscriptionsTerminees', async () => terminees);
   mock.method(alerteModel, 'reserverAlerte', async () => true);
+  mock.method(alerteModel, 'reserverAlerteDuJour', async () => 'nouvelle');
   mock.method(formateurNoteModel, 'getInscriptionsARappeler', async () => []);
+  mock.method(decrochageService, 'listerEtudiantsARisque', async () => []);
+  mock.method(alerteModel, 'oublierAlertesSauf', async () => {});
   return {
     personnel: mock.method(notifService, 'notifierPersonnel', async () => 2),
     formateur: mock.method(notifService, 'notifierInApp', async () => {}),
@@ -147,18 +161,57 @@ test("attestation refusée tant que l'étudiant n'a pas commenté son formateur"
   assert.equal(donnees.mock.callCount(), 0);
 });
 
-test("à J-1, l'étudiant est prévenu une seule fois", async () => {
+const aCommenter = (champs) => ({
+  id_utilisateur: 9, email: 'e@mail.mg', prenom: 'Rova', nom: 'Rakoto', formation_nom: 'Web',
+  formateur_prenom: 'Aina', formateur_nom: 'Rabe', date_fin: '2026-11-11', ...champs,
+});
+
+test("à J-2, l'étudiant est prévenu, puis relancé une fois par jour tant qu'il n'a pas commenté", async () => {
   simulerTache({ terminees: [] });
   mock.method(formateurNoteModel, 'getInscriptionsARappeler', async () => [
-    { id_inscription: 16, id_utilisateur: 9, email: 'e@mail.mg', prenom: 'Rova', nom: 'Rakoto', formation_nom: 'Web', formateur_prenom: 'Aina', formateur_nom: 'Rabe' },
-    { id_inscription: 17, id_utilisateur: 10, email: 'f@mail.mg', prenom: 'Soa', nom: 'Rasoa', formation_nom: 'Web', formateur_prenom: 'Aina', formateur_nom: 'Rabe' },
+    aCommenter({ id_inscription: 16 }),
+    aCommenter({ id_inscription: 17, prenom: 'Soa', nom: 'Rasoa' }),
+    aCommenter({ id_inscription: 18, prenom: 'Hery', nom: 'Rabe' }),
   ]);
-  mock.method(alerteModel, 'reserverAlerte', async (_type, id) => id === 16); // la 17 est déjà partie
+  // 16 : première demande · 17 : relance d'un autre jour · 18 : déjà relancé aujourd'hui
+  const envois = { 16: 'nouvelle', 17: 'relance', 18: null };
+  mock.method(alerteModel, 'reserverAlerteDuJour', async (_type, id) => envois[id]);
   const prevenir = mock.method(notifService, 'notifierEtudiant', async () => ({ emailEnvoye: true }));
 
   const { commentairesDemandes } = await verifierAlertes();
 
-  assert.equal(commentairesDemandes, 1);
-  assert.equal(prevenir.mock.callCount(), 1);
-  assert.match(prevenir.mock.calls[0].arguments[0].message, /commentez votre formateur, Aina Rabe.*obligatoire/);
+  assert.equal(commentairesDemandes, 2);
+  assert.equal(prevenir.mock.callCount(), 2);
+  assert.match(prevenir.mock.calls[0].arguments[0].message, /se termine le 11\/11\/2026 : commentez votre formateur, Aina Rabe.*obligatoire/);
+  assert.match(prevenir.mock.calls[1].arguments[0].message, /^Rappel : votre attestation de Web attend votre commentaire/);
+});
+
+test("à J-2, l'Accueil est prévenu une seule fois : attestation en attente du commentaire", async () => {
+  fixerAujourdhui('2026-11-09'); // J-2 avant la fin du 11/11
+  const { personnel } = simulerTache({ terminees: [] });
+  mock.method(formateurNoteModel, 'getInscriptionsARappeler', async () => [
+    aCommenter({ id_inscription: 16 }), aCommenter({ id_inscription: 17, prenom: 'Soa', nom: 'Rasoa' }),
+  ]);
+  mock.method(alerteModel, 'reserverAlerte', async (type, id) => !(type === alerteModel.TYPES_ALERTE.ATTESTATION_PROCHE && id === 17));
+  mock.method(notifService, 'notifierEtudiant', async () => ({ emailEnvoye: true }));
+
+  await verifierAlertes();
+
+  assert.equal(personnel.mock.callCount(), 1);
+  assert.equal(personnel.mock.calls[0].arguments[0],
+    'Rova Rakoto (Web, fin le 11/11/2026) va bientôt recevoir son attestation : en attente de son commentaire sur le formateur.');
+});
+
+test('message groupé quand plusieurs attestations attendent un commentaire', () => {
+  fixerAujourdhui('2026-11-09');
+  const message = messageAttestationsProches([aCommenter({}), aCommenter({ prenom: 'Soa', nom: 'Rasoa' })]);
+  assert.match(message, /^2 étudiants vont bientôt recevoir leur attestation, en attente de leur commentaire sur le formateur : Rova Rakoto \(Web, fin le 11\/11\/2026\), Soa Rasoa/);
+});
+
+test("formation déjà terminée : le message dit « terminée le » (le jour de fin, encore « fin le »)", () => {
+  fixerAujourdhui('2026-11-11');
+  assert.ok(messageAttestationsProches([aCommenter({})]).startsWith('Rova Rakoto (Web, fin le 11/11/2026)'));
+
+  fixerAujourdhui('2026-11-12');
+  assert.ok(messageAttestationsProches([aCommenter({})]).startsWith('Rova Rakoto (Web, terminée le 11/11/2026)'));
 });

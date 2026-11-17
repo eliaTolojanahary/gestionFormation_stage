@@ -137,7 +137,6 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
 
     return (
       <div className="table-actions">
-        {/* ✅ Callback au lieu de navigate() */}
         <button
           type="button"
           className="row-action"
@@ -202,7 +201,6 @@ function Etudiants({ user, onCreate, onDetail, onEdit }) {
             <button
               type="button"
               className="primary-button"
-              /* ✅ Callback au lieu de navigate() */
               onClick={() => onCreate && onCreate()}
             >
               <span aria-hidden="true">+</span> Nouvel étudiant

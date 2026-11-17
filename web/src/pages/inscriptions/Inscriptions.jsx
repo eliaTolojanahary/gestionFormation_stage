@@ -91,7 +91,7 @@ function Inscriptions({ user, onCreate, onDetail }) {
           <p>Nous avons le plaisir de vous confirmer votre inscription à la formation
           <strong>${inscription.nom_formation || ''}</strong>.</p>
           <p>Vos supports de cours et votre échéancier de paiement sont dès à présent disponibles dans
-          l'application mobile IMTECH INFO. La facture de votre premier paiement vous est envoyée séparément.</p>
+          l'application mobile Imteaching Formation. La facture de votre premier paiement vous est envoyée séparément.</p>
           <p>Nous vous souhaitons une excellente formation.</p>`,
       })
     }

@@ -20,9 +20,10 @@
 --   - paiements en attente de validation : Sitraka (mobile), Miora (inscription en ligne)
 --   - 1 inscription en ligne à valider (Miora), 1 inscription Accueil non validée (Fitiavana)
 --   - attestations délivrées pour les formations terminées et soldées ; bloquées pour Toky et
---     Fanomezantsoa (reste à payer), Tsiory (note de présentation à attribuer) ; Rindra (Python) et
+--     Fanomezantsoa (reste à payer), Tsiory (note de présentation à attribuer, commentaire du formateur à écrire) ; Rindra (Python) et
 --     Onja (Maintenance) : prêtes, envoyées automatiquement au démarrage du serveur
 --   - notes : retards d'un jour (Miora, Fitiavana, Onja), tranche réglée 4 jours après (Rindra)
+--   - risque de décrochage : Sitraka (Réseaux) « à contacter », Andry (Python) « à surveiller » (section 12)
 --   - support programmé (28/10 à 8 h), supports texte, support image, fils de discussion avec mentions
 
 USE gestion_formation_db;
@@ -443,7 +444,7 @@ INSERT INTO notification_inapp (id_utilisateur, message, lu, etat, date_creation
 (12, 'Votre attestation de la formation Excel avancé est disponible. Elle vous a été envoyée par e-mail.', true, true, '2026-09-25 10:14:00');
 
 -- ============================================
--- 12. PRÉSENCES (jours ouvrés où l'étudiant a utilisé l'application)
+-- 12. PRÉSENCES (jours ouvrés où l'étudiant a ouvert un support, réagi ou commenté)
 -- ============================================
 -- taux = assiduité sur 10 (10 = tous les jours) ; pendant chaque formation validée, jusqu'à sa fin
 -- (ou aujourd'hui si elle est en cours). Même règle pour tout le monde, donc taux de présence ≈ taux × 10 %.
@@ -464,28 +465,40 @@ JOIN (SELECT u.n + 10 * d.n AS n
      ) n ON n.n < f.duree_jours
 WHERE DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY) <= CURDATE()
   AND WEEKDAY(DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY)) < 5
-  AND MOD(DAYOFYEAR(DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY)) * 7 + a.id_utilisateur * 3, 10) < a.taux;
+  AND MOD(DAYOFYEAR(DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY)) * 7 + a.id_utilisateur * 3, 10) < a.taux
+  -- Risque de décrochage (tableau de bord), sans toucher aux formations déjà terminées :
+  --   Sitraka (Réseaux) n'ouvre plus aucun cours après le 14/10 -> « à contacter » (silence + assiduité)
+  --   Andry (Python) devient irrégulier à partir du 12/10 (environ 3 jours sur 10) -> « à surveiller »
+  AND NOT (a.id_utilisateur = 16 AND DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY) > '2026-10-14')
+  AND NOT (a.id_utilisateur = 8 AND DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY) >= '2026-10-12'
+           AND MOD(DAYOFYEAR(DATE_ADD(DATE(i.date_inscription), INTERVAL n.n DAY)) * 7 + a.id_utilisateur * 3, 10) >= 3);
 
 -- ============================================
 -- 13. COMMENTAIRES SUR LES FORMATEURS (fin de formation, obligatoires pour l'attestation)
 -- ============================================
 -- Écrits la veille de la fin de formation, puis notés sur 10 par l'Accueil ou le Super Admin (NULL = à noter).
--- Note sur 20 du classement : Tiana, Voahangy, Rivo et Hery ont leurs deux parties ;
--- Lalaina n'a pas assez de réactions : pas de note sur 20, classement après les autres.
--- Toky (Développement web), Fano (Réseaux) et Tsiory (Bureautique) n'ont pas encore commenté :
--- leur attestation reste bloquée (écran mobile « Commenter mon formateur » à montrer).
+-- La partie commentaires (/10) ne compte que quand tous les étudiants attendus ont commenté et que
+-- tout est noté. Classement sur 20, un cas par situation :
+--   Tiana et Hery : tout est commenté et noté -> note sur 20
+--   Voahangy : Tsiory (Bureautique) n'a pas encore commenté -> « 4/5 commentés », liste des manquants ;
+--              son attestation reste bloquée (écran mobile « Commenter mon formateur » à montrer)
+--   Rivo : le commentaire d'Onja (Maintenance) est à noter -> « 1 à noter » ; le noter fait apparaître sa note
+--   Lalaina : tout est noté, mais pas assez de réactions -> pas de note sur 20
+-- À noter : Rindra (Excel avancé) et Onja (Maintenance).
 INSERT INTO formateur_note (id_utilisateur, id_etudiant, id_inscription, note, commentaire, date_commentaire)
 SELECT f.id_utilisateur, i.id_etudiant, i.id_inscription, c.note, c.commentaire,
        DATE_SUB(DATE_ADD(DATE(i.date_inscription), INTERVAL f.duree_jours DAY), INTERVAL 1 DAY)
 FROM (
   SELECT 1 AS id_inscription, 9.00 AS note, 'Explications très claires, toujours disponible pour nos questions.' AS commentaire
+  UNION ALL SELECT 2, 7.00, 'Le formateur explique bien, mais j''ai eu du mal à suivre quand j''ai manqué des séances.'
   UNION ALL SELECT 3, 8.50, 'Cours bien organisés et beaucoup d''exercices pratiques. Le rythme était parfois rapide.'
-  UNION ALL SELECT 12, NULL, 'Très pédagogue, j''ai pu écrire mes premiers programmes dès la deuxième semaine.'
+  UNION ALL SELECT 12, 8.50, 'Très pédagogue, j''ai pu écrire mes premiers programmes dès la deuxième semaine.'
   UNION ALL SELECT 4, 8.00, 'Beaucoup de patience et d''écoute, les supports sont faciles à suivre.'
   UNION ALL SELECT 5, 7.50, 'Bons cours, mais j''aurais aimé plus d''exemples tirés du monde du travail.'
   UNION ALL SELECT 9, 8.00, 'J''ai beaucoup progressé sur Word et Excel grâce à ses conseils.'
   UNION ALL SELECT 14, NULL, 'Les tableaux croisés dynamiques sont enfin clairs pour moi. Merci !'
   UNION ALL SELECT 7, 3.50, 'Les cours commençaient souvent en retard et les explications étaient difficiles à suivre.'
+  UNION ALL SELECT 8, 4.00, 'Peu d''exercices pratiques sur le matériel, et les questions restaient souvent sans réponse.'
   UNION ALL SELECT 6, 9.00, 'Un cours plein de passion qui donne envie de créer. Les retours sur nos travaux sont précis.'
   UNION ALL SELECT 10, 8.00, 'Très bons conseils sur nos affiches, avec des exercices variés.'
   UNION ALL SELECT 13, 6.50, 'Bonnes séances pratiques, mais il manquait parfois du matériel pour tout le monde.'

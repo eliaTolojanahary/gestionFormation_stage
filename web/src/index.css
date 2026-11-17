@@ -7,7 +7,8 @@
   --page-bg: #f8f9f4;
   --surface: #ffffff;
   --text-main: #17324a;
-  --text-muted: #8496a4;
+  /* Texte secondaire : contraste 5,2:1 sur blanc (minimum WCAG AA : 4,5:1) */
+  --text-muted: #5b6f80;
   --heading: #063a5c;
   --line: #e0e8ed;
 

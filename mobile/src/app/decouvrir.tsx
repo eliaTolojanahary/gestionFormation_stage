@@ -17,7 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image as ImageNette } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BadgeCheck, CalendarClock, Check, Clock, Globe, Mail, MessageCircle, ShieldCheck, Sparkles, Star, Users } from 'lucide-react-native';
+import { ArrowLeft, BadgeCheck, CalendarClock, Check, Clock, Globe, Mail, MessageCircle, Plus, ShieldCheck, Sparkles, Star, Users } from 'lucide-react-native';
 import { FormateurCompetent, FormationPublique, useVitrine } from '@/hooks/use-vitrine';
 import { useAuth } from '@/context/AuthContext';
 import { COULEURS_COUVERTURE, createVitrineStyles } from '@/styles/vitrine.styles';
@@ -149,7 +149,7 @@ export default function DecouvrirScreen() {
           onPress={() => basculerSelection(f.id_formation)}
           accessibilityLabel={choisie ? `Retirer ${f.nom}` : `Choisir ${f.nom}`}
         >
-          {choisie ? <Check size={15} color={palette.success} /> : <Text style={{ fontWeight: '800' }}>+</Text>}
+          {choisie ? <Check size={16} color={palette.success} /> : <Plus size={16} color="#072E4C" />}
         </TouchableOpacity>
         <Text style={styles.couvertureTitre} numberOfLines={1}>{f.nom}</Text>
         <Text style={styles.couvertureMeta} numberOfLines={1}>
@@ -201,7 +201,7 @@ export default function DecouvrirScreen() {
           <View style={styles.heroHaut}>
             <View style={styles.heroMarque}>
               <Image source={require('../../assets/logoImtech.png')} style={styles.heroLogo} resizeMode="contain" />
-              <Text style={styles.heroNom}>IMTECH INFO</Text>
+              <Text style={styles.heroNom}>Imteaching Formation</Text>
             </View>
             {connecte ? (
               <TouchableOpacity style={styles.heroConnexion} onPress={() => retourApplication()} accessibilityLabel="Retour">
@@ -221,11 +221,11 @@ export default function DecouvrirScreen() {
           <Text style={styles.heroSlogan}>{vitrine?.presentation.slogan}</Text>
           <Text style={styles.heroDescription}>{vitrine?.presentation.description}</Text>
           <View style={styles.heroChiffres}>
-            <View style={styles.heroChiffre}>
+            <View style={[styles.heroChiffre, styles.heroChiffreFormations]}>
               <Text style={styles.heroChiffreValeur}>{totalFormations}</Text>
               <Text style={styles.heroChiffreLabel}>{connecte ? 'autres formations' : 'formations'}</Text>
             </View>
-            <View style={styles.heroChiffre}>
+            <View style={[styles.heroChiffre, styles.heroChiffreFormateurs]}>
               <Text style={styles.heroChiffreValeur}>{totalFormateurs}</Text>
               <Text style={styles.heroChiffreLabel}>formateurs reconnus</Text>
             </View>
@@ -279,23 +279,31 @@ export default function DecouvrirScreen() {
           <Text style={styles.sectionTitre}>Notre engagement</Text>
           <View style={styles.carte}>
             <View style={styles.engagementLigne}>
-              <CalendarClock size={18} color={palette.heading} />
+              <View style={styles.engagementIcone}>
+                <CalendarClock size={18} color={palette.accent} />
+              </View>
               <Text style={styles.engagementTexte}>
                 Chaque formateur s’engage sur sa disponibilité (détail dans la fiche de chaque formation).
               </Text>
             </View>
             <View style={styles.engagementLigne}>
-              <Users size={18} color={palette.heading} />
+              <View style={styles.engagementIcone}>
+                <Users size={18} color={palette.accent} />
+              </View>
               <Text style={styles.engagementTexte}>
                 Supports de cours, questions et réponses directement dans l’application.
               </Text>
             </View>
             <View style={styles.engagementLigne}>
-              <BadgeCheck size={18} color={palette.heading} />
+              <View style={styles.engagementIcone}>
+                <BadgeCheck size={18} color={palette.accent} />
+              </View>
               <Text style={styles.engagementTexte}>Attestation de fin de formation vérifiable par QR code.</Text>
             </View>
             <View style={[styles.engagementLigne, { marginBottom: 0 }]}>
-              <ShieldCheck size={18} color={palette.heading} />
+              <View style={styles.engagementIcone}>
+                <ShieldCheck size={18} color={palette.accent} />
+              </View>
               <Text style={styles.engagementTexte}>Paiement en 1 à 4 tranches, chaque paiement vérifié par l’accueil.</Text>
             </View>
           </View>

@@ -12,6 +12,8 @@ export const NAVIGATION = [
   ['upload', 'Supports', '/dashboard/supports', [FO]],
   ['clock', 'Supports programmés', '/dashboard/programmes', [FO]],
   ['chart', 'Tableau de bord', '/dashboard', [SA, AC]],
+  // Évaluation des formateurs : classement sur 20 et commentaires des étudiants à noter
+  ['formateur', 'Formateurs', '/dashboard/formateurs', [SA, AC]],
   ['cap', 'Étudiants', '/dashboard/etudiants', [SA, AC, FO]],
   ['users', 'Utilisateurs', '/dashboard/utilisateurs', [SA]],
   ['book', 'Formations', '/dashboard/formations', [SA, AC, FO]],
@@ -56,6 +58,7 @@ export const CHEMINS = {
   modifierFormation: (id) => `/dashboard/formations/${id}/modifier`,
   inscriptions: '/dashboard/inscriptions',
   inscription: (id) => `/dashboard/inscriptions/${id}`,
+  formateurs: '/dashboard/formateurs',
 }
 
 // Où mène un résultat de la recherche globale : { chemin, state } pour navigate().

@@ -45,7 +45,7 @@ export default function StudentHomeScreen() {
   const { pageSupports, pageCommentairesFormation } = useSupport();
   const router = useRouter();
 
-  // ⚠️ etudiantId doit être déclaré AVANT usePaiement
+  // etudiantId doit être déclaré AVANT usePaiement
   const etudiantId = user?.id_etudiant;
 
  const {
@@ -228,7 +228,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
       params: idFormation
         ? { id: String(idSupport), formation: String(idFormation) }
         : { id: String(idSupport) },
-    } as any);
+    } as any, { withAnchor: true }); // liste Documents sous la fiche : le retour y revient
   }
 
   return (
@@ -319,7 +319,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
                     router.push({
                       pathname: '/(tabs)/formations/[id]',
                       params: { id: String(formationRecente.id_formation) },
-                    } as any)
+                    } as any, { withAnchor: true })
                   )
                 }
               >
@@ -443,7 +443,7 @@ const [modalPaiementVisible, setModalPaiementVisible] = useState(false);
                           router.push({
                             pathname: '/(tabs)/formations/[id]',
                             params: { id: String(formation.id_formation) },
-                          } as any)
+                          } as any, { withAnchor: true })
                         )
                       }
                     >

@@ -7,9 +7,10 @@ import {
 import { useRouter } from 'expo-router';
 import { createDetailHeaderStyles } from '@/styles/components/detail-header.styles';
 import { useThemedStyles, useSettings } from '@/context/SettingsContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   ChevronLeft, EllipsisVertical, X, Search,
-  Wallet, LifeBuoy, Settings, ChevronRight, FolderOpen,
+  Wallet, LifeBuoy, Settings, ChevronRight, FolderOpen, ShieldCheck,
 } from 'lucide-react-native';
 import { RechercheGlobale } from '@/components/recherche/recherche-globale';
 
@@ -27,21 +28,22 @@ interface DetailHeaderProps {
   onBack: () => void;
   /**
    * Si fourni, l'ellipsis est cliquable et ouvre le menu.
-   * Sinon, un menu par défaut avec les 4 liens standards s'affiche.
+   * Sinon, un menu par défaut avec les liens standards s'affiche.
    */
   menuItems?: MenuItem[];
-  /** Bouton 🔍 de la recherche globale (affiché par défaut) */
+  /** Bouton de la recherche globale (affiché par défaut) */
   recherche?: boolean;
 }
 
-// Barre du haut des écrans secondaires : bouton retour, titre, recherche globale 🔍 et menu "⋮"
-// (Paiement, Mon dossier, Assistance, Paramètres par défaut)
+// Barre du haut des écrans secondaires : bouton retour, titre, recherche globale et menu "⋮"
+// (Paiement, Mon dossier, Assistance, Paramètres, et Conditions pour un étudiant)
 export function DetailHeader({ title, onBack, menuItems, recherche = true }: DetailHeaderProps) {
   const styles = useThemedStyles(createDetailHeaderStyles);
   const { palette } = useSettings();
   const [menuVisible, setMenuVisible] = useState(false);
   const [rechercheVisible, setRechercheVisible] = useState(false);
   const router = useRouter();
+  const { isEtudiant } = useAuth();
 
   // Menu par défaut : historique paiement, dossier (pièces à déposer), assistance, paramètres
   const defaultItems: MenuItem[] = [
@@ -69,6 +71,15 @@ export function DetailHeader({ title, onBack, menuItems, recherche = true }: Det
       icon: Settings,
       onPress: () => router.push('/parametres' as any),
     },
+    // Conditions : réservées aux étudiants (présence, paiement, note, attestation)
+    ...(isEtudiant
+      ? [{
+          key: 'conditions',
+          label: 'Conditions et confidentialité',
+          icon: ShieldCheck,
+          onPress: () => router.push('/conditions?lecture=1' as any),
+        }]
+      : []),
   ];
 
   const items = menuItems && menuItems.length > 0 ? menuItems : defaultItems;

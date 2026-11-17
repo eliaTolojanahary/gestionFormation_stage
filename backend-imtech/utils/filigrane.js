@@ -7,11 +7,11 @@ const sharp = require('sharp');
 
 const IMAGES = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
 
-// Texte du filigrane : "IMTECH INFO · Prénom Nom · email · date heure"
+// Texte du filigrane : "Imteaching Formation · Prénom Nom · email · date heure"
 function texteFiligrane(utilisateur) {
   const date = new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   const nom = `${utilisateur.prenom || ''} ${utilisateur.nom || ''}`.trim();
-  return `IMTECH INFO · ${nom} · ${utilisateur.email || ''} · ${date}`;
+  return `Imteaching Formation · ${nom} · ${utilisateur.email || ''} · ${date}`;
 }
 
 // Les polices standard des PDF ne connaissent que le Latin-1 (accents français compris)

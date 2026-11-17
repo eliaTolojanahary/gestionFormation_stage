@@ -77,11 +77,11 @@ function ForgotPassword() {
 
   return (
     <main className="login-page">
-      <section className="brand-panel" aria-label="Presentation de la plateforme">
+      <section className="brand-panel" aria-label="Presentation d'Imteaching Formation">
         <div className="brand-content">
           <div className="brand-lockup">
             <img className="brand-logo" src={logo} alt="Logo IMTECH INFO" />
-            <h1>PLATEFORME<br />DE<br />GESTION<br />DE<br /><span>FORMATION</span></h1>
+            <h1>IMTEACHING<br /><span>FORMATION</span></h1>
             
           </div>
                     <div className="pattern" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>

@@ -1,6 +1,7 @@
 // Controller des supports de cours (texte mis en forme et / ou fichier déposé par le formateur).
 const supportService = require('../services/supportService');
 const { exigerChamps } = require('../utils/errors');
+const { supprimerFichiersRecus } = require('../utils/fichiersUpload');
 const { lireEtat } = require('../utils/etat');
 const { ROLES } = require('../config/roles');
 const { TRIS_SUPPORT, EXTENSIONS_TYPE } = require('../models/supportModel');
@@ -42,22 +43,29 @@ async function detailSupportController(req, res) {
 }
 
 // POST /supports (Formateur) : multipart avec id_formation, titre, contenu (texte mis en forme, HTML),
-// fichier (PDF, image, audio, vidéo) — un texte ou un fichier au moins —
-// et date_envoi_prevue (facultative : vide = envoi immédiat, sinon support programmé)
+// fichier (PDF, image, audio, vidéo ; champ répété jusqu'à 10 fois : un support par fichier)
+// — un texte ou un fichier au moins — et date_envoi_prevue (facultative : vide = envoi immédiat,
+// sinon support programmé). Demande refusée : les fichiers reçus sont supprimés du disque.
 async function creerSupportController(req, res) {
-  exigerChamps(req.body, ['id_formation']);
   const fichiers = req.files || (req.file ? [req.file] : []);
-
-  const { ids, programme } = await supportService.creerSupports(
-    {
-      id_formation: req.body.id_formation,
-      titre: req.body.titre,
-      contenu: req.body.contenu,
-      date_envoi_prevue: req.body.date_envoi_prevue,
-      fichiers,
-    },
-    req.user
-  );
+  let resultat;
+  try {
+    exigerChamps(req.body, ['id_formation']);
+    resultat = await supportService.creerSupports(
+      {
+        id_formation: req.body.id_formation,
+        titre: req.body.titre,
+        contenu: req.body.contenu,
+        date_envoi_prevue: req.body.date_envoi_prevue,
+        fichiers,
+      },
+      req.user
+    );
+  } catch (error) {
+    await supprimerFichiersRecus(fichiers);
+    throw error;
+  }
+  const { ids, programme } = resultat;
 
   res.status(201).json({
     status: 'success',

@@ -56,7 +56,10 @@ app.use((err, req, res, next) => {
     return res.status(err.status).json({ status: 'error', message: err.message });
   }
   if (err instanceof multer.MulterError) {
-    const message = err.code === 'LIMIT_FILE_SIZE' ? 'Fichier trop volumineux.' : `Erreur d'upload : ${err.message}`;
+    const message = {
+      LIMIT_FILE_SIZE: 'Fichier trop volumineux.',
+      LIMIT_UNEXPECTED_FILE: 'Trop de fichiers envoyés en une fois.',
+    }[err.code] || `Erreur d'upload : ${err.message}`;
     return res.status(400).json({ status: 'error', message });
   }
   if (err.type === 'entity.parse.failed') {
@@ -69,7 +72,7 @@ app.use((err, req, res, next) => {
   }
 
   // Erreur inattendue : on la journalise mais on ne renvoie jamais son détail au client
-  console.error(`❌ ${req.method} ${req.originalUrl} :`, err);
+  console.error(`${req.method} ${req.originalUrl} :`, err);
   return res.status(500).json({ status: 'error', message: 'Erreur serveur.' });
 });
 
@@ -87,7 +90,7 @@ if (require.main === module) {
   const HOST = '0.0.0.0'; // écoute sur toutes les interfaces : nécessaire pour le mobile
 
   app.listen(PORT, HOST, () => {
-    console.log('\n🚀 Serveur IMTECH démarré !');
+    console.log('\nServeur IMTECH démarré !');
     console.log('─────────────────────────────────────────');
     console.log(`   Local          : http://localhost:${PORT}/api`);
     console.log(`   Android Emu    : http://10.0.2.2:${PORT}/api`);

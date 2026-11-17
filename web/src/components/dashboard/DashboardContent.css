@@ -18,6 +18,24 @@
   flex-shrink: 0;
 }
 
+/* « Chargement... » en petite pastille en bas à droite de l'écran : n'occupe aucune place
+   dans la page et ne recouvre pas le header */
+.dashboard-chargement {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--fs-xs);
+  pointer-events: none;
+}
+
 .period-tabs,
 /* flex-shrink: 0 : sans lui, le titre écrase les onglets et overflow: hidden coupe « annuel » */
 .chart-tabs {
@@ -119,6 +137,30 @@
 .kpi-card > small.danger {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+/* Titres des trois parties du tableau de bord */
+.dashboard-section-titre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 24px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dashboard-section-titre h2 {
+  margin: 0;
+  color: var(--heading);
+  font-size: var(--fs-md, 1rem);
+  font-weight: 700;
+}
+
+.dashboard-section-titre p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
 }
 
 .reste-detail {

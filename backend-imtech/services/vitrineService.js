@@ -265,12 +265,12 @@ async function notifierInscriptionEnLigne({ id_utilisateur, email, prenom, nom, 
       id_utilisateur,
       email,
       message: nouveauCompte
-        ? `Bienvenue chez IMTECH INFO ! Votre inscription (${inscriptions.length} formation(s)) est en attente de validation par l'accueil.`
+        ? `Bienvenue chez Imteaching Formation ! Votre inscription (${inscriptions.length} formation(s)) est en attente de validation par l'accueil.`
         : `Votre inscription à ${inscriptions.length} nouvelle(s) formation(s) est en attente de validation par l'accueil.`,
-      sujet: 'IMTECH INFO — Demande d\'inscription bien reçue',
+      sujet: 'Imteaching Formation — Demande d\'inscription bien reçue',
       contenuHtml: `${titre('Demande d\'inscription reçue')}
         ${salutation(prenom, nom)}
-        <p><strong>${nouveauCompte ? 'Merci et bienvenue chez IMTECH INFO !' : 'Merci de votre confiance !'}</strong>
+        <p><strong>${nouveauCompte ? 'Merci et bienvenue chez Imteaching Formation !' : 'Merci de votre confiance !'}</strong>
         Nous avons bien reçu votre demande d'inscription, ainsi que votre premier paiement.</p>
         ${encadre([...lignes, ['Total du premier paiement', formatMontant(total)]])}
         <p>Notre Accueil va maintenant <strong>vérifier votre paiement</strong>. Dès que votre inscription sera

@@ -28,3 +28,10 @@
   color: var(--warning);
   font-size: var(--fs-xs);
 }
+
+/* Fenêtre « Modifier l'échéance » (Super Admin) : textes d'aide sous les champs */
+.modifier-echeance-aide {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}

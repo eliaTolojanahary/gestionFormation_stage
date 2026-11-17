@@ -3,11 +3,27 @@
    ========================================================================== */
 
 .avis-card {
-  margin-top: 14px;
+  margin-top: 0;
 }
 
 .avis-heading {
   margin-bottom: 4px;
+}
+
+/* « Noter les commentaires » (page Formateurs) et export CSV, côte à côte */
+.avis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.avis-lien-notation {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 /* La barre de filtres prend toute la largeur de la carte, comme dans un gestion-panel */
@@ -131,6 +147,23 @@
 
 .avis-vide {
   color: var(--text-muted);
+}
+
+/* Note des commentaires incomplète : lien vers le détail (page Formateurs) */
+.avis-manquants-bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 /* Badge de l'avis (mêmes couleurs que les statuts de paiement) */

@@ -73,6 +73,7 @@ function ImageParametre({ titre, aide, chemin, imageParDefaut, route, onChange, 
           ref={inputRef}
           className="visually-hidden"
           type="file"
+          aria-label={`${titre} : choisir une nouvelle image`}
           accept="image/png,image/jpeg,image/webp"
           onChange={handleFichier}
         />

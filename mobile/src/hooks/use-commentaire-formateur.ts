@@ -1,6 +1,6 @@
 // hooks/use-commentaire-formateur.ts
-// Commentaire de fin de formation : ouvert à partir de la veille de la fin, obligatoire pour
-// recevoir l'attestation. Il est lu par l'Accueil et la direction, pas par le formateur.
+// Commentaire de fin de formation : ouvert 2 jours avant la fin (J-2), obligatoire pour
+// recevoir l'attestation (relance chaque jour tant qu'il n'est pas écrit). Il est lu par l'Accueil et la direction, pas par le formateur.
 import { useCallback, useEffect, useState } from 'react';
 import { apiRequest } from '../utils/api';
 import { ENDPOINTS } from '../constants/api';

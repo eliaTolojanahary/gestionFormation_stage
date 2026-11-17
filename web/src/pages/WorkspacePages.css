@@ -454,6 +454,16 @@
   text-align: center;
 }
 
+/* Carte du tableau de bord en cours de chargement : hauteur proche du tableau final, pour que
+   la page ne saute pas quand les lignes arrivent (CLS de Lighthouse) */
+.carte-chargement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  box-sizing: border-box;
+}
+
 .detail-list {
   gap: 9px;
   color: var(--text-muted);

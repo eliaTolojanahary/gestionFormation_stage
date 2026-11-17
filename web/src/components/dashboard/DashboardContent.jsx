@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import Icon from '../icon/Icon'
 import Header from '../header/Header'
 import Tableau from '../tableau/Tableau'
-import AvisFormateurs from './AvisFormateurs'
-import CommentairesFormateurs from './CommentairesFormateurs'
 import FiltreDates from './FiltreDates'
+import EtudiantsARisque from './EtudiantsARisque'
+import AvisFormateurs from './AvisFormateurs'
 import BoutonExportCSV from '../tableau/BoutonExportCSV'
 import { useDashboard } from '../../hooks/useDashboard'
 import { useRetour } from '../retour/useRetour'
@@ -52,6 +52,16 @@ function KpiList({ kpis }) {
           <strong>{kpi.value}</strong>
         </article>
       ))}
+    </div>
+  )
+}
+
+// Titre d'une partie du tableau de bord (À traiter aujourd'hui, Activité du centre, Formateurs)
+function TitreSection({ titre, texte }) {
+  return (
+    <div className="dashboard-section-titre">
+      <h2>{titre}</h2>
+      {texte && <p>{texte}</p>}
     </div>
   )
 }
@@ -221,9 +231,8 @@ function DashboardContent({ user ,onProfile}) {
     exporterCSV
   } = useDashboard()
   const { notifier } = useRetour()
-  // Période « Du … au … » commune aux indicateurs, aux inscriptions et aux avis sur les formateurs
+  // Période « Du … au … » commune aux indicateurs, aux inscriptions, aux paiements à surveiller et au classement des formateurs
   const [periode, setPeriode] = useState(PERIODE_TOUT)
-  const [versionNotes, setVersionNotes] = useState(0) // un commentaire noté relit le classement
   const displayUser = user || { prenom: 'Admin' }
 
   // Une période impossible (début après la fin) est affichée mais pas envoyée à l'API
@@ -252,24 +261,32 @@ function DashboardContent({ user ,onProfile}) {
         </button>
       </div>
 
-      {isLoading && <p>Chargement...</p>}
+      {/* Indicateur posé par-dessus (position fixe) : il ne pousse pas la page vers le bas
+          quand il apparaît et disparaît (décalage de mise en page, CLS de Lighthouse) */}
+      {isLoading && <p className="dashboard-chargement" role="status">Chargement...</p>}
       {error && <p className="error">{error}</p>}
 
+      {/* 1. Situation actuelle, sans période : ce que l'Accueil doit faire aujourd'hui */}
+      <TitreSection titre="À traiter aujourd'hui" texte="Situation actuelle, indépendante de la période." />
+      <EtudiantsARisque />
+
+      {/* 2. Activité sur la période choisie : argent d'abord, puis tendances */}
+      <TitreSection titre="Activité du centre" texte="Indicateurs, paiements et tendances sur la période choisie." />
       <FiltreDates periode={periode} onChange={changerPeriode} />
       <KpiList kpis={kpis} />
       <DetailReste kpis={kpis} />
+      <PaymentTable paymentTable={paymentTable} periode={periodeAppliquee} />
       <DashboardCharts
         evolution={evolution}
         inscriptionsParMois={inscriptionsParMois}
         periode={periodeAppliquee}
         onPeriodeChange={getEvolution}
       />
-
       <PopularFormations topInscriptions={topInscriptions} periode={periodeAppliquee} />
-      <PaymentTable paymentTable={paymentTable} periode={periodeAppliquee} />
-      <AvisFormateurs periode={periodeAppliquee} version={versionNotes} />
-      <CommentairesFormateurs onNote={() => setVersionNotes((version) => version + 1)} />
-      
+
+      {/* 3. Formateurs (même période) ; la notation des commentaires est sur la page Formateurs */}
+      <TitreSection titre="Formateurs" texte="Classement sur 20 : réactions sur les supports et commentaires notés." />
+      <AvisFormateurs periode={periodeAppliquee} />
     </section>
   )
 }

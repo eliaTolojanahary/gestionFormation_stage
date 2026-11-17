@@ -57,9 +57,9 @@ export default function LoginScreen() {
             <View style={styles.logoCard}>
               <Image source={require('../../assets/logoImtech.png')} style={styles.logoImage} resizeMode="contain" />
             </View>
-            <Text style={styles.brandTitle}>IMTECH INFO</Text>
+            <Text style={styles.brandTitle}>IMTEACHING</Text>
             <View style={styles.brandUnderline} />
-            <Text style={styles.brandSubtitle}>PLATEFORME DE FORMATION</Text>
+            <Text style={styles.brandSubtitle}>FORMATION</Text>
           </View>
 
           <View style={styles.card}>

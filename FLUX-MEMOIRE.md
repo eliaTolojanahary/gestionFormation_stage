@@ -1,11 +1,17 @@
-# IMTECH INFO — Plateforme de gestion de formation
-## Second support de rédaction du mémoire (plan `planMemoire.txt`, 35 pages)
+# Imteaching Formation — Plateforme de gestion de formation d'IMTECH INFO
+## Second support de rédaction du mémoire (plan `planMemoire.txt`, 50 pages au plus)
 
 > Ce document est le **support du mémoire**. Le fonctionnement technique de l'application (démarrage,
 > code, parcours A → Z avec pages, routes et fonctions, modules, règles) est dans
 > [`FLUX-APPLICATION.md`](FLUX-APPLICATION.md), le document de reprise. Celui-ci suit **exactement le plan
-> resserré** de [`planMemoire.txt`](planMemoire.txt) : **35 pages** de l'avant-propos à la
-> bibliographie, **9 tableaux**, **19 figures**, et seulement **4 modules** détaillés.
+> resserré** de [`planMemoire.txt`](planMemoire.txt), **étendu à 50 pages au plus** de l'avant-propos
+> à la bibliographie (annexes non comptées), **11 tableaux**, **23 figures**, et seulement **4 modules**
+> détaillés. Les titres sont **ceux du plan, sans en ajouter** : l'audit de qualité (Lighthouse,
+> tests, `npm audit`, lint) est réparti en 2.4, 3.1 et 3.3.
+>
+> **Pour comprendre l'application en 10 minutes**, commencer par la partie
+> [« À lire en premier »](#à-lire-en-premier--lhistoire-complète-dun-étudiant-10-minutes) : l'histoire
+> complète d'un étudiant, avec tous les cas (refus, oubli de paiement, décrochage, notes).
 >
 > Chaque partie indique son **nombre de pages visé** (📄). Le texte est déjà à la bonne longueur :
 > on peut le reporter presque tel quel dans le modèle Word, en ajoutant les captures.
@@ -20,17 +26,301 @@
 
 ### Budget de pages
 
-| Partie | Pages |
-|---|:-:|
-| Avant-propos | 2 |
-| Introduction | 1 |
-| 1 Présentation du projet | 5 |
-| 2 Réalisation de l'application | 22 |
-| 3 Évaluation du projet et connaissances acquises | 3 |
-| Conclusion | 1 |
-| Bibliographie | 1 |
-| **Total compté** | **35** |
-| Page de garde, table des matières, listes, glossaire, annexes | en plus |
+Limite : **50 pages** de l'avant-propos à la bibliographie. Le budget en vise **48**, pour garder
+**2 pages de marge** (captures plus grandes que prévu, mise en page Word).
+
+| Partie | Avant (35 p.) | Maintenant | Où vont les pages en plus |
+|---|:-:|:-:|---|
+| Avant-propos | 2 | 2 | |
+| Introduction | 1 | 2 | Existant, problème posé et annonce du plan, moins serrés |
+| 1 Présentation du projet | 5 | 6 | 1.3 Technologies : 3 → 4 (comparaisons mieux expliquées) |
+| 2 Réalisation de l'application | 22 | 32 | 2.1 : 4 → 6 ; 2.2 : 13 → 17 (une page de plus par module) ; 2.3 : 3 → 5 ; 2.4 : 2 → 4 (audit Lighthouse, Tableau 10, Figures 21 et 22) |
+| 3 Évaluation du projet et connaissances acquises | 3 | 4 | 3.1 : contrôles du code (Tableau 11) |
+| Conclusion | 1 | 1 | |
+| Bibliographie | 1 | 1 | |
+| **Total compté** | **35** | **48** | 2 pages de marge sur les 50 |
+| Page de garde, table des matières, listes, glossaire, annexes | en plus | en plus | |
+
+**Numérotation des pages.** La **page 1 est la première page de l'avant-propos**. Avant elle
+(page de garde, table des matières, listes des tableaux et des figures, glossaire) : pas de numéro
+sur la page de garde, puis chiffres romains (i, ii, iii…). Dans Word :
+
+1. Curseur juste avant le titre « Avant-propos » → **Mise en page › Sauts de page › Section suivante : page suivante**.
+2. Double-clic dans le pied de page de l'avant-propos → décocher **Lier au précédent**.
+3. **Numéro de page › Format des numéros de page** → chiffres arabes, **À partir de : 1**.
+4. Dans la première section : format **i, ii, iii**, et cocher **Première page différente** pour la page de garde.
+5. Mettre à jour la table des matières (clic droit › **Mettre à jour les champs**) : l'avant-propos doit être en page 1.
+
+> Les textes des parties ont été écrits pour 35 pages : là où le budget augmente, ils sont à
+> enrichir, de préférence avec des captures commentées et des exemples chiffrés plutôt qu'avec
+> du remplissage.
+
+---
+
+## À lire en premier : l'histoire complète d'un étudiant (10 minutes)
+
+> Cette partie **ne fait pas partie des 50 pages**. Elle sert à **comprendre toute l'application
+> en quelques minutes**, avant de lire le reste. On suit **Andry**, de la découverte des formations
+> jusqu'à son attestation, en passant par **tous les cas possibles** : refus, oubli de paiement,
+> décrochage, notes. Chaque étape dit **qui agit**, **où** (quel écran), **ce que l'application
+> fait toute seule** et **où en parler dans le mémoire**.
+>
+> Pour le détail technique d'une étape (route, fonction, code) : 🔗 `FLUX-APPLICATION.md`, partie 4.
+
+### Les personnages
+
+| Qui | Où il travaille | Dans l'histoire |
+|---|---|---|
+| **Andry** | Application mobile | D'abord **visiteur** (sans compte), puis **étudiant** |
+| **L'Accueil** | Application web | Valide les inscriptions et les paiements, relance, note les commentaires |
+| **Le formateur** | Application web | Publie les cours, donne la note de présentation |
+| **Le serveur** | — | Travaille **tout seul** : calcule les notes, prévient, envoie factures et attestations |
+
+Andry s'inscrit à **« Développement web »** : 600 000 Ar, payés en **3 tranches** de 200 000 Ar,
+formation de 8 semaines.
+
+### L'histoire en un schéma
+
+```mermaid
+%%{init: {'theme':'neutral'}}%%
+flowchart TD
+    A["1. Andry découvre les formations<br/>(mobile, sans compte)"] --> B["2. Il s'inscrit en ligne<br/>compte + inscription + échéancier"]
+    B --> C{"3. L'Accueil<br/>vérifie le dossier"}
+    C -- "refuse" --> C2["Inscription désactivée<br/>(cachée, réactivable)"]
+    C -- "valide" --> D["4. Andry se connecte"]
+    D --> E["5. Le formateur publie un cours"]
+    E --> F["6. Andry lit, commente, réagit<br/>→ présence du jour<br/>→ avis sur le formateur"]
+    D --> G["7. Andry paie une tranche<br/>(en attente)"]
+    G --> H{"8. L'Accueil<br/>vérifie le paiement"}
+    H -- "valide" --> H1["Facture PDF envoyée<br/>toute seule"]
+    H -- "refuse" --> H2["Andry prévenu,<br/>il doit repayer"]
+    H2 --> G
+    D --> I["9. Andry oublie une tranche<br/>J-2 : l'Accueil est prévenu<br/>→ bouton Rappeler"]
+    I --> J["10. Il ne vient plus<br/>→ « à contacter »<br/>→ bouton Relancer"]
+    F & H1 & I --> K["Note système de l'étudiant /10<br/>(présence + paiements)"]
+    F --> L["Note système du formateur /10<br/>(réactions)"]
+    K --> M["11. Fin de formation :<br/>le formateur donne la présentation /10"]
+    M --> N["12. Andry commente son formateur<br/>(obligatoire)"]
+    N --> O["13. L'Accueil note ce commentaire /10<br/>→ note du formateur /20"]
+    N --> P["14. Attestation PDF + QR code<br/>envoyée toute seule"]
+```
+
+*Figure possible pour le mémoire : « Parcours d'un étudiant », à placer au début de 2.2.*
+
+---
+
+### Acte 1 — Découvrir et s'inscrire
+
+**Étape 1 — Andry découvre les formations.**
+Il installe l'application et, **sans créer de compte**, arrive sur l'écran **Découvrir** : les
+formations (photo, prix, durée, formateur), les formateurs jugés « compétents » par les étudiants,
+et les contacts du centre.
+- *Où :* mobile, écran Découvrir.
+- *Mémoire :* 2.2.1 Vitrine et inscription.
+
+**Étape 2 — Andry s'inscrit en ligne.**
+Il coche « Développement web », choisit **3 tranches**, remplit son identité et son mot de passe,
+accepte les conditions, ajoute (ou non) les **4 pièces de son dossier** (photo, CIN…), puis choisit
+comment il paie la 1ʳᵉ tranche (MVola, virement…) avec la référence.
+- *L'application fait toute seule, **en tout ou rien*** : elle crée son **compte**, son
+  **inscription**, l'**échéancier** (3 échéances de 200 000 Ar avec leurs dates) et un **1ᵉʳ paiement
+  « en attente »**. Si une seule de ces opérations échoue, rien n'est gardé.
+- *Puis :* l'Accueil reçoit une notification « nouvelle inscription en ligne ».
+- *Protection :* 5 inscriptions par heure au plus depuis un même appareil (anti-robot).
+- *Mémoire :* 2.2.1, et l'idée de « tout ou rien » en 2.1.2.3.
+
+**Étape 3 — L'Accueil valide… ou refuse.**
+Dans l'application web, page **Inscriptions**, la nouvelle inscription apparaît **en haut** (pas encore validée).
+- **Cas A — elle valide :** bouton **Valider**. C'est **refusé tant que le dossier est incomplet**
+  (le détail affiche « Dossier incomplet · 2/4 » et les pièces manquantes ; Andry peut les ajouter
+  depuis son téléphone, menu **Mon dossier**). Une fois validée, le 1ᵉʳ paiement déclaré est
+  validé aussi, et **la facture part toute seule** (étape 8).
+- **Cas B — elle refuse :** il n'y a pas de bouton « Refuser » ; l'Accueil **désactive**
+  l'inscription. Elle est **cachée, pas effacée**, et peut être réactivée plus tard. L'application
+  n'envoie **pas** de message automatique dans ce cas : l'Accueil prévient Andry par la page
+  **Notifications** (ou par téléphone).
+- *Mémoire :* 2.2.1 (validation), 2.1.2.3 (« on n'efface jamais vraiment »).
+
+**Étape 4 — Andry se connecte.**
+Écran **Connexion** du mobile, e-mail + mot de passe. Le serveur lui remet un **badge de connexion**
+valable 24 h et ouvre une **session** (visible et fermable à distance : « Se déconnecter partout »).
+À la première ouverture, il doit accepter les **Conditions d'utilisation** (présence, paiements,
+notes, attestation y sont expliqués).
+- *Si le mot de passe est faux trop souvent :* la connexion est bloquée un moment.
+- *Mot de passe oublié :* un code valable 30 minutes arrive par e-mail.
+- *Mémoire :* 2.2.4 Utilisateurs et sécurité.
+
+### Acte 2 — Suivre les cours
+
+**Étape 5 — Le formateur publie un support.**
+Dans l'application web, page **Supports**, il écrit un cours (texte mis en forme) et/ou joint un ou plusieurs fichiers
+(PDF, image, audio, vidéo ; un cours par fichier). Il peut le publier **tout de suite** ou **le programmer** à une date et une heure.
+- *L'application fait toute seule :* les étudiants inscrits sont prévenus. Si le cours est
+  programmé, le serveur vérifie **chaque minute** : il prévient 1 h avant, puis publie à l'heure.
+- *Mémoire :* 2.2.3 Supports de cours.
+
+**Étape 6 — Andry lit, commente, réagit.**
+Onglet **Formations** → le cours. Il le lit, écrit un commentaire (ou répond, mentionne quelqu'un
+avec `@`), et met une **réaction** : 👍 j'aime, ❤️ j'adore, 💡 utile ou 👎 je n'aime pas.
+- *Protection du cours :* le PDF ou l'image porte en **filigrane le nom et l'e-mail d'Andry**, et
+  la capture d'écran est bloquée sur le téléphone.
+- *Ce que ça déclenche, sans que personne ne fasse rien :*
+  1. **La présence du jour d'Andry** est enregistrée (ouvrir un cours, commenter ou réagir = présent
+     ce jour-là). Elle compte dans **sa note** (étape 11) et dans le **risque de décrochage** (étape 10).
+  2. **La réaction compte dans l'avis sur le formateur** : 👍 ❤️ 💡 sont positives, 👎 négative.
+     Avec au moins **5 réactions**, le formateur est « Compétent » s'il a **au moins 60 %** de
+     positives, sinon « Non compétent ». Ce pourcentage donne aussi la **partie système de sa note
+     sur 20** : 85 % de positives → **8,5 / 10** (étape 13).
+- *Mémoire :* 2.2.3 (commentaires, filigrane), 2.3.4 État E4 (avis sur les formateurs).
+
+### Acte 3 — Payer (ou oublier de payer)
+
+**Étape 7 — Andry paie sa 2ᵉ tranche.**
+Écran **Paiements** du mobile, bouton **« Payer 200 000 Ar »**, il choisit le mode et donne la
+référence. Il ne tape **pas le montant** : c'est le serveur qui l'impose (impossible de « payer »
+1 Ar). Le paiement est **« en attente »** ; l'Accueil est prévenu.
+- *Mémoire :* 2.2.2 Échéances et paiements.
+
+**Étape 8 — L'Accueil accepte… ou refuse.**
+Application web, page **Paiements**.
+- **Cas A — Valider :** le paiement passe « validé ». **La facture PDF part toute seule** :
+  notification dans l'application + e-mail avec le PDF. Même si deux employés cliquent en même
+  temps, le paiement n'est validé qu'une fois, et il n'y a qu'**une facture par paiement**.
+- **Cas B — Refuser** (référence introuvable, montant non reçu…) : Andry reçoit « Votre paiement …
+  a été refusé, contactez l'accueil » (application + e-mail). L'échéance reste **à payer** : il
+  peut repayer. Un paiement refusé **ne compte pas** dans sa note.
+- *Au guichet :* l'Accueil peut aussi encaisser elle-même (page **Échéances → Payer**) ; le
+  paiement est alors validé directement, et la facture part aussi toute seule.
+- *Mémoire :* 2.2.2 (avec le diagramme de séquence du paiement).
+
+**Étape 9 — Andry oublie sa 3ᵉ tranche, il reçoit un rappel.**
+Chaque échéance a une couleur sur la page **Échéances** :
+**vert** = à jour, **jaune** = date dans 2 jours ou moins (à rappeler), **rouge** = date dépassée.
+- *Le serveur, toute seule, chaque heure :* quand l'échéance d'Andry passe au **jaune (J-2)**,
+  l'Accueil reçoit **une** notification « Andry … doit être rappelé » (jamais deux fois la même).
+- *L'Accueil :* bouton **Rappeler** → Andry reçoit le rappel (notification + e-mail).
+- *Le Super Admin (si Andry demande un délai) :* bouton **Modifier** → nouvelle date et/ou nouveau
+  montant ; la différence de montant est reportée sur sa dernière échéance non réglée (le total ne
+  change pas). Andry est prévenu (notification + e-mail).
+- *Conséquence s'il paie en retard :* sa note système perd des points (étape 11), et l'échéance
+  rouge compte dans le risque de décrochage (étape 10).
+- *Mémoire :* 2.2.2, et Annexe G.6 État E5 (échéances en retard et à rappeler).
+
+**Étape 10 — Andry décroche : l'Accueil est prévenue à temps.**
+Pendant 8 jours, Andry n'ouvre plus aucun cours, et il a une échéance en retard. Le serveur
+calcule chaque heure un **score de risque sur 6** pour chaque étudiant en cours :
+
+| Critère | 0 point | 1 point | 2 points |
+|---|---|---|---|
+| Assiduité des 10 derniers jours de cours | ≥ 75 % | 50 à 74 % | < 50 % |
+| Silence (jours sans ouvrir un cours) | moins de 7 | — | 7 ou plus |
+| Échéances en retard | aucune | 1 | 2 ou plus |
+
+Andry : assiduité 40 % (2) + silence 8 jours (2) + 1 retard (1) = **5 / 6 → « à contacter »**
+(2-3 = « à surveiller », 4-6 = « à contacter »).
+- *Le serveur, tout seul :* l'Accueil reçoit « 1 étudiant à contacter, risque de décrochage ».
+- *L'Accueil :* tableau de bord, carte **Étudiants à risque**, voit les raisons, clique **Relancer**
+  (message bienveillant, sans le mot « risque » ; une relance tous les 3 jours au plus).
+- *Pourquoi c'est différent de la note :* la note juge **toute** la formation ; le risque regarde ce
+  qui se passe **maintenant**. On peut avoir 9/10 et être en train de décrocher.
+- *Mémoire :* 2.3.5 État E9 (étudiants à risque de décrochage).
+
+### Acte 4 — Finir la formation
+
+**Étape 11 — La note d'Andry sur 20.**
+
+| Partie | Qui la donne | Comment |
+|---|---|---|
+| **Note système /10** | Le serveur, tout seul | Andry part de 10 et perd des points : **présence** (≥ 90 % → 0 ; 75-90 % → −1 ; 50-75 % → −2 ; < 50 % → −4) et **paiements** (payée en retard → −1, non réglée → −2 par échéance, −4 au plus) |
+| **Présentation /10** | Le formateur, à la main | Application web, **Espace formateur** : classement de la formation et champ « note de présentation » |
+
+Andry : présence 80 % (−1), 3ᵉ tranche payée en retard (−1) → **8 / 10** ; présentation **7 / 10**
+→ **15 / 20**. Le formateur voit le classement de toute la formation.
+- *Si le formateur oublie :* à la fin de la formation, le serveur lui envoie « attribuez la note de
+  présentation de … » (une fois).
+- *Mémoire :* 2.3.3 État E3 (notes d'attestation et classement).
+
+**Étape 12 — Andry commente son formateur (obligatoire).**
+**2 jours avant la fin**, Andry reçoit « commentez votre formateur, c'est obligatoire pour votre
+attestation ». Dans l'onglet **Formations**, une carte l'y invite. S'il ne le fait pas, il est
+**relancé chaque jour** (notification + e-mail), pendant 30 jours au plus. Le commentaire est lu
+par **l'Accueil et la direction, pas par le formateur** (Andry peut donc être franc).
+- *Mémoire :* 2.3.4 (avis sur les formateurs).
+
+**Étape 13 — L'Accueil note le commentaire ; la note du formateur en découle.**
+Application web, page **Formateurs** : l'Accueil voit **ce qui reste** (étudiants qui n'ont pas encore
+commenté, commentaires pas encore notés) et donne à chaque commentaire une **note sur 10**.
+
+| Partie de la note du formateur /20 | Qui la donne | Comment |
+|---|---|---|
+| **Réactions /10** | Le serveur, tout seul | % de réactions positives sur ses cours ÷ 10 (au moins 5 réactions) |
+| **Commentaires /10** | L'Accueil, à la main | Moyenne des notes données aux commentaires de fin de formation |
+
+Exemple : 85 % de positives → 8,5 ; commentaires notés en moyenne 7 → **15,5 / 20**. La note
+n'apparaît que quand **tous les étudiants ont commenté et que tous les commentaires sont notés** ;
+avant, le tableau de bord affiche « 3/5 commentés » ou « 2 à noter », avec un lien vers la page
+Formateurs.
+- *Mémoire :* 2.3.4 État E4.
+
+**Étape 14 — Andry reçoit son attestation.**
+L'attestation est **prête** quand 4 conditions sont réunies :
+1. la formation est **terminée** ;
+2. **tout est payé** (paiements validés) ;
+3. le formateur a donné la **note de présentation** ;
+4. Andry a **commenté son formateur**.
+
+- *Le serveur, tout seul :* dès qu'elle est prête (au commentaire d'Andry, ou à la vérification de
+  chaque heure), il **recalcule la note**, crée le **PDF avec un QR code**, et l'envoie à Andry
+  (notification + e-mail avec le PDF). L'Accueil en est prévenue. Elle peut aussi l'envoyer d'un clic
+  (page Inscriptions, bouton **Attestation**).
+- *Ensuite :* l'inscription d'Andry s'affiche **« Réussie »** partout (web et mobile).
+- *Vérification :* n'importe qui (un employeur) scanne le QR code et voit « Attestation
+  authentique » avec le nom, la formation et la date ; un faux document affiche « Document non
+  reconnu ».
+- *Mémoire :* 2.2.2 / 2.2.4 (documents, QR code), Annexe G.9 (État E8 : attestation).
+
+### Ce que le serveur fait tout seul (sans clic)
+
+| Quand | Ce qu'il fait | Étape |
+|---|---|---|
+| À chaque inscription en ligne | Compte + inscription + échéancier + 1ᵉʳ paiement, en tout ou rien ; prévient l'Accueil | 2 |
+| À chaque ouverture de cours, commentaire, réaction | Note la présence du jour | 6 |
+| À chaque validation de paiement | Crée et envoie la facture PDF | 8 |
+| **Chaque minute** | Prévient 1 h avant et publie les cours programmés | 5 |
+| **Chaque heure** | Échéances à J-2 → prévient l'Accueil | 9 |
+| | Étudiants « à contacter » → prévient l'Accueil | 10 |
+| | J-2 avant la fin → demande (puis relance) le commentaire sur le formateur | 12 |
+| | Formation finie sans note de présentation → prévient le formateur | 11 |
+| | Attestations prêtes → les envoie | 14 |
+
+### Les trois calculs à connaître par cœur
+
+| Calcul | Sur | Partie automatique | Partie manuelle | Sert à |
+|---|:-:|---|---|---|
+| **Note de l'étudiant** | 20 | 10 − malus présence − malus paiements | Présentation /10 (formateur) | Attestation, classement |
+| **Note du formateur** | 20 | % de réactions positives ÷ 10 | Moyenne des commentaires notés /10 (Accueil) | Classement des formateurs |
+| **Risque de décrochage** | 6 | Assiduité + silence + retards (0 à 2 chacun) | — | Relancer l'étudiant à temps |
+
+### Tous les cas, en une ligne chacun
+
+| # | Ce qui arrive | Qui | Où | Résultat |
+|:-:|---|---|---|---|
+| 1 | Découvre les formations | Visiteur | Mobile — Découvrir | Voit formations, formateurs, prix |
+| 2 | S'inscrit | Visiteur | Mobile — Inscription | Compte + inscription + échéancier + 1ᵉʳ paiement en attente |
+| 3A | Inscription validée | Accueil | Web — Inscriptions | Inscription validée, facture du 1ᵉʳ paiement |
+| 3B | Inscription refusée | Accueil | Web — Inscriptions « Désactiver » | Cachée, réactivable |
+| 4 | Se connecte | Étudiant | Mobile — Connexion | Session ouverte, conditions acceptées |
+| 5 | Publie un cours | Formateur | Web — Supports | Étudiants prévenus (ou à l'heure prévue) |
+| 6 | Lit / commente / réagit | Étudiant | Mobile — Formations | Présence + avis sur le formateur |
+| 7 | Paie une tranche | Étudiant | Mobile — Paiements | Paiement en attente |
+| 8A | Paiement validé | Accueil | Web — Paiements | Facture envoyée toute seule |
+| 8B | Paiement refusé | Accueil | Web — Paiements | Étudiant prévenu, doit repayer |
+| 9 | Oubli de paiement | Serveur puis Accueil | Web — Échéances « Rappeler » | Étudiant rappelé ; malus sur la note |
+| 10 | Décrochage | Serveur puis Accueil | Web — Tableau de bord « Relancer » | Étudiant relancé |
+| 11 | Note de présentation | Formateur | Web — Espace formateur | Note de l'étudiant /20 |
+| 12 | Commente son formateur | Étudiant | Mobile — Formations | Condition de l'attestation remplie |
+| 13 | Note du commentaire | Accueil | Web — Formateurs | Note du formateur /20 |
+| 14 | Attestation | Serveur (ou Accueil) | Automatique / Web — Inscriptions | PDF + QR code, inscription « Réussie » |
 
 ---
 
@@ -38,13 +328,13 @@
 
 | Champ du modèle | Valeur |
 |---|---|
-| Titre | Conception et réalisation d'une plateforme web et mobile de gestion de formation |
+| Titre | Conception et réalisation d'Imteaching Formation, application web et mobile de gestion de formation |
 | Par | Tolojanahary Elia Nantenaina |
 | Grade | Licence en Informatique — option ✍️ |
 | Entreprise d'accueil | IMTECH INFO |
 | Encadreur professionnel | M. Valisoa |
 | Jury | ✍️ |
-| Période du stage | du 25 août 2026 au 24 novembre 2026 (3 mois) |
+| Période du stage | du 25 août 2026 au 25 novembre 2026 (3 mois) |
 
 ---
 
@@ -82,7 +372,7 @@
     - 2.3.2 État E2 : évolution des encaissements et des inscriptions
     - 2.3.3 État E3 : notes d'attestation et classement d'une formation
     - 2.3.4 État E4 : avis des étudiants sur les formateurs
-    - 2.3.5 État E5 : échéances en retard et à rappeler
+    - 2.3.5 État E9 : étudiants à risque de décrochage
     - 2.3.6 Bilan des états
   - [2.4 Problèmes rencontrés et solutions](#24-problèmes-rencontrés-et-solutions)
 - [3 Évaluation du projet et connaissances acquises](#3-évaluation-du-projet-et-connaissances-acquises)
@@ -113,6 +403,8 @@
 - Tableau 7 : Analyse des besoins par utilisateur
 - Tableau 8 : Catalogue des états produits par l'application
 - Tableau 9 : Problèmes rencontrés et solutions
+- Tableau 10 : Scores Lighthouse avant et après corrections
+- Tableau 11 : Contrôles de fiabilité et de sécurité du code
 
 ## Liste des figures
 
@@ -135,7 +427,9 @@
 - Figure 17 : Évolution mensuelle des encaissements et formations les plus demandées
 - Figure 18 : Notes et classement d'une formation
 - Figure 19 : Avis des étudiants sur les formateurs
-- Figure 20 : Échéances en retard et à rappeler
+- Figure 20 : Étudiants à risque de décrochage (tableau de bord)
+- Figure 21 : Rapport Lighthouse du tableau de bord avant corrections
+- Figure 22 : Rapport Lighthouse du tableau de bord après corrections
 
 ---
 
@@ -143,8 +437,8 @@
 
 | Terme | Ce que ça veut dire |
 |---|---|
-| **API** | La partie « serveur » : le site et l'application mobile lui posent des questions, elle répond. |
-| **Back-office** | Le site web réservé au personnel du centre (Super Admin, Accueil, Formateur). |
+| **API** | La partie « serveur » : l'application web et l'application mobile lui posent des questions, elle répond. |
+| **Back-office** | L'application web réservée au personnel du centre (Super Admin, Accueil, Formateur). |
 | **Échéance / échéancier** | Une somme à payer à une date précise / la liste de toutes les échéances d'une inscription. |
 | **Filigrane** | Un texte écrit en transparence sur un document (ici : le nom du lecteur et la date). |
 | **Jeton de connexion (JWT)** | Un badge remis à l'utilisateur quand il se connecte ; il le montre à chaque demande. |
@@ -165,7 +459,7 @@
 
 Le présent mémoire présente les résultats du travail effectué lors de mon stage de fin d'études
 de Licence en Informatique de l'IT University ; stage effectué au sein de la société
-**IMTECH INFO** durant **trois mois**, du **25 août 2026** au **24 novembre 2026**.
+**IMTECH INFO** durant **trois mois**, du **25 août 2026** au **25 novembre 2026**.
 
 Afin de poser clairement le contexte de ce mémoire, je vais présenter succinctement d'une part
 l'IT University et d'autre part mon entreprise d'accueil.
@@ -194,10 +488,10 @@ l'IT University et d'autre part mon entreprise d'accueil.
 
 ## Introduction
 
-📄 **1 page** — thème et intérêt, existant et ses problèmes, résultats, structure du mémoire.
+📄 **2 pages** — thème et intérêt, existant et ses problèmes, résultats, structure du mémoire.
 
 **Thème et intérêt.** Pendant ce stage, j'ai travaillé sur le thème **« Conception et réalisation
-d'une plateforme web et mobile de gestion de formation »** pour le centre de formation d'IMTECH
+d'Imteaching Formation, application web et mobile de gestion de formation »** pour le centre de formation d'IMTECH
 INFO. Dans un centre de formation, chaque étudiant suit le même chemin : il découvre les
 formations, s'inscrit, paie en une ou plusieurs fois, suit ses cours et reçoit une attestation.
 Ce chemin paraît simple, mais il demande de suivre beaucoup de choses : dossiers, dates de
@@ -210,7 +504,7 @@ message ; et l'étudiant devait se déplacer pour savoir où il en était.
 
 **Les résultats.** En trois mois, j'ai réalisé :
 
-- un **site web** pour l'équipe (direction, accueil, formateurs) ;
+- une **application web** pour l'équipe (direction, accueil, formateurs) ;
 - une **application mobile** Android pour les étudiants et les visiteurs ;
 - un **serveur** commun, qui applique les règles du centre, crée les PDF et envoie les e-mails ;
 - une base de données de **28 tables**.
@@ -224,7 +518,7 @@ conception, puis quatre modules importants, les statistiques et les problèmes r
 
 ## 1 Présentation du projet
 
-📄 **5 pages**
+📄 **6 pages**
 
 ### 1.1 Objectifs du projet
 
@@ -237,7 +531,7 @@ jusqu'à son attestation, et qui donne à l'équipe une vue claire et à jour de
 
 | # | Objectif | Ce qui y répond dans l'application |
 |:-:|---|---|
-| 1 | Tout regrouper au même endroit : formations, étudiants, inscriptions, paiements | Le site web du personnel |
+| 1 | Tout regrouper au même endroit : formations, étudiants, inscriptions, paiements | L'application web du personnel |
 | 2 | Attirer de nouveaux étudiants et leur permettre de s'inscrire à distance | Vitrine et inscription depuis le téléphone ([§2.2.1](#221-vitrine-et-inscription-de-létudiant)) |
 | 3 | Ne plus rater un paiement et payer sans se déplacer | Échéancier automatique, couleurs de suivi, paiement mobile validé par l'accueil ([§2.2.2](#222-échéances-et-paiements)) |
 | 4 | Donner les cours aux étudiants sans que les supports circulent partout | Supports dans l'application, programmés, commentés ([§2.2.3](#223-supports-de-cours)) |
@@ -254,35 +548,38 @@ la gestion de plusieurs centres.
 📄 **1 page**
 
 J'ai travaillé en **six sprints**. À la fin de chacun, je montrais le résultat à mon encadreur.
-Le total représente **66 jours de travail** (détail des tâches :
-`Gantt - Estimation ETU003230.csv` et `Estimation Fiche de stage - ETU003230`).
+Le total représente **67 jours de travail**, soit tous les jours ouvrés du 25 août au
+25 novembre 2026 (détail des tâches : `Gantt - Estimation ETU003230.xlsx` et `Estimation_sprints.xlsx`).
 
-| Sprint | Contenu | Jours |
-|---|---|:-:|
-| I | Recueil des besoins, prise en main des outils, conception de la base | 7,5 |
-| II | Serveur, connexion, comptes, étudiants, formations, inscriptions | 10,5 |
-| III | Paiements, échéances, documents PDF, présence et notes | 13,5 |
-| IV | Espace formateur, supports de cours, application mobile | 13 |
-| V | Vitrine et inscription en ligne, tableau de bord, recherche | 10 |
-| VI | Corrections, application Android, documentation, essais avec l'équipe | 11,5 |
+| Sprint | Contenu | Jours | Dates |
+|---|---|:-:|---|
+| I | Recueil des besoins, prise en main des outils, conception de la base | 7 | 25/08 → 02/09 |
+| II | Serveur, connexion, comptes, étudiants, formations, inscriptions | 11,5 | 03/09 → 18/09 |
+| III | Paiements, échéances, documents PDF, présence et notes | 14 | 18/09 → 08/10 |
+| IV | Espace formateur, supports de cours, application mobile | 13,5 | 08/10 → 27/10 |
+| V | Vitrine et inscription en ligne, tableau de bord, décrochage, recherche | 11 | 28/10 → 11/11 |
+| VI | Audit et corrections, application Android, documentation, recette avec l'équipe | 10 | 12/11 → 25/11 |
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 gantt
     title Planning du stage (jours ouvrés)
     dateFormat YYYY-MM-DD
     axisFormat %d/%m
     excludes weekends
     section Analyse
-    Sprint I - Besoins et base de données     :s1, 2026-08-25, 8d
+    Sprint I - Besoins et base de données     :s1, 2026-08-25, 7d
     section Web et serveur
-    Sprint II - Comptes et inscriptions       :s2, after s1, 10d
-    Sprint III - Paiements, documents, notes  :s3, after s2, 14d
+    Sprint II - Comptes et inscriptions       :s2, 2026-09-03, 12d
+    Sprint III - Paiements, documents, notes  :s3, 2026-09-18, 15d
     section Mobile et formateur
-    Sprint IV - Formateur, supports, mobile   :s4, after s3, 13d
-    Sprint V - Vitrine, tableau de bord       :s5, after s4, 10d
+    Sprint IV - Formateur, supports, mobile   :s4, 2026-10-08, 14d
+    Sprint V - Vitrine, tableau de bord       :s5, 2026-10-28, 11d
     section Livraison
-    Sprint VI - Corrections, APK, documents   :s6, after s5, 11d
+    Sprint VI - Corrections, APK, documents   :s6, 2026-11-12, 10d
 ```
+
+*Les sprints II/III et III/IV partagent une journée (fin le matin, début l'après-midi).*
 
 *Figure 1 : Diagramme de Gantt*
 
@@ -291,16 +588,16 @@ gantt
 
 ### 1.3 Technologies utilisées
 
-📄 **3 pages**
+📄 **4 pages**
 
 Pour chaque partie, plusieurs outils étaient possibles. J'ai comparé les deux candidats les plus
-sérieux à chaque fois, en gardant en tête trois contraintes : **je travaillais seul** sur le site,
+sérieux à chaque fois, en gardant en tête trois contraintes : **je travaillais seul** sur l'application web,
 le mobile et le serveur ; j'avais **trois mois** ; et l'application gère **de l'argent**, donc
 les données doivent toujours rester justes.
 
 #### 1.3.1 Partie affichage : web et mobile
 
-Le **site web** est un ensemble d'écrans remplis de listes, de fiches et de formulaires (23 écrans).
+L'**application web** est un ensemble d'écrans remplis de listes, de fiches et de formulaires (23 écrans).
 J'ai comparé **React** et **Vue.js**.
 
 *Tableau 2 : Comparaison entre React et Vue*
@@ -320,7 +617,7 @@ L'**application mobile** sert aux étudiants et aux visiteurs (13 écrans). J'ai
 
 | Critère | React Native (Expo) | Flutter |
 |---|---|---|
-| Langage | JavaScript / TypeScript, comme le site et le serveur | Dart, un langage de plus à apprendre |
+| Langage | JavaScript / TypeScript, comme l'application web et le serveur | Dart, un langage de plus à apprendre |
 | Affichage | Composants natifs du téléphone | Moteur de dessin propre à Flutter, très fluide |
 | Mise en route | Expo simplifie la création du fichier Android (APK) | Outils complets, mais installation plus lourde |
 | Fonctions utiles au projet | `react-native-webview` (lecteur), `expo-screen-capture` (bloquer les captures) | Équivalents disponibles |
@@ -335,7 +632,7 @@ e-mails. J'ai comparé **Node.js (Express)** et **Spring Boot (Java)**.
 
 | Critère | Node.js + Express | Spring Boot |
 |---|---|---|
-| Langage | JavaScript, le même que le site et le mobile | Java |
+| Langage | JavaScript, le même que l'application web et le mobile | Java |
 | Légèreté | Démarrage rapide, peu de configuration | Plus lourd, beaucoup de choses fournies d'office |
 | Structure | Libre : il faut s'imposer une organisation (routes → contrôles → controllers → services → models) | Structure très cadrée dès le départ |
 | Bibliothèques utiles | `jsonwebtoken`, `bcryptjs`, `multer`, `pdfkit`, `nodemailer`, `pdf-lib`, `sharp` | Équivalents nombreux |
@@ -357,7 +654,7 @@ Les données sont très liées entre elles (un étudiant a des inscriptions, une
 | Connaissance préalable | Déjà utilisée en cours | Moins pratiquée |
 | Ce qui a compté pour moi | **Simple à installer et à montrer**, suffisant pour le besoin | Plus puissante, mais pas nécessaire ici |
 
-**Mes choix.** J'ai retenu **React** pour le site, **React Native avec Expo** pour le mobile,
+**Mes choix.** J'ai retenu **React** pour l'application web, **React Native avec Expo** pour le mobile,
 **Node.js avec Express** pour le serveur et **MySQL** pour la base. Le point commun est simple :
 **un seul langage, JavaScript, du clic à la base de données**. Seul sur le projet et en trois
 mois, c'est ce qui m'a permis d'aller vite sans sacrifier la justesse des données, garantie par
@@ -367,11 +664,11 @@ les transactions de MySQL.
 
 ## 2 Réalisation de l'application
 
-📄 **22 pages**
+📄 **32 pages**
 
 ### 2.1 Analyse et conception
 
-📄 **4 pages**
+📄 **6 pages**
 
 #### 2.1.1 Analyse de l'existant
 
@@ -398,9 +695,9 @@ utilisateur a besoin.
 |---|---|---|
 | **Visiteur** | Mobile | Découvrir les formations, les formateurs et les prix ; s'inscrire sans se déplacer |
 | **Étudiant** | Mobile | Suivre ses formations et ses échéances ; payer depuis son téléphone ; lire ses supports ; poser ses questions |
-| **Formateur** | Site web | Publier ses supports (tout de suite ou plus tard) ; échanger avec ses étudiants ; noter la présentation |
-| **Accueil** | Site web | Créer les dossiers et inscriptions ; encaisser et **valider** les paiements ; repérer et relancer les retards ; produire les documents |
-| **Super Admin** | Site web | Tout ce que fait l'accueil ; gérer les comptes et les formations ; voir les chiffres et l'avis des étudiants |
+| **Formateur** | Application web | Publier ses supports (tout de suite ou plus tard) ; échanger avec ses étudiants ; noter la présentation |
+| **Accueil** | Application web | Créer les dossiers et inscriptions ; encaisser et **valider** les paiements ; repérer et relancer les retards ; produire les documents |
+| **Super Admin** | Application web | Tout ce que fait l'accueil ; gérer les comptes et les formations ; voir les chiffres et l'avis des étudiants |
 
 #### 2.1.2 Conception de l'application
 
@@ -415,31 +712,20 @@ serveur, 28 tables, 4 rôles (+ le visiteur).
 
 ##### 2.1.2.1 Conception affichage
 
-Le projet est fait de trois parties. Le site web et l'application mobile ne parlent **jamais**
+Le projet est fait de trois parties. L'application web et l'application mobile ne parlent **jamais**
 directement à la base : ils passent toujours par le serveur, et toujours par une seule fonction
 (`apiRequest`) qui joint le badge de connexion, envoie la demande et affiche le message d'erreur
 s'il y en a un, toujours en français compréhensible (« Impossible de joindre le serveur… » plutôt
 qu'un code technique).
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 flowchart LR
-    subgraph Affichage
-        W["Site web React<br/>(Super Admin, Accueil, Formateur)"]
-        M["Application mobile React Native<br/>(Étudiant, visiteur)"]
-    end
-    subgraph Traitement["Serveur Node.js / Express"]
-        API["API : règles du centre"]
-        PDF["PDF + QR code"]
-        MAIL["E-mails"]
-        FS[("Fichiers<br/>uploads/")]
-    end
-    DB[("Base MySQL<br/>28 tables")]
-
-    W -- "demande + badge" --> API
-    M -- "demande + badge" --> API
-    API --> DB
-    API --> PDF --> FS
-    API --> MAIL
+    W[Application web] --> API[Serveur Node.js]
+    M[Application mobile] --> API
+    API --> DB[(MySQL)]
+    API --> PDF[PDF]
+    API --> MAIL[E-mails]
 ```
 
 *Figure 2 : Architecture : web et mobile → serveur → base de données*
@@ -456,38 +742,18 @@ La conception métier dit **qui fait quoi**. Le diagramme de cas d'utilisation m
 principales de chaque acteur ; le Super Admin peut faire tout ce que fait l'accueil.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 flowchart LR
-    V(["👤 Visiteur"])
-    E(["👤 Étudiant"])
-    F(["👤 Formateur"])
-    AC(["👤 Accueil"])
-    SA(["👤 Super Admin"])
-
-    subgraph P["Plateforme IMTECH INFO"]
-        UC1("Voir la vitrine<br/>et s'inscrire")
-        UC2("Lire les supports,<br/>commenter, réagir")
-        UC3("Payer ses échéances")
-        UC4("Publier ou programmer<br/>un support")
-        UC5("Noter la présentation")
-        UC6("Valider inscriptions<br/>et paiements")
-        UC7("Suivre et relancer<br/>les échéances")
-        UC8("Créer les documents PDF")
-        UC9("Voir le tableau de bord")
-        UC10("Gérer comptes<br/>et formations")
-    end
-
-    V --- UC1
-    E --- UC2
-    E --- UC3
-    F --- UC2
-    F --- UC4
-    F --- UC5
-    AC --- UC6
-    AC --- UC7
-    AC --- UC8
-    AC --- UC9
-    SA --- UC10
-    SA -. "hérite de" .-> AC
+    V([Visiteur]) --- UC1(S'inscrire)
+    E([Étudiant]) --- UC2(Suivre les cours)
+    E --- UC3(Payer)
+    F([Formateur]) --- UC4(Publier un support)
+    F --- UC5(Noter la présentation)
+    AC([Accueil]) --- UC6(Valider inscriptions et paiements)
+    AC --- UC7(Relancer les retards)
+    AC --- UC8(Voir le tableau de bord)
+    SA([Super Admin]) --- UC9(Gérer comptes et formations)
+    SA -. hérite de .-> AC
 ```
 
 *Figure 3 : Diagramme de cas d'utilisation*
@@ -508,6 +774,7 @@ procédure stockée ni trigger : toutes les règles restent dans le serveur. Le 
 montre les tables principales.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 erDiagram
     ROLE ||--o{ UTILISATEUR : "attribué à"
     UTILISATEUR ||--o| ETUDIANT : "profil"
@@ -539,7 +806,7 @@ compte + dossier) est enregistré **en tout ou rien**. Le modèle logique comple
 
 ### 2.2 Développement par fonctionnalité ou module
 
-📄 **13 pages**
+📄 **17 pages**
 
 L'application compte une quinzaine de modules. Les modules **dossiers étudiants**,
 **formations**, **documents officiels** (fiche, facture, attestation avec QR code),
@@ -551,14 +818,14 @@ sont pas détaillés ici (🔗 `FLUX-APPLICATION.md`, parties 4 et 5). Ce chapit
 
 #### 2.2.1 Vitrine et inscription de l'étudiant
 
-📄 **2 pages**
+📄 **3 pages**
 
 **Description.** Une personne **sans compte** qui ouvre l'application arrive sur l'écran
 **Découvrir** : formations disponibles (photo, formateur, prix, durée), formateurs les mieux
 notés, engagements du centre et contacts. Formations et formateurs défilent **5 par 5** : les
 suivants arrivent quand on fait glisser jusqu'au bout. Elle peut choisir **une ou plusieurs
 formations** et s'inscrire elle-même : identité, mot de passe, nombre de tranches (1 à 4), moyen
-de paiement et référence. L'**Accueil** confirme ensuite chaque inscription depuis le site.
+de paiement et référence. L'**Accueil** confirme ensuite chaque inscription depuis l'application web.
 Un étudiant **déjà inscrit** peut, depuis l'onglet Formations, ouvrir le même écran (« Voir plus
 de formations ») : il n'y voit que les formations qu'il ne suit pas encore, et s'inscrit sans
 ressaisir son identité ni son dossier.
@@ -569,20 +836,24 @@ le contrôle, puisque rien n'est définitif sans sa validation.
 
 **Scénario clé.**
 
-1. Mahery ouvre l'application, parcourt la vitrine et ajoute « Développement web » et
-   « Python » à sa sélection.
-2. Il remplit le formulaire (mot de passe saisi deux fois), choisit de payer en 3 fois par Mobile
-   Money et photographie tout de suite ses pièces (photos d'identité, CIN, certificat de
-   résidence). Il aurait pu choisir « Plus tard » et les déposer après connexion, dans
-   **Mon dossier** (menu ⋮).
+1. Paul Rakotomalala ouvre l'application, parcourt la vitrine et ajoute « Développement web »
+   (450 000 Ar, 3 mois) et « Bureautique » (200 000 Ar, 1 mois) à sa sélection.
+2. Il remplit le formulaire (mot de passe saisi deux fois), choisit de payer **en 2 tranches**
+   pour chacune des deux formations et photographie **tout de suite** ses 4 pièces (deux photos
+   d'identité, CIN, certificat de résidence) : son dossier est complet dès l'envoi. Il aurait pu
+   choisir « Plus tard » et les déposer après connexion, dans **Mon dossier** (menu ⋮).
 3. Le serveur crée, **en une seule fois (tout ou rien)** : le compte, le dossier, les deux
-   inscriptions « en ligne », leurs échéanciers et le premier paiement « en attente ». Il reçoit
-   « Inscription envoyée » et le total à payer.
-4. Sur le site, l'accueil filtre les inscriptions sur **« En ligne »**, vérifie le paiement et
-   clique **« Valider »** : l'inscription est confirmée, le premier paiement passe à « validé ».
-   Si une pièce manquait, la validation serait refusée avec la liste des pièces à fournir.
-5. Les supports de la formation s'ouvrent pour Mahery.
-6. Trois mois plus tard, Mahery veut aussi « Excel avancé ». Depuis l'onglet Formations, il
+   inscriptions « en ligne », leurs échéanciers (Développement web : 2 × 225 000 Ar à J+45 et
+   J+90 ; Bureautique : 2 × 100 000 Ar à J+15 et J+30) et le premier paiement « en attente » de
+   chaque formation. Il reçoit « Inscription envoyée » et le total à payer (650 000 Ar).
+   L'accueil est prévenu : « Nouvelle inscription en ligne : Paul Rakotomalala, 2 formation(s)…
+   Dossier : 4/4 pièces ».
+4. Dans l'application web, l'accueil filtre les inscriptions sur **« En ligne »**, vérifie le paiement et
+   clique **« Valider »** sur chacune : l'inscription est confirmée, le premier paiement passe à
+   « validé ». Le dossier étant complet, rien ne bloque ; si une pièce manquait, la validation
+   serait refusée avec la liste des pièces à fournir.
+5. Les supports des deux formations s'ouvrent pour Paul.
+6. Quelques mois plus tard, Paul veut aussi « Excel avancé ». Depuis l'onglet Formations, il
    touche « Voir plus de formations », coche Excel, choisit ses tranches et son paiement : son
    compte et son dossier existent déjà. L'accueil valide comme d'habitude.
 
@@ -601,7 +872,7 @@ le contrôle, puisque rien n'est définitif sans sa validation.
 - **Pas de validation sans dossier complet** : le serveur sait qu'une inscription vient du
   mobile grâce à son origine (« en ligne »). Il refuse de la valider tant que les 4 pièces ne
   sont pas déposées. L'étudiant peut remplacer une pièce à tout moment ; l'accueil est prévenu.
-  Sur le site, les inscriptions à valider s'affichent en premier, un filtre « Dossier » (complet /
+  Dans l'application web, les inscriptions à valider s'affichent en premier, un filtre « Dossier » (complet /
   incomplet) les retrouve et le détail d'une inscription montre les pièces manquantes.
 - **Inscription faite à l'accueil** : jamais bloquée, puisque c'est l'accueil qui complète le
   dossier. La fenêtre de validation le prévient (« Dossier incomplet (2/4 pièces) ») et le bouton
@@ -615,7 +886,7 @@ le contrôle, puisque rien n'est définitif sans sa validation.
 
 #### 2.2.2 Échéances et paiements
 
-📄 **4 pages**
+📄 **5 pages**
 
 **Description.** Dès qu'une inscription est créée, le serveur calcule **automatiquement
 l'échéancier** : le prix est divisé par le nombre de tranches, et chaque tranche reçoit une date.
@@ -656,38 +927,28 @@ seule fois** par échéance. C'est ensuite une personne qui décide de cliquer *
    imposé** : c'est celui de l'échéance.
 3. Le serveur vérifie que l'échéance est **bien à lui**, qu'elle n'est pas déjà payée et qu'aucun
    paiement n'attend déjà. Il enregistre le paiement **« en attente »** et prévient l'accueil.
-4. Sur le site, la page Paiements affiche « 1 paiement attend votre validation ». L'accueil
+4. Dans l'application web, la page Paiements affiche « 1 paiement attend votre validation ». L'accueil
    vérifie sur son relevé et clique **« Valider »**.
 5. Toky reçoit « Votre paiement a été validé » ; la somme passe dans « Déjà payé ».
 
 📷 *Figure 8 : Paiement depuis le téléphone puis validation par l'Accueil — à gauche l'écran
-Paiements du mobile (« En attente de validation »), à droite la page Paiements du site avec le
+Paiements du mobile (« En attente de validation »), à droite la page Paiements de l'application web avec le
 bandeau et les boutons Valider / Refuser (`Paiements.png` existe déjà).*
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 sequenceDiagram
-    autonumber
-    actor E as Étudiant (mobile)
-    participant API as Serveur
-    participant DB as Base de données
-    actor A as Accueil (site)
+    actor E as Étudiant
+    participant S as Serveur
+    participant DB as Base
+    actor A as Accueil
 
-    E->>API: POST /paiements (échéance, Mobile Money, référence) + badge
-    API->>API: badge valable ? connexion ouverte ? rôle Étudiant ?
-    API->>DB: l'échéance est-elle à lui ? déjà payée ? déjà en attente ?
-    alt échéance d'un autre
-        API-->>E: 403 refusé
-    else déjà payée ou déjà en attente
-        API-->>E: 409 déjà fait
-    else tout va bien
-        API->>DB: INSERT paiement (montant prévu, statut « en attente »)
-        API->>DB: notification à l'accueil
-        API-->>E: « Paiement envoyé, en attente de validation »
-    end
-    A->>API: PUT /paiements/:id/valider
-    API->>DB: UPDATE statut = « validé » SEULEMENT s'il est encore « en attente »
-    API->>DB: notification à l'étudiant
-    API-->>A: « Paiement validé »
+    E->>S: envoie le paiement
+    S->>DB: enregistre (en attente)
+    S-->>E: en attente de validation
+    A->>S: valide le paiement
+    S->>DB: statut = validé
+    S-->>E: notification
 ```
 
 *Figure 9 : Diagramme de séquence d'un paiement*
@@ -707,11 +968,21 @@ sequenceDiagram
 - La même limite vaut pour **corriger** le montant d'un paiement et pour **réactiver** un paiement
   validé : une échéance repayée entre-temps refuse la réactivation.
 - Chaque paiement garde le **membre du personnel** qui l'a saisi, validé ou refusé.
-- La veille de la fin de formation, l'étudiant doit **commenter son formateur** depuis l'application
-  mobile : sans ce commentaire, pas d'attestation. L'Accueil et la direction le lisent et le notent sur
+- Deux jours avant la fin de formation (J-2), l'étudiant doit **commenter son formateur** depuis l'application
+  mobile : sans ce commentaire, pas d'attestation. Il est prévenu à J-2 puis relancé chaque jour tant qu'il ne
+  l'a pas fait ; l'Accueil voit sur le web « X va bientôt recevoir son attestation, en attente de son
+  commentaire », puis « Le commentaire formateur de X a été envoyé ». L'attestation part dès le commentaire
+  écrit (si la formation est terminée, tout payé et la note attribuée). L'Accueil et la direction le lisent et le notent sur
   10 ; le formateur ne le voit pas.
+- Le tableau de bord signale les **étudiants à risque de décrochage** (assiduité récente, aucun cours ouvert depuis une semaine,
+  échéances en retard) ; l'Accueil peut les relancer, au plus une fois tous les 3 jours. Le classement
+  des formateurs reste sur le tableau de bord ; la notation des commentaires et ce qui reste à faire
+  (étudiants pas encore commentés, commentaires à noter) ont leur page, « Formateurs ».
 - Le **classement des formateurs** se fait sur 20 : 10 points calculés d'après les réactions sur leurs
-  supports, 10 points d'après la moyenne des commentaires notés.
+  supports, 10 points d'après la moyenne des commentaires notés. Cette seconde partie ne compte qu'une
+  fois que tous ses étudiants ont commenté et que tous les commentaires sont notés : une note calculée
+  sur une partie des élèves ne serait pas juste. Le tableau montre quels étudiants n'ont pas encore
+  commenté ; si l'un d'eux a abandonné, l'Accueil désactive son inscription et la note se débloque.
 - Une inscription n'a **qu'une seule attestation** : un nouvel envoi renvoie la même, avec le même QR
   code, et la note de présentation ne peut plus changer une fois l'attestation délivrée.
 - Une facture émise est un document officiel : son paiement ne peut plus être désactivé, et son
@@ -721,7 +992,7 @@ sequenceDiagram
 
 #### 2.2.3 Supports de cours
 
-📄 **4 pages**
+📄 **5 pages**
 
 **Description.** Le formateur publie un **support** dans une de ses formations : un titre, un
 **texte mis en forme** (gras, listes, titres, liens) et, s'il le souhaite, un **fichier** (PDF,
@@ -734,8 +1005,8 @@ mettre dans l'application évite qu'ils circulent par message, les range au mêm
 permet aux étudiants de poser leurs questions juste sous le cours. Les réactions donnent aussi à
 la direction un premier avis sur chaque formateur ([§2.3.4](#234-état-e4--avis-des-étudiants-sur-les-formateurs)).
 
-**Publication.** Le formateur choisit la formation, écrit le titre et le texte, joint un fichier
-et clique sur **Publier**. Les étudiants inscrits reçoivent une notification. Avant
+**Publication.** Le formateur choisit la formation, écrit le titre et le texte, joint un ou plusieurs
+fichiers (10 au plus, un support est créé par fichier) et clique sur **Publier**. Les étudiants inscrits reçoivent une notification. Avant
 d'enregistrer, le serveur **nettoie le texte** : il ne garde qu'une liste précise de mises en
 forme autorisées et supprime tout le reste. Sans cela, un programme malveillant caché dans le
 texte pourrait se lancer chez **tous** les étudiants de la formation.
@@ -754,6 +1025,7 @@ le fichier joint.*
    formateur. S'il était éteint à 8 h, le support part dès son redémarrage.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 stateDiagram-v2
     [*] --> Programme : envoyé avec une date
     [*] --> Publie : envoyé tout de suite
@@ -764,7 +1036,7 @@ stateDiagram-v2
 ```
 
 📷 *Figure 11 : Support programmé, vu par le formateur et par l'étudiant — à gauche la page
-Supports programmés du site (date, bouton Envoyer maintenant), à droite l'annonce « dans une
+Supports programmés de l'application web (date, bouton Envoyer maintenant), à droite l'annonce « dans une
 heure » reçue sur le téléphone. Le schéma d'états ci-dessus peut accompagner la figure.*
 
 **Commentaires et réactions.**
@@ -795,7 +1067,7 @@ repliées, mention `@`) et barre de réactions, sur le téléphone.*
 
 #### 2.2.4 Utilisateurs et sécurité
 
-📄 **3 pages**
+📄 **4 pages**
 
 **Description.** L'application connaît **quatre rôles** (Super Admin, Accueil, Formateur,
 Étudiant) et le visiteur sans compte. Chacun se connecte avec son e-mail et son mot de passe ;
@@ -803,7 +1075,7 @@ le menu et surtout les **droits vérifiés par le serveur** dépendent du rôle.
 une **session** qu'on peut voir et fermer à distance. Les essais de mot de passe sont **limités**,
 et les documents sont **protégés** à l'ouverture. Par ailleurs, l'étudiant peut envoyer une
 **demande d'assistance** que l'accueil marque comme résolue, et chacun peut **personnaliser
-l'apparence** du site (thème clair ou sombre, couleur, taille du texte).
+l'apparence** de l'application web (thème clair ou sombre, couleur, taille du texte).
 
 **Pourquoi.** L'application contient des pièces d'identité, de l'argent et des documents
 officiels. Chacun ne doit voir que ce qui le concerne, on doit pouvoir couper un accès à tout
@@ -813,7 +1085,7 @@ moment (téléphone perdu, employé qui part), et un document qui fuit doit pouv
 après une déconnexion. Le serveur garde donc la liste des connexions (table `sessions`) et vérifie
 **à chaque demande** que la connexion est toujours ouverte. Dans *Paramètres → Sécurité*, chacun
 voit ses appareils (navigateur, adresse, date, appareil actuel mis en avant) et peut **déconnecter
-les autres appareils**. Le site et l'application revérifient la connexion chaque minute : les
+les autres appareils**. L'application web et l'application mobile revérifient la connexion chaque minute : les
 autres appareils reviennent à l'écran de connexion en moins d'une minute. Désactiver un compte ou
 changer son mot de passe ferme aussi les autres sessions. Un compte désactivé n'est pas effacé :
 le Super Admin le retrouve dans la page Utilisateurs avec le filtre « Désactivés » et peut le
@@ -841,7 +1113,7 @@ répond **la même chose que le compte existe ou non**, pour ne pas révéler qu
    suffit pas, et un lien copié ne marche plus après la déconnexion. Un étudiant n'ouvre un
    support que s'il est inscrit et confirmé ; ses pièces d'identité ne sont visibles que par lui,
    l'accueil et le Super Admin.
-2. **Le nom du lecteur est écrit en filigrane** (« IMTECH INFO · Nom · e-mail · date ») sur le PDF
+2. **Le nom du lecteur est écrit en filigrane** (« Imteaching Formation · Nom · e-mail · date ») sur le PDF
    ou l'image au moment où il l'ouvre ; le fichier d'origine ne change pas. C'est la seule
    protection qui marche même si quelqu'un photographie l'écran avec un autre téléphone.
 3. **Sur le téléphone**, le support s'ouvre dans un lecteur interne : pas de bouton télécharger,
@@ -854,34 +1126,19 @@ transparence, et l'écran noir obtenu en tentant une capture sur Android.*
 **Scénario clé : la connexion.**
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 sequenceDiagram
-    autonumber
     actor U as Utilisateur
-    participant C as Site / Mobile
-    participant API as Serveur
-    participant DB as Base de données
+    participant S as Serveur
+    participant DB as Base
 
-    U->>C: e-mail + mot de passe
-    C->>API: POST /auth/login
-    API->>API: trop d'échecs ces 15 dernières minutes ?
-    alt oui
-        API-->>C: 429 « Trop de tentatives »
-    end
-    API->>DB: cherche le compte (actif) par e-mail
-    API->>API: compare avec le mot de passe haché (bcrypt)
-    alt incorrect
-        API-->>C: 401 « Identifiants incorrects » (échec compté)
-    else correct
-        API->>API: remet le compteur à zéro, crée un badge JWT (24 h)
-        API->>DB: INSERT session (appareil, adresse, expiration)
-        API-->>C: badge + profil (rôle)
-        C->>C: garde le badge, affiche le menu du rôle
-    end
-    Note over C,API: ensuite, à CHAQUE demande
-    C->>API: demande + badge
-    API->>DB: session toujours ouverte ?
-    alt fermée ou expirée
-        API-->>C: 401 → retour à l'écran de connexion
+    U->>S: e-mail + mot de passe
+    S->>DB: cherche le compte
+    alt mot de passe correct
+        S->>DB: crée la session
+        S-->>U: jeton + rôle
+    else incorrect
+        S-->>U: erreur
     end
 ```
 
@@ -893,7 +1150,7 @@ sequenceDiagram
 
 ### 2.3 États d'analyse et statistiques
 
-📄 **3 pages** (4 au plus avec les captures). Le détail des chiffres, des règles de calcul et des
+📄 **5 pages**, captures comprises. Le détail des chiffres, des règles de calcul et des
 vérifications est en [Annexe G](#annexe-g--détail-des-états-danalyse) ; les requêtes SQL en
 [Annexe F](#annexe-f--requêtes-des-états-danalyse).
 
@@ -914,16 +1171,17 @@ quel formateur accompagner ?).
 |:-:|---|---|---|---|---|
 | **E1** | Indicateurs financiers | Direction (Super Admin), Accueil | Combien avons-nous encaissé, combien reste-t-il à recevoir, et combien d'échéances sont en retard ? | Tableau de bord | Écran |
 | **E2** | Évolution des encaissements et des inscriptions | Direction | Notre activité progresse-t-elle d'un mois à l'autre, et quelles formations attirent le plus ? | Analyse | Écran (courbe, barres) |
-| **E3** | Notes d'attestation et classement d'une formation | Formateur, Direction | Quelle note mérite chaque étudiant, et qui décroche ? | Synthèse | Écran |
-| **E4** | Avis des étudiants sur les formateurs | Direction | Quels formateurs sont appréciés, lesquels faut-il accompagner ? | Synthèse | Écran |
+| **E3** | Notes d'attestation et classement d'une formation | Formateur, Direction | Quelle note mérite chaque étudiant ? | Synthèse | Écran |
+| **E4** | Avis des étudiants sur les formateurs (note sur 20) | Direction, Accueil | Quels formateurs sont appréciés, lesquels faut-il accompagner ? | Synthèse | Écran |
 | E5 | Échéances en retard et à rappeler | Accueil | Qui dois-je relancer aujourd'hui ? | Opérationnel | Écran (rouge / jaune) |
 | E6 | Export des inscriptions | Accueil, Direction | Comment retravailler la liste des inscrits dans Excel ? | Opérationnel | CSV (Excel) |
 | E7 | Fiche d'inscription, facture | Accueil, étudiant | Que l'étudiant a-t-il acheté et payé ? | Opérationnel | PDF |
 | E8 | Attestation de formation | Étudiant, employeur | Cet étudiant a-t-il réellement suivi la formation, avec quelle note ? | Opérationnel | PDF + QR code |
+| **E9** | Étudiants à risque de décrochage | Accueil, Direction | Quels élèves sont en train de lâcher leur formation, et pourquoi ? | Alerte | Écran + notification |
 
-Cinq états sont détaillés ci-dessous : les quatre états d'aide à la décision, E1 à E4, et E5,
-l'état de travail le plus utilisé par l'Accueil. Les fiches de E6 à E8, sur le même plan, sont en
-[Annexe G](#annexe-g--détail-des-états-danalyse) (G.7 à G.9). Chaque fiche suit le même plan : besoin,
+Cinq états sont détaillés ci-dessous : les quatre états d'aide à la décision, E1 à E4, et E9,
+l'alerte de décrochage. Les fiches des états opérationnels E5 à E8, sur le même plan, sont en
+[Annexe G](#annexe-g--détail-des-états-danalyse) (G.6 à G.9). Chaque fiche suit le même plan : besoin,
 données et calcul, restitution, lecture, vérification.
 
 #### 2.3.1 État E1 : indicateurs financiers (tableau de bord)
@@ -953,7 +1211,7 @@ il a déjà reçu plus que ce qu'il attend encore. Ce reste n'est pas un retard 
 montre **1 900 000 Ar** à venir (13 échéances dont la date n'est pas encore arrivée),
 **265 000 Ar** à valider (2 échéances déjà payées depuis le téléphone) et **533 333 Ar** vraiment
 en retard, soit **4 échéances** seulement. L'Accueil n'a donc pas à relancer tout le monde, mais quatre échéances
-(deux étudiants), qu'il retrouve en rouge dans la liste des échéances (E5). Filtré **du 01/07 au
+(deux étudiants), qu'il retrouve en rouge dans la liste des échéances (E5, [Annexe G.6](#annexe-g--détail-des-états-danalyse)). Filtré **du 01/07 au
 30/09/2026** (3ᵉ trimestre), le tableau de bord montre **3 096 667 Ar** encaissés et seulement
 **266 667 Ar** restant dus sur les échéances du trimestre, qui correspondent tous à **2 échéances en
 retard** : le trimestre est presque entièrement recouvré.
@@ -1006,10 +1264,18 @@ décroche. La même règle doit valoir pour tous.
 
 **Données et calcul.** Tables `inscription`, `presence`, `echeance` et `paiement`. **Filtres** :
 la formation (un formateur ne voit que les siennes) ; la période est celle de la formation. La
-note fait 20 points. **10 sont calculés** par l'application : on part de 10, on retire jusqu'à −4
-pour les absences (un étudiant est présent un jour de semaine s'il a utilisé l'application) et
-jusqu'à −4 pour les échéances payées en retard ou non réglées. **Les 10 autres** sont la note de
-présentation donnée par le formateur. Le classement trie par note calculée.
+note fait 20 points. **10 sont calculés** par l'application : on part de 10 et on retire des
+points, sans jamais descendre sous 0 :
+- **présence** (jours présents ÷ jours de cours déjà passés, du lundi au vendredi) : 0 à partir de
+  90 %, −1 de 75 à 89 %, −2 de 50 à 74 %, −4 sous 50 %. Un étudiant est présent un jour de semaine
+  s'il a ouvert un support de cours, réagi ou commenté ce jour-là ;
+- **paiement**, pour chaque échéance dont le lendemain est passé : 0 si elle est soldée le jour
+  de sa date, −1 si elle n'est soldée que le lendemain, −2 si elle ne l'est toujours pas ; −4 au
+  plus en tout. C'est la date d'**envoi** du paiement qui compte (un paiement refusé ne compte pas).
+
+**Les 10 autres** sont la note de présentation donnée par le formateur ; elle ne change plus une
+fois l'attestation délivrée. Le classement trie par note calculée, puis par nombre de présences ;
+des ex æquo partagent le même rang.
 
 📷 *Figure 18 : Notes et classement de la formation Développement web — espace formateur
 (`Dashboard formateur.png`).*
@@ -1033,64 +1299,94 @@ note finale est de 8/20. Le formateur sait donc qui appeler : Toky, et non toute
 **Besoin.** La direction n'assiste pas aux cours. Elle a besoin d'un premier signal pour savoir
 quel formateur **mettre en avant** dans la vitrine et lequel **accompagner**.
 
-**Données et calcul.** Tables `reaction`, `type_reaction`, `support` et `utilisateur`. **Filtres** :
-par avis, tri par type de réaction et **période** (le filtre « Du … au … » de E1) : seules les réactions
-**données pendant la période** sont comptées, pour voir si un formateur progresse d'un trimestre
-à l'autre. On compte les réactions des étudiants sur
-les supports publiés : 👍 ❤️ 💡 sont positives, 👎 négative. Un formateur est jugé **compétent** avec au moins 5 réactions et au moins
-60 % de positives ; sous 5 réactions, l'application ne juge pas.
+**Données et calcul.** Tables `reaction`, `type_reaction`, `support`, `formateur_note`,
+`inscription` et `utilisateur`. **Filtres** : par avis, tri (note sur 20, note des réactions, note
+des commentaires ou type de réaction) et **période** (le filtre « Du … au … » de E1) : seules les
+réactions et les commentaires **donnés pendant la période** sont comptés, pour voir si un
+formateur progresse d'un trimestre à l'autre. Chaque formateur reçoit une **note sur 20** :
+- **10 points de réactions** : on compte les réactions des étudiants sur ses supports publiés
+  (👍 ❤️ 💡 positives, 👎 négative) ; note = % de positives ÷ 10. Avec au moins 5 réactions, il est
+  jugé **compétent** à partir de 60 % de positives, **non compétent** en dessous ; sous 5
+  réactions, l'application ne juge pas et ne donne pas cette note ;
+- **10 points de commentaires** : à partir de 2 jours avant la fin de sa formation, chaque
+  étudiant écrit un commentaire sur son formateur (obligatoire pour recevoir l'attestation), que
+  l'Accueil ou le Super Admin note sur 10. Note = moyenne de ces notes, comptée **seulement quand
+  tous les étudiants attendus ont commenté et que tous les commentaires sont notés** ; sinon
+  l'écran indique ce qui manque (« 4/5 commentés », « 1 à noter »).
 
-📷 *Figure 19 : Avis des étudiants sur les formateurs, triés par compétence.*
+La note sur 20 n'existe que si les deux parties sont connues. Le classement met d'abord les
+formateurs notés, de la meilleure note à la moins bonne, puis les autres dans l'ordre de l'avis.
+
+📷 *Figure 19 : Classement des formateurs sur 20 (réactions + commentaires).*
 *Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
 
 **Lecture.** Trois formateurs sur cinq sont jugés compétents (Tiana en tête : 94 % sur 18
-réactions). **Hery** est le seul jugé non compétent : 5 de ses 7 réactions sont des 👎, soit
-29 % de positif seulement. C'est lui que la direction doit rencontrer en priorité pour revoir ses
-supports. **Lalaina** a 100 % de positif, mais sur 4 réactions seulement : l'application refuse
-de conclure sur si peu d'avis.
+réactions). **Tiana** est premier avec **17,65/20** (9,4 de réactions + 8,25 de commentaires).
+**Hery** est le seul jugé non compétent : 5 de ses 7 réactions sont des 👎, soit 29 % de positif,
+et ses deux commentaires sont notés 3,5 et 4 : **6,65/20**. Les deux signaux concordent : c'est lui
+que la direction doit rencontrer en priorité pour revoir ses cours. **Voahangy** et **Rivo** n'ont
+pas encore de note sur 20 : il manque le commentaire de Tsiory pour la première, et celui d'Onja
+reste à noter pour le second. **Lalaina** a 100 % de positif, mais sur 4 réactions seulement :
+l'application refuse de conclure sur si peu d'avis, même si ses commentaires sont tous notés.
 
 **Vérification.** Trois contrôles ont été faits :
 - **Comptage direct dans la base** : une requête de contrôle compte les lignes de la table
   `reaction` (47 lignes). L'écran donne le même total : 18 + 12 + 6 + 7 + 4 = 47 réactions.
-- **Calcul à la main** : l'avis de Hery a été refait à partir de la règle. Il a 2 réactions
-  positives sur 7, soit 29 %. Il a au moins 5 réactions mais moins de 60 % de positives, donc il est
-  « non compétent », comme à l'écran. Lalaina n'a que 4 réactions, moins de 5 : pas d'avis.
-- **Tests automatiques** : 2 tests (`commentairesReactions.test.js`) vérifient les seuils et
-  l'ordre d'affichage, avec un cas pile à la limite (6 sur 10 = 60 %, jugé compétent).
+- **Calcul à la main** : Hery a 2 réactions positives sur 7, soit 29 % : au moins 5 réactions mais
+  moins de 60 %, donc « non compétent », et 2,9 points. Ses commentaires : (3,5 + 4) ÷ 2 = 3,75.
+  Note : 2,9 + 3,75 = 6,65/20, comme à l'écran. Lalaina n'a que 4 réactions, moins de 5 : pas d'avis.
+- **Tests automatiques** : 4 tests vérifient les seuils de l'avis et l'ordre d'affichage
+  (`commentairesReactions.test.js`, avec un cas pile à la limite : 6 sur 10 = 60 %, jugé
+  compétent), ainsi que la note sur 20 et le refus de la donner tant qu'un commentaire manque ou
+  n'est pas noté (`formateurNote.test.js`).
 
-#### 2.3.5 État E5 : échéances en retard et à rappeler
+#### 2.3.5 État E9 : étudiants à risque de décrochage
 
-**Besoin.** Chaque matin, l'Accueil doit savoir **qui relancer aujourd'hui** : ceux dont
-l'échéance arrive (pour éviter le retard) et ceux qui sont déjà en retard (pour récupérer l'argent).
-Avant le projet, il fallait relire le cahier des paiements ligne par ligne.
+**Besoin.** Un centre de formation perd surtout des élèves **sans le savoir** : l'élève vient
+moins, ne paie plus, puis disparaît. Quand l'Accueil s'en aperçoit, il est trop tard. La note
+d'attestation (E3) ne suffit pas : elle juge **toute** la formation, si bien qu'un élève assidu
+pendant deux mois qui ne vient plus depuis deux semaines garde une bonne moyenne.
 
-**Données et calcul.** Tables `echeance`, `paiement`, `inscription`, `formation` et `utilisateur`.
-**Filtres** : couleur, recherche (étudiant ou formation) et **période** « Du … au … » sur la date
-d'échéance. Pour chaque échéance, l'application calcule le **reste** (montant prévu − paiements
-validés) et lui donne une couleur :
-- 🔴 **en retard** : la date est passée et l'échéance n'est pas réglée ;
-- 🟡 **à rappeler** : elle n'est pas réglée et tombe aujourd'hui, demain ou après-demain ;
-- 🟢 **à jour** : elle est réglée, ou sa date est dans plus de 2 jours.
+**Données et calcul.** Tables `presence` (un jour où l'étudiant a ouvert un support, réagi ou commenté),
+`echeance`, `paiement`, `inscription`. Seules les formations **en cours** depuis au moins 5 jours de
+cours sont regardées. Trois critères, chacun noté 0, 1 ou 2 :
 
-Un paiement envoyé depuis le téléphone mais pas encore validé compte comme réglé pour la couleur :
-on ne relance pas un étudiant qui a déjà payé.
+| Critère | 0 | 1 point | 2 points |
+|---|---|---|---|
+| Assiduité sur les 10 derniers jours de cours | 75 % et plus | 50 à 74 % | moins de 50 % |
+| Silence : jours depuis le dernier cours ouvert (ou réaction, commentaire) | moins de 7 jours | — | 7 jours ou plus |
+| Échéances en retard (même règle que E5) | aucune | 1 | 2 ou plus |
 
-📷 *Figure 20 : Page Échéances au 26/10/2026, filtrée sur « En retard » puis sur « À rappeler »
-(`echeances.png`).*
+Score sur 6 : **0-1 normal**, **2-3 à surveiller**, **4-6 à contacter**. Il faut deux problèmes à
+la fois pour être « à contacter » : un élève assidu qui paie en retard reste suivi par E5. Rien
+n'est enregistré : le risque est recalculé à chaque lecture, à partir des mêmes règles que E3 (jours
+de cours) et E5 (retard), sans les recopier.
+
+📷 *Figure 20 : Carte « Étudiants à risque de décrochage » du tableau de bord, au 26/10/2026.*
 *Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
 
-**Lecture.** Sur **49 échéances**, 4 seulement sont en retard (**8 %**), pour **533 333 Ar** :
-elles concernent **deux étudiants**, Toky et Fanomezantsoa. Ils ont déjà reçu un rappel par e-mail
-le 20/10, sans réponse depuis six jours : l'Accueil doit maintenant les **appeler**. Les
-**3 échéances jaunes** (Tsiory aujourd'hui, Andry et Onja le 28/10, 390 000 Ar en tout) sont à
-rappeler dès ce matin pour qu'elles ne passent pas au rouge. Les 42 autres sont à jour : l'Accueil
-passe donc 5 appels au lieu de relire 49 lignes.
+**Restitution et action.** Chaque élève apparaît avec **ses raisons** (par exemple « Aucun
+cours ouvert depuis 13 jours »), un lien vers son inscription et un bouton **Relancer** : notification et e-mail
+bienveillants (« Tout va bien ? »), sans jamais parler de « risque », au plus une fois tous les
+3 jours. La liste est paginée par 10, les plus urgents en premier. On peut chercher un étudiant ou une
+formation, et n'afficher que les élèves « à contacter » ou « à surveiller » ; les
+compteurs « à contacter » et « à surveiller » portent toujours sur toute la liste. Comme dans les
+autres tableaux, on peut cocher plusieurs élèves et les relancer d'un coup (ceux déjà relancés depuis
+moins de 3 jours sont ignorés). La tâche horaire prévient l'Accueil quand un élève passe « à contacter », une seule fois
+par épisode. L'outil reste interne : l'étudiant ne voit jamais son niveau, et ce n'est pas une sanction.
 
-**Vérification.** 32 réglées + 10 à venir + 3 jaunes + 4 rouges = 49 échéances, autant que la
-somme des tranches des 25 inscriptions. Les 4 lignes rouges sont les 4 retards du tableau de bord
-(E1), pour le même montant (150 000 + 150 000 + 116 666,67 + 116 666,66 = 533 333 Ar). Jaunes et
-vertes à venir font 390 000 + 1 510 000 = 1 900 000 Ar, le montant « à venir » de E1 (détail en
-[Annexe G.6](#annexe-g--détail-des-états-danalyse)).
+**Lecture.** Au 26/10, **Sitraka** (Réseaux) n'a plus ouvert un cours depuis 13 jours et n'a été
+présent que 2 des 10 derniers jours de cours : 2 + 2 = 4 points, « à contacter ». **Andry**
+(Python) n'a été présent que 2 des 10 derniers jours de cours (2 points), mais a ouvert un cours
+récemment : « à surveiller ».
+Toky et Fanomezantsoa, qui doivent de l'argent, n'y sont pas : leur formation est terminée, ils
+relèvent du recouvrement (E5), pas du décrochage. Tsiory et Onja, dont l'échéance est à rappeler,
+restent assidus : ils n'y sont pas non plus, et même en retard ils n'auraient qu'un seul problème.
+
+**Vérification.** 14 tests automatiques (`decrochage.test.js`) vérifient chaque critère pile sur
+ses seuils (6 et 7 jours de silence, 50 % et 75 % d'assiduité), la fenêtre de 10 jours sans
+week-end, l'exclusion des formations qui commencent, l'ordre d'affichage, la pagination, la recherche et le filtre par niveau, le refus d'une relance
+trop rapprochée et l'alerte unique.
 
 #### 2.3.6 Bilan des états
 
@@ -1101,7 +1397,7 @@ Ces états répondent à l'objectif n° 7 du projet, **donner des chiffres à la
 somme des mois de E2, les retards de E1 sont les lignes rouges de E5 et se retrouvent dans les
 notes de E3, et le total facturé
 est égal à la somme de l'export CSV faite dans Excel. Les règles des notes et des avis sont en plus
-contrôlées par 11 tests automatiques, et les filtres de période par 3 autres (détail en
+contrôlées par 13 tests automatiques, le décrochage par 14 et les filtres de période par 3 autres (détail en
 [Annexe G](#annexe-g--détail-des-états-danalyse)).
 La direction sait désormais combien rentre, qui relancer, quelles formations développer et quels
 formateurs accompagner, sans recompter de cahier.
@@ -1120,13 +1416,13 @@ Deux besoins restent à couvrir :
 
 ### 2.4 Problèmes rencontrés et solutions
 
-📄 **2 pages**
+📄 **4 pages**, avec l'audit Lighthouse (Tableau 10, Figures 21 et 22)
 
 *Tableau 9 : Problèmes rencontrés et solutions*
 
 | # | Problème | Solution |
 |:-:|---|---|
-| 1 | Se déconnecter ne coupait pas l'accès : le badge JWT restait valable 24 h | Table `sessions` vérifiée à chaque demande ; site et mobile revérifient chaque minute |
+| 1 | Se déconnecter ne coupait pas l'accès : le badge JWT restait valable 24 h | Table `sessions` vérifiée à chaque demande ; application web et mobile revérifient chaque minute |
 | 2 | Un étudiant pouvait dire « j'ai payé » sans que l'argent soit arrivé | Paiement « en attente » validé par l'accueil, montant imposé |
 | 3 | Un double clic ou deux employés en même temps validaient deux fois | Le statut ne change que s'il est encore dans l'état attendu ; la base refuse les doublons |
 | 4 | Diviser un prix en tranches laisse des centimes qui ne tombent pas juste | La dernière tranche récupère les centimes manquants |
@@ -1138,15 +1434,76 @@ Deux besoins restent à couvrir :
 | 10 | Page Échéances et alerte de rappel : les paiements de toutes les échéances étaient additionnés à chaque affichage, puis chaque heure | Le serveur choisit d'abord les 10 échéances de la page, puis calcule leurs montants ; index sur la date d'échéance et sur les paiements, sans changer les tables |
 | 11 | Tableau de bord : tout l'historique des paiements recalculé à chaque ouverture, pour chaque employé | Échéances lues une seule fois, calculs faits dans les index, résultat gardé une minute et partagé par tout le personnel |
 | 12 | Des écrans chargeaient une table entière : menu de tous les étudiants pour une inscription, toutes les échéances pour 5 lignes du tableau de bord, exports sans limite | L'étudiant se cherche en tapant son nom ; le serveur n'envoie que les lignes affichées ; export plafonné à 10 000 lignes avec un message |
+| 13 | Audit Lighthouse de l'application web : la page « sautait » pendant le chargement, la police venait de Google Fonts et bloquait l'affichage, le texte gris manquait de contraste | Place réservée pendant le chargement, police fournie avec l'application, gris foncé (contraste 5,2:1) ; scores mesurés sur la version de production (`npm run build` + `npm run preview`), avant / après |
+| 14 | Photos de profil de plusieurs Mo affichées en tout petit | Le serveur les réduit à 400 px dès l'envoi (bibliothèque sharp) ; les images s'affichent seulement quand elles arrivent à l'écran |
 
-> 💡 Pour remplir les 2 pages : ajouter sous le tableau un court paragraphe sur les problèmes 1
-> et 2, les plus parlants. 🔗 Autres problèmes rencontrés : `FLUX-APPLICATION.md`, partie 9.
+> 💡 Pour remplir les pages : ajouter sous le tableau un court paragraphe sur les problèmes 1,
+> 2 et 11, les plus parlants, puis l'audit Lighthouse ci-dessous (problème 13).
+> 🔗 Autres problèmes rencontrés : `FLUX-APPLICATION.md`, partie 9.
+
+> Le plan du mémoire ne prévoit pas de titre « Audit » : l'audit est réparti dans des parties
+> existantes, **sans nouveau titre**. Ici en 2.4 (les problèmes que Lighthouse a révélés et leur
+> correction), en 3.1 (la qualité de ce qui est livré à l'entreprise) et en 3.3 (ce qui reste à faire).
+> Les paragraphes commencent par un mot en gras au lieu d'un titre.
+
+**Audit de l'application web avec Lighthouse.** Certains de ces problèmes (13 et 14) n'ont pas été vus à
+l'usage : ils ont été révélés par une mesure. **Lighthouse** est l'outil d'audit de Google intégré au
+navigateur Chrome (touche F12, onglet « Lighthouse »). Il ouvre la page comme un utilisateur,
+chronomètre son chargement et vérifie une liste de règles. Comme un contrôle technique, il rend une
+note sur 100 dans quatre domaines : **performances** (la page s'affiche-t-elle vite ?),
+**accessibilité** (peut-on l'utiliser avec une vue faible ou un lecteur d'écran ?), **bonnes
+pratiques** (règles de sécurité et de qualité du web) et **SEO** (un moteur de recherche peut-il la
+comprendre ?). La note de performance vient de cinq mesures : premier affichage (**FCP**), affichage
+du plus gros élément (**LCP**), temps pendant lequel la page ne répond pas aux clics (**TBT**),
+décalages de la page pendant le chargement (**CLS** : un bouton qui descend au moment où l'on
+clique) et vitesse de remplissage de l'écran (**Speed Index**).
+
+**Méthode.** Mesure en mode ordinateur sur le tableau de bord (`/dashboard`), connecté en Accueil,
+avec les données de démonstration, sur la **version de production** de l'application web (`npm run build` puis
+`npm run preview`), avant et après les corrections. Une première mesure faite par erreur sur la
+version de développement (`npm run dev`) donnait 18/100 en performances : cette version envoie le
+code non compressé pour faciliter le travail du développeur, elle ne reflète pas ce que voit un
+utilisateur et n'a pas été retenue.
+
+*Tableau 10 : Scores Lighthouse avant et après corrections (tableau de bord, version de production)*
+
+| Critère | Avant | Après |
+|---|:-:|:-:|
+| Performances | 78 | XX |
+| Accessibilité | 96 | XX |
+| Bonnes pratiques | 92 | XX |
+| SEO | 83 | XX |
+| FCP (premier affichage) | 1,0 s | XX |
+| LCP (plus gros élément) | 1,0 s | XX |
+| TBT (page bloquée) | 0 ms | XX |
+| CLS (décalages, bon si < 0,1) | 0,384 | XX |
+| Speed Index | 1,4 s | XX |
+
+> ✍️ *Remplacer les XX par la nouvelle mesure (même page, version de production).*
+
+📷 *Figure 21 : Rapport Lighthouse du tableau de bord avant corrections* (rapport du 15/11/2026,
+78 en performances).
+
+📷 *Figure 22 : Rapport Lighthouse du tableau de bord après corrections.*
+
+**Défauts trouvés et corrections.** La page s'affichait vite (1 seconde) et ne bloquait jamais les
+clics : la note de performance était surtout pénalisée par les **décalages** (CLS de 0,384, près de
+quatre fois le seuil recommandé de 0,1). Le message « Chargement... » apparaissait puis disparaissait
+en haut de la page, et les cartes chargées à part grandissaient à l'arrivée des données : le message
+est maintenant une petite pastille qui ne prend pas de place, et les cartes gardent leur hauteur
+pendant le chargement. Lighthouse a aussi relevé une police d'écriture téléchargée chez Google Fonts
+qui retardait l'affichage d'environ 0,5 s (elle est maintenant fournie avec l'application), des textes gris
+trop peu contrastés (contraste de 3:1, porté à 5,2:1 ; minimum de la norme WCAG : 4,5:1), des photos
+de profil trop lourdes (problème 14), des champs sans libellé pour les lecteurs d'écran et une
+description de page absente. ✍️ *Compléter avec l'effet mesuré des corrections (Tableau 10).*
+Les points restants en « Bonnes pratiques » concernent des en-têtes de sécurité qui se règlent au
+moment de la mise en ligne en HTTPS (voir 3.3).
 
 ---
 
 ## 3 Évaluation du projet et connaissances acquises
 
-📄 **3 pages**
+📄 **4 pages**
 
 ### 3.1 Bilan pour l'entreprise
 
@@ -1160,14 +1517,55 @@ Deux besoins restent à couvrir :
   déplacements à l'accueil.
 - Les supports des formateurs sont protégés et les documents officiels se font en un clic, avec
   une attestation vérifiable par QR code.
+- L'application livrée est **vérifiée par des mesures**, pas seulement à l'usage (paragraphe
+  ci-dessous et Tableau 11).
 - Il reste à livrer l'application Android et à faire les essais avec l'équipe
   (`SCENARIOS-TESTS.md`).
+
+**Une application vérifiée.** L'application web a été auditée avec Lighthouse (partie 2.4, Tableau 10).
+Lighthouse ne mesure que les pages web : l'application mobile est une vraie application Android
+(React Native) qu'il ne peut pas ouvrir, et le serveur n'affiche rien. Ces deux parties ont été
+vérifiées avec trois autres outils. Les **tests automatiques** (`npm test`) appellent les fonctions du
+serveur avec des cas préparés et vérifient le résultat attendu (calcul des tranches, droits d'accès,
+notes, protection des fichiers), sans base de données. **`npm audit`** compare les bibliothèques
+utilisées à la base publique des failles connues ; l'option `--omit=dev` ne garde que celles qui
+partent réellement en production. Sur le mobile, `npx tsc --noEmit` vérifie les types TypeScript
+(une donnée utilisée au mauvais format est détectée avant l'exécution) et `npx expo lint` repère les
+erreurs de programmation et les mauvaises pratiques React.
+
+*Tableau 11 : Contrôles de fiabilité et de sécurité du code*
+
+| Partie | Contrôle | Commande | Résultat | Après correction |
+|---|---|---|---|---|
+| Serveur | Tests automatiques | `npm test` | **261 tests, 261 réussis**, en 23 s | — |
+| Serveur | Failles des bibliothèques | `npm audit --omit=dev` | 7 (1 faible, 3 moyennes, 2 élevées, 1 critique) | XX |
+| Web | Failles des bibliothèques | `npm audit --omit=dev` | **0** | — |
+| Web | Qualité des pages | Lighthouse | Tableau 10 | Tableau 10 |
+| Mobile | Types TypeScript | `npx tsc --noEmit` | **0 erreur** | — |
+| Mobile | Erreurs de programmation | `npx expo lint` | 1 erreur, 17 avertissements | **0 erreur**, 17 avertissements |
+| Mobile | Failles des bibliothèques | `npm audit --omit=dev` | 18 (1 faible, 9 moyennes, 7 élevées, 1 critique) | XX |
+
+> ✍️ *Remplacer les XX après `npm audit fix` (mesures du 15/11/2026 dans la colonne « Résultat »).*
+
+Toutes les règles métier vérifiées automatiquement passent. L'erreur de lint venait du suivi des
+notifications du mobile, qui modifiait une référence React pendant l'affichage de l'écran, ce que
+React interdit (l'écran peut ne pas se mettre à jour) : la mise à jour se fait maintenant juste après
+l'affichage. Les failles du mobile se trouvent surtout dans les **outils de construction** d'Expo
+(ceux qui fabriquent l'APK sur le PC), pas dans le code installé sur le téléphone ; celles du serveur
+sont toutes corrigeables sans changement de version majeure. `npm audit fix` corrige ce qui peut
+l'être sans risque, puis les 261 tests sont relancés. L'option `--force` n'est pas utilisée : elle
+changerait la version d'Expo et pourrait casser l'application.
+
+> 💡 **Question probable du jury** : « Comment avez-vous testé la fiabilité et la sécurité ? »
+> Réponse : 261 tests automatiques sur les règles du serveur, `npm audit` sur les trois parties,
+> TypeScript et lint sur le mobile, Lighthouse sur le web ; chaque défaut trouvé a été corrigé ou
+> expliqué.
 
 ### 3.2 Bilan personnel
 
 > ✍️ *À écrire avec mes propres mots. Pistes :*
 
-- J'ai mené seul un projet complet (site, mobile, serveur, base), du cahier des charges à la
+- J'ai mené seul un projet complet (application web, mobile, serveur, base), du cahier des charges à la
   livraison.
 - J'ai appris à concevoir une base avec Merise et à garantir la justesse des données
   (transactions, contraintes).
@@ -1176,6 +1574,9 @@ Deux besoins restent à couvrir :
 - J'ai découvert le développement mobile et ses contraintes propres (captures d'écran, APK).
 - J'ai appris à transformer un besoin du centre (paiement, note d'attestation) en règles précises,
   validées avec l'encadreur avant de coder.
+- J'ai appris à mesurer la qualité d'une application (Lighthouse, tests, audit des bibliothèques)
+  plutôt qu'à la juger à l'œil, et à lire une mesure : la première, faite sur la mauvaise version
+  de l'application web, donnait un résultat faux.
 
 ### 3.3 Extension et évolution de l'application
 
@@ -1184,10 +1585,12 @@ Deux besoins restent à couvrir :
 | Pas de vrai paiement en ligne | Brancher Mobile Money avec confirmation automatique |
 | Pas de notification quand l'application est fermée | Notifications « push » |
 | Pas de lecture des supports sans internet | Stockage chiffré des supports sur le téléphone |
+| Application mobile livrée seulement pour Android (APK) | Publication sur iOS (iPhone) : le code React Native / Expo est déjà compatible, il manque un compte Apple Developer, un build iOS et des tests sur iPhone (le blocage des captures d'écran y est moins strict) |
 | Avis sur les formateurs basé seulement sur les réactions | Questionnaire de fin de formation |
 | Inscription en ligne sans vérification de l'e-mail | Code de confirmation envoyé par e-mail |
-| Tests automatiques seulement pour les notes et les avis | Ajouter des tests pour les paiements et les inscriptions |
-| Tout tourne sur un poste, installé à la main | Mise en ligne en HTTPS, déploiement automatique |
+| Tests automatiques seulement sur le serveur | Ajouter des tests des écrans de l'application web et du mobile |
+| Tout tourne sur un poste, installé à la main | Mise en ligne en HTTPS avec les en-têtes de sécurité signalés par Lighthouse (HSTS, politique de sécurité du contenu), déploiement automatique |
+| 17 avertissements de lint sur le mobile (écrans redessinés une fois de trop) | Les corriger écran par écran |
 
 ---
 
@@ -1200,7 +1603,7 @@ Deux besoins restent à couvrir :
 
 Ce stage chez IMTECH INFO avait un but simple : remplacer le papier par une application qui suit
 l'étudiant de la découverte des formations jusqu'à son attestation. Les objectifs sont atteints :
-un site web pour l'équipe, une application mobile pour les étudiants et les visiteurs, et un
+une application web pour l'équipe, une application mobile pour les étudiants et les visiteurs, et un
 serveur commun qui applique les règles du centre.
 
 Par rapport à avant, le changement est concret. Un visiteur peut s'inscrire depuis chez lui. Les
@@ -1274,7 +1677,7 @@ fermée, lecture hors connexion et mise en ligne pour que tout le centre l'utili
 | Fuite d'un document | Filigrane au nom du lecteur ; sur mobile, pas de téléchargement et captures bloquées |
 | Clé secrète des badges oubliée | Le serveur refuse de démarrer sans elle |
 
-> **Limite** : sur le site web, aucun navigateur ne permet de bloquer une capture d'écran ; c'est
+> **Limite** : sur l'application web, aucun navigateur ne permet de bloquer une capture d'écran ; c'est
 > le filigrane qui protège.
 
 **Codes de réponse du serveur** : 400 demande mal remplie · 401 pas connecté · 403 pas le droit ·
@@ -1335,6 +1738,9 @@ fin de formation par inscription.
 - → Champ **« Confirmer le mot de passe »** et bouton œil pour afficher le mot de passe.
 - → Étape **« Votre dossier »** : **« Les ajouter maintenant »** (photo avec l'appareil ou la galerie) ou
   **« Plus tard »**.
+- → Case **« J'ai lu et j'accepte les Conditions d'utilisation (présence, paiement, note de formation,
+  attestation) et la Politique de confidentialité »** : obligatoire ; les deux liens ouvrent le texte avec
+  **« J'accepte »** / **« Je refuse »**.
 - → Bouton **« Envoyer mon inscription »** : crée le compte et l'inscription « en attente ».
 - → Message de succès : « Merci … ! » avec le montant du premier paiement et, s'il en manque, le nombre de
   pièces à déposer dans Mon dossier.
@@ -1372,7 +1778,9 @@ fin de formation par inscription.
 - → Couleurs : 🟢 À jour · 🟡 À rappeler (2 jours ou moins) · 🔴 En retard.
 - → Bouton **« Payer »** : encaissement au guichet.
 - → Bouton **« Rappeler »** : notification + e-mail à l'étudiant.
+- → Bouton **« Modifier »** (Super Admin) : date et/ou montant, différence reportée sur la dernière échéance non réglée.
 - → Message d'erreur : « Le montant dépasse le reste à payer. »
+- → Message d'erreur (Modifier) : « Montant trop élevé : … Montant maximal : … »
 
 **7. Supports (espace formateur, web)** 📷 `publicationSupport.PNG`
 - → Case **« Programmer l'envoi »** : choisit une date et une heure.
@@ -1391,6 +1799,20 @@ fin de formation par inscription.
 - → Pour chaque pièce : aperçu, état (Fournie / À déposer), boutons **appareil photo** et **galerie**.
 - → Bouton **« Enregistrer »** : envoie les pièces choisies et prévient l'accueil (dépôt ou remplacement).
 - → Message d'erreur : « Une pièce du dossier doit être une photo (JPEG, PNG, WEBP) ou un PDF. »
+
+**10. Conditions d'utilisation et confidentialité (mobile)**
+- → Étudiants seulement : affiché après la connexion tant que l'étudiant n'a pas accepté la version actuelle du texte (rien pour un administrateur).
+- → Onglet **« Conditions »** : règles de **présence** (un jour compte quand l'étudiant ouvre un cours, y réagit
+  ou le commente ; taux → 0, −1, −2 ou −4 points), de **paiement** (retard
+  → −1 ou −2 par échéance, −4 au plus), de la **note de formation** (note système sur 10 + présentation sur 10)
+  et de l'**attestation** (note de présentation, commentaire sur le formateur, rien à payer).
+- → Onglet **« Confidentialité »** : données collectées, utilisation (dont l'accompagnement : l'équipe peut
+  contacter un étudiant qui semble en difficulté, sans détailler les critères), qui peut les voir, droits.
+- → Bouton **« J'accepte »** : enregistre l'accord et ouvre l'application.
+- → Bouton **« Je refuse »** : « Sans votre accord, vous ne pouvez pas utiliser l'application. Vous allez être
+  déconnecté. » puis retour à la connexion.
+- → Relecture depuis le menu ⋮ **« Conditions et confidentialité »**.
+- → Pas redemandé à la première connexion si la case a été cochée à l'inscription en ligne sur ce téléphone.
 
 ### Annexe D — Conception métier : les données échangées
 
@@ -1492,19 +1914,17 @@ Si l'étudiant change de téléphone, on le corrige **à un seul endroit** et to
 **Comment les tiroirs sont reliés.** Le schéma suivant se lit comme des phrases.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 flowchart LR
-    U["👤 Utilisateur"] -- "a un" --> R["🏷️ Rôle"]
-    U -- "peut avoir un" --> ET["🎓 Dossier étudiant"]
-    ET -- "fait une ou plusieurs" --> I["📝 Inscriptions"]
-    F["📚 Formation"] -- "reçoit plusieurs" --> I
-    U -- "anime (formateur)" --> F
-    I -- "est découpée en" --> EC["📅 Échéances"]
-    EC -- "réglée par un ou plusieurs" --> P["💰 Paiements"]
-    P -- "donne une" --> FA["🧾 Facture"]
-    I -- "se termine par une" --> AT["🎖️ Attestation"]
-    F -- "contient des" --> S["📄 Supports de cours"]
-    S -- "reçoit des" --> C["💬 Commentaires"]
-    S -- "reçoit des" --> RE["👍 Réactions"]
+    U[Utilisateur] -- a un --> R[Rôle]
+    U -- peut être --> ET[Étudiant]
+    ET -- fait --> I[Inscription]
+    F[Formation] -- reçoit --> I
+    I -- découpée en --> EC[Échéances]
+    EC -- réglée par --> P[Paiement]
+    P -- donne --> FA[Facture]
+    I -- donne --> AT[Attestation]
+    F -- contient --> S[Supports]
 ```
 
 *Figure E1 : Les liens entre les principales tables, en phrases*
@@ -1635,7 +2055,7 @@ LIMIT 5;
 ```sql
 SELECT i.id_inscription, u.nom, u.prenom, i.note_presentation,
        DATE(i.date_inscription) AS date_debut, f.duree_jours,
-       -- jours de semaine où l'étudiant a utilisé l'application pendant la formation
+       -- jours de semaine où l'étudiant a ouvert un support, réagi ou commenté pendant la formation
        (SELECT COUNT(*) FROM presence p
          WHERE p.id_utilisateur = u.id_utilisateur
            AND p.jour >= DATE(i.date_inscription)
@@ -1857,8 +2277,10 @@ de la durée.
 | **Présentation** | Donnée par le formateur (10 maximum) | **/10** |
 | = **Note d'attestation** | note calculée + présentation | **/20** |
 
-Un étudiant est **présent** un jour de semaine s'il a utilisé l'application ce jour-là (une ligne
-par jour dans `presence`) ; les week-ends sont retirés sur le vrai calendrier. Pour le paiement,
+Un étudiant est **présent** un jour de semaine s'il a ouvert un support de cours, réagi ou commenté ce jour-là (une ligne
+par jour dans `presence`). Ouvrir l'application ne suffit pas : ses requêtes automatiques
+(notifications, session) et l'écran d'accueil ne comptent pas, pour qu'une application laissée ouverte
+ne donne pas de fausses présences ; les week-ends sont retirés sur le vrai calendrier. Pour le paiement,
 c'est la **date d'envoi** qui compte, pas celle de la validation par l'Accueil. Le classement trie
 par note calculée, puis par nombre de présences.
 
@@ -1909,8 +2331,8 @@ sans Toky, 9,5/10. Note /20 moyenne des trois étudiants notés : (19 + 17 + 8) 
 
 #### G.5 E4 : avis des étudiants sur les formateurs
 
-Tables `reaction`, `type_reaction`, `support`, `utilisateur`. Seules les réactions sur les
-supports **publiés** comptent. **Filtres** : tri par type de réaction, filtre par avis, et
+Tables `reaction`, `type_reaction`, `support`, `formateur_note`, `inscription`, `utilisateur`.
+Seules les réactions sur les supports **publiés** comptent. **Filtres** : tri par type de réaction, filtre par avis, et
 **période** (le filtre « Du … au … » de E1) : seules les réactions dont la date (`date_reaction`)
 est dans la période sont comptées. Les chiffres ci-dessous sont lus sans date (depuis le début).
 
@@ -1954,11 +2376,31 @@ sert qu'à l'affichage).
   de 60 %, il lui faudrait, sans nouveau 👎, au moins 6 réactions positives de plus
   ((2 + 6) ÷ (7 + 6) = 61,5 %).
 
+**Note sur 20.** Note des réactions = % positif (arrondi à l'entier) ÷ 10, seulement à partir de
+5 réactions. Note des commentaires = moyenne des notes /10 données par l'Accueil aux commentaires de
+fin de formation, seulement quand tous les étudiants attendus (formation finie dans 2 jours ou
+moins) ont commenté et que tout est noté. Note /20 = somme des deux, si les deux existent.
+
+| Formateur | Réactions /10 | Commentaires notés | Commentaires /10 | Note /20 |
+|---|:-:|---|:-:|:-:|
+| Tiana | 94 ÷ 10 = 9,4 | 9 ; 7 ; 8,5 ; 8,5 (Dév. web, Python) | 33 ÷ 4 = 8,25 | **17,65** |
+| Hery | 29 ÷ 10 = 2,9 | 3,5 ; 4 (Réseaux) | 7,5 ÷ 2 = 3,75 | **6,65** |
+| Voahangy | 83 ÷ 10 = 8,3 | 4 commentés sur 5 (Tsiory manque), 1 à noter (Rindra) | — | — |
+| Rivo | 83 ÷ 10 = 8,3 | 6,5 ; 1 à noter (Onja) | — | — |
+| Lalaina | — (4 réactions) | 9 ; 8 (Infographie) | 8,5 | — |
+
+Tant qu'une note n'est pas calculable, l'écran affiche ce qui manque (« 4/5 commentés »,
+« 1 à noter ») avec la liste des étudiants attendus : l'Accueil sait qui relancer, ou quelle
+inscription désactiver en cas d'abandon.
+
 **Vérification.**
 - Les comptes par formateur ont été refaits avec une requête de contrôle sur la table `reaction`
   (47 lignes) : les totaux 18 + 12 + 6 + 7 + 4 = 47 sont identiques à l'écran.
+- Les moyennes des commentaires ont été recalculées sur la table `formateur_note` (14 lignes, dont
+  2 à noter) : 8,25 pour Tiana et 3,75 pour Hery, comme à l'écran.
 - Les seuils (5 réactions, 60 %) et l'ordre d'affichage sont vérifiés par **2 tests automatiques**
-  (`commentairesReactions.test.js`).
+  (`commentairesReactions.test.js`), la note sur 20 et ses cas incomplets par **2 autres**
+  (`formateurNote.test.js`).
 
 #### G.6 E5 : échéances en retard et à rappeler
 
@@ -1985,8 +2427,11 @@ Une échéance payée depuis le téléphone mais pas encore validée reste verte
 
 **Restitution.**
 
-La capture est la [Figure 20](#235-état-e5--échéances-en-retard-et-à-rappeler) ; le décompte
-complet par couleur :
+📷 *Figure G1 : Page Échéances au 26/10/2026, filtrée sur « En retard » puis sur « À rappeler »
+(`echeances.png`).*
+*Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
+
+Le décompte complet par couleur :
 
 | Couleur | Nombre d'échéances | Montant restant (Ar) | Étudiants |
 |---|:-:|:-:|---|
@@ -2028,7 +2473,7 @@ Inscriptions ont aussi leur propre bouton d'export, qui reprend la liste **avec 
 
 **Restitution.**
 
-📷 *Figure G1 : Fichier `inscriptions.csv` ouvert dans Excel, avec le tableau croisé dynamique
+📷 *Figure G2 : Fichier `inscriptions.csv` ouvert dans Excel, avec le tableau croisé dynamique
 « inscriptions et montant facturé par formation » (`export-csv.png`).*
 *Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
 
@@ -2069,7 +2514,7 @@ inscription ou par paiement.
 
 **Restitution.**
 
-📷 *Figure G2 : Facture PDF de Sitraka, créée en validant son paiement envoyé depuis le téléphone
+📷 *Figure G3 : Facture PDF de Sitraka, créée en validant son paiement envoyé depuis le téléphone
 le 21/10/2026 (`facture.png`).*
 *Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
 
@@ -2102,13 +2547,14 @@ payé et été notés** reçoivent une attestation.
 Sinon elle est **bloquée** : chaque heure, le serveur envoie les attestations prêtes et prévient
 l'Accueil ou le formateur de ce qui bloque les autres. La note imprimée est celle de E3 : note
 calculée /10 + présentation /10. Chaque attestation reçoit un **code unique** (UUID) ; le QR code
-mène à une page publique qui affiche la formation et la date de délivrance, ou « Document non
-reconnu » pour un faux. **Filtres** : sur la page Inscriptions, le statut « Réussie » liste les
+mène à une page web publique, lisible sur téléphone : « Attestation authentique » avec le nom de
+l'étudiant, la formation, la durée et la date de délivrance, que l'employeur compare au document
+présenté ; ou « Document non reconnu » pour un faux. **Filtres** : sur la page Inscriptions, le statut « Réussie » liste les
 attestations délivrées ; la recherche et l'origine affinent la liste.
 
 **Restitution.**
 
-📷 *Figure G3 : Page Inscriptions filtrée sur « Réussie », et attestation PDF d'Andry avec son
+📷 *Figure G4 : Page Inscriptions filtrée sur « Réussie », et attestation PDF d'Andry avec son
 QR code (`attestation.png`).*
 *Données fictives — reproduction des données réelles non autorisée par l'entreprise.*
 

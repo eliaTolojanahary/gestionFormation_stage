@@ -29,6 +29,8 @@ function AppStack() {
         <Stack.Screen name="assistance" />
         <Stack.Screen name="parametres" />
         <Stack.Screen name="lecteur" />
+        {/* Accord aux conditions : pas de retour par glissement (voir app/conditions.tsx) */}
+        <Stack.Screen name="conditions" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(tabs)" />
       </Stack>
     </>

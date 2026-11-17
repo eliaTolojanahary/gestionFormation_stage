@@ -1,25 +1,30 @@
-# IMTECH INFO — Comprendre l'application (document de reprise)
+# Imteaching Formation (IMTECH INFO) — Comprendre l'application (document de reprise)
 
-Ce document est écrit pour **quelqu'un qui découvre le projet** et doit le reprendre. Lis-le dans
-l'ordre :
+> Nom de l'application (web et mobile) : **Imteaching Formation**, avec le logo IMTECH INFO. Il apparaît dans la barre latérale et la page de connexion (web), sur la connexion et la vitrine « Découvrir » (mobile), ainsi que dans les e-mails (objet, bandeau, signature, nom d'expéditeur) et les PDF (en-tête, pied de page, attestation, filigrane). La page de vérification d'attestation (QR code) et les messages d'erreur nomment encore l'organisme **IMTECH INFO**.
 
-1. **En une minute** : ce que fait l'application.
-2. **Démarrer** : l'installer et la lancer.
-3. **Le code** : où se trouve chaque chose, et le chemin d'un clic.
-4. **Le parcours A → Z** : un étudiant, de l'inscription à l'attestation. On y voit chaque page,
-   chaque bouton, chaque route et chaque fonction, avec la syntaxe expliquée.
-5. **Les autres modules**, en bref.
-6. Les règles à connaître, la base de données, les pièges, et ce qu'il reste à faire.
+Ce document est écrit pour **quelqu'un qui découvre le projet** et doit le comprendre vite, **sans
+chercher dans le code**. Chaque fonction importante est expliquée en mots simples, avec une
+comparaison de la vie courante. Les 4 fonctions les plus importantes ont leur code commenté ligne par ligne.
 
-Autres documents (ils renvoient tous aux parties de celui-ci) :
+**Programme en 2 jours**
+
+| Quand | Lire | Ce que tu sauras après |
+|---|---|---|
+| Jour 1, matin | §1, §2, §3, puis `api.md` partie « Comprendre une route et ses `?` » | Qui utilise quoi, lancer le projet, le trajet d'un clic jusqu'à la base, lire une adresse comme `/paiements?statut=en_attente&page=2` |
+| Jour 1, après-midi | §4 (parcours A → Z) | Toute la vie d'un étudiant : inscription, paiement, cours, note, attestation |
+| Jour 2, matin | §5, §6, §7 | Les autres modules, ce que le serveur fait tout seul, les règles à ne jamais casser |
+| Jour 2, après-midi | `SCENARIOS-TESTS.md`, en gardant §11 ouvert | Tester dans l'appli ce que tu as lu ; §11 pour retrouver une fonction (Ctrl+F) |
+| Si besoin | §8, §9, §10 | Les tables, les pièges déjà rencontrés, ce qu'il reste à faire |
+
+Autres documents (ils renvoient aux parties de celui-ci, « flux §N ») :
 
 | Document | Contenu |
 |---|---|
-| [`backend-imtech/api.md`](backend-imtech/api.md) | Toutes les routes et leurs droits, exemples de requêtes Postman |
+| [`backend-imtech/api.md`](backend-imtech/api.md) | Toutes les routes et leurs droits, exemples Postman |
 | [`SCENARIOS-TESTS.md`](SCENARIOS-TESTS.md) | Un scénario par fonctionnalité, parcours de soutenance |
-| [`CHEAT-SHEET.md`](CHEAT-SHEET.md) | Aide-mémoire : commandes, ajouter une fonctionnalité, requêtes SQL, dépannage |
+| [`CHEAT-SHEET.md`](CHEAT-SHEET.md) | Commandes, ajouter une fonctionnalité, requêtes SQL, dépannage |
 | [`cheat-sheets/`](cheat-sheets/) | Syntaxe générale Node, React (+ React Native), MySQL |
-| [`paiement Mvola.md`](paiement%20Mvola.md) | Prochaine évolution (§10) : paiement MVola |
+| [`paiement Mvola.md`](paiement%20Mvola.md) | Prochaine évolution : paiement MVola |
 | [`FLUX-MEMOIRE.md`](FLUX-MEMOIRE.md) | Support de rédaction du mémoire |
 | [`A-FAIRE.md`](A-FAIRE.md) | Tâches en cours, soutenance, APK, remise du projet |
 
@@ -41,7 +46,7 @@ les **attestations**.
 |---|---|
 | **Super Admin** | Tout : comptes, formations, réglages (logo, fond de la vitrine), et tout ce que fait l'Accueil |
 | **Accueil** | Dossiers étudiants, inscriptions, paiements, rappels, factures, attestations, demandes d'aide |
-| **Formateur** | Ses formations, ses supports de cours (tout de suite ou à une heure choisie), la note de présentation |
+| **Formateur** | Ses formations, ses cours (tout de suite ou à une heure choisie), la note de présentation |
 | **Étudiant** (mobile) | Suit ses cours, commente, paie ses tranches, demande de l'aide |
 | **Visiteur** (mobile) | Sans compte : voit les formations et s'inscrit en ligne |
 
@@ -49,14 +54,13 @@ les **attestations**.
 
 ## 2. Démarrer le projet
 
-**Prérequis.** Node.js 18 ou plus, XAMPP (MariaDB) et, pour tester sur téléphone, l'appli Expo Go
-(ou un build de développement), le téléphone étant sur le même Wi-Fi que le PC.
+**Prérequis.** Node.js 18 ou plus, XAMPP (MariaDB), et Expo Go sur un téléphone **sur le même Wi-Fi** que le PC.
 
-**Fichiers `.env`** (non versionnés) :
+**Fichiers `.env`** (jamais dans git) :
 
 | Dossier | Variables |
 |---|---|
-| `backend-imtech/.env` | `PORT`, `URL_BASE` (adresse publique, utilisée dans le QR code), `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` (`gestion_formation_db`), `JWT_SECRET` (**obligatoire** : sans lui, le serveur refuse de démarrer), `APP_NAME`, `EMAIL_USER`, `EMAIL_PASSWORD` (Gmail) ; optionnel : `IMTECH_SITE_WEB`, `IMTECH_FACEBOOK_URL`, `IMTECH_EMAIL`, `IMTECH_WHATSAPP`, `IMTECH_TELEPHONE`, `IMTECH_ADRESSE` (contacts de la vitrine ; vides = vrais contacts d'IMTECH, dans `config/vitrine.js`) |
+| `backend-imtech/.env` | `PORT`, `URL_BASE` (adresse du PC **avec `/api`**, imprimée dans le QR code), `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` (`gestion_formation_db`), `JWT_SECRET` (**obligatoire**, sinon le serveur refuse de démarrer), `APP_NAME`, `EMAIL_USER`, `EMAIL_PASSWORD` (Gmail). Optionnel : contacts de la vitrine `IMTECH_SITE_WEB`, `IMTECH_FACEBOOK_URL`, `IMTECH_EMAIL`, `IMTECH_WHATSAPP`… (vides = vrais contacts d'IMTECH, dans `config/vitrine.js`) |
 | `web/.env` | `VITE_URL_BASE=http://localhost:3000/api` |
 | `mobile/.env` | `EXPO_PUBLIC_API_URL=http://<IP-du-PC>:3000/api` (l'IP s'affiche au démarrage du serveur) |
 
@@ -65,9 +69,9 @@ les **attestations**.
 | Fichier | Rôle |
 |---|---|
 | `base.sql` | Crée toute la base, à jour |
-| `alter.sql` | **Changements de schéma** à appliquer sur une base existante. Les écrire **rejouables** (`IF NOT EXISTS`, `INSERT … WHERE NOT EXISTS`) et les reporter aussi dans `base.sql` |
-| `alter2.sql` | Anciennes évolutions numérotées (001 à 010), déjà appliquées : ne plus y ajouter |
-| `reinit.sql` / `donneesTest.sql` / `scripts/fichiersDemo.js` | Vider la base / données de démonstration / photos et supports de démonstration |
+| `alter.sql` | Changements de schéma pour une base existante : **rejouables** (`IF NOT EXISTS`…) et recopiés dans `base.sql` |
+| `alter2.sql` | Anciennes évolutions, déjà appliquées : ne plus y toucher |
+| `reinit.sql` / `donneesTest.sql` / `scripts/fichiersDemo.js` | Vider la base / données de démo / photos et cours de démo |
 
 ```bash
 # Base neuve + démonstration
@@ -79,17 +83,17 @@ node backend-imtech/scripts/fichiersDemo.js
 cd backend-imtech && npm install && npm run dev   # API sur http://localhost:3000/api
 cd web            && npm install && npm run dev   # site sur http://localhost:5173
 cd mobile         && npm install && npx expo start
-cd backend-imtech && npm test                     # tests automatiques (node --test)
+cd backend-imtech && npm test                     # tests automatiques
 ```
 
 **Comptes de démonstration** (mot de passe `admin123`) :
-- Super Admin : `tljelia374@gmail.com`.
-- Accueil : `test123acceuil@gmail.com`.
-- Formateur : `tolojanaharyelia845@gmail.com`.
-- Étudiants : `prenom.nom@imtech.test` (par exemple `andry.rakotoarisoa@imtech.test`).
+- Super Admin : `tljelia374@gmail.com`
+- Accueil : `test123acceuil@gmail.com`
+- Formateur : `tolojanaharyelia845@gmail.com`
+- Étudiants : `prenom.nom@imtech.test` (ex. `andry.rakotoarisoa@imtech.test`)
 
-Les dates de démonstration sont calculées à partir du jour où on les charge : il y a donc toujours
-des retards, des échéances proches et une formation qui vient de se terminer.
+Les données de démo ont des dates fixes (juillet → octobre 2026), prévues pour une démonstration le
+26/10/2026 : un autre jour, certains statuts (retard, J-2) changent. Qui est qui : `SCENARIOS-TESTS.md`.
 
 ---
 
@@ -99,490 +103,550 @@ des retards, des échéances proches et une formation qui vient de se terminer.
 backend-imtech/
 ├── app.js              démarrage, fichiers protégés, gestion des erreurs, tâches automatiques
 ├── routes/routes.js    TOUTES les adresses /api/... (commence par là pour trouver une fonction)
-├── middlewares/        verifyToken (connexion), checkRole (rôle), docUpload (fichiers), limiteRequetes
+├── middlewares/        les vigiles : connexion, rôle, fichiers reçus, limite d'essais, présence
 ├── controllers/        lisent la requête et répondent en JSON
 ├── services/           les RÈGLES du centre
 ├── models/             le SQL uniquement
-├── utils/              e-mails, PDF, QR code, filigrane, pagination, transaction, montants (format),
-│                       filtre actif / désactivé (etat)
-├── config/             connexion MySQL, rôles, textes et contacts de la vitrine
-└── tests/              tests node --test
+├── utils/              outils : e-mails, PDF, QR code, filigrane, pagination, transaction, montants
+├── config/             connexion MySQL, rôles, contacts de la vitrine, pièces du dossier
+└── tests/              tests automatiques
 web/src/      pages/ (un dossier par menu) · hooks/ (appels API) · components/ · utils/api.js
-              utils/format.js (montants) · utils/etat.js + components/etat/ (éléments désactivés)
-mobile/src/   app/ (un fichier = un écran, Expo Router) · hooks/ · components/ · context/ · utils/api.ts
+mobile/src/   app/ (un fichier = un écran) · hooks/ · components/ · context/ · utils/api.ts
 ```
 
 ### Le chemin d'un clic
 
 ```
-Page (bouton)  →  hook (use…)  →  apiRequest()  →  route  →  middleware  →  controller  →  service  →  model  →  MySQL
+Page (bouton) → hook → apiRequest() → route → middleware → controller → service → model → MySQL
 ```
 
-| Couche | Son rôle, en une phrase |
-|---|---|
-| Page | Affiche et réagit au clic |
-| Hook | Appelle l'API et garde les données (`useState`) |
-| `apiRequest` | Ajoute le token, envoie la requête, renvoie le JSON ou lève une erreur avec le message du serveur. Serveur injoignable ou réponse sans message : phrase en français (`MESSAGE_HORS_LIGNE`, `messageErreurHttp`), jamais « Failed to fetch » ni « Erreur 500 » |
-| Route | Associe une adresse (`POST /paiements`) à un controller, et dit quels rôles y ont droit |
-| Middleware | `verifyToken` : la connexion est-elle valide ? `checkRole` : le rôle est-il autorisé ? |
-| Controller | Lit `req.body` (formulaire), `req.params` (`:id` de l'adresse), `req.query` (`?page=`), appelle le service |
-| Service | Les règles : montant imposé, déjà inscrit ?, note ≤ 10… Lève une erreur (`throw`) si une règle n'est pas respectée |
-| Model | Les requêtes SQL, toujours avec des `?`, jamais en collant les valeurs dans le texte |
+**Comparaison : une lettre envoyée à l'administration.**
+
+| Couche | Comme… | Son rôle |
+|---|---|---|
+| Page | Le formulaire papier | Affiche et réagit au clic |
+| Hook | La personne qui poste la lettre | Appelle l'API et garde les données reçues pour l'affichage |
+| `apiRequest` | L'enveloppe timbrée | Ajoute le badge (token), envoie, rapporte la réponse ; serveur muet → une phrase en français, jamais « Failed to fetch » |
+| Route | L'adresse sur l'enveloppe | `POST /paiements` : quel guichet, et quels rôles y ont droit |
+| Middleware | Le vigile à l'entrée | `verifyToken` : badge valide ? `checkRole` : droit d'entrer dans ce bureau ? |
+| Controller | Le guichetier | Ouvre la lettre (`req.body` = formulaire, `req.params` = le `:id` de l'adresse, `req.query` = `?page=`), la passe au chef, renvoie la réponse |
+| Service | Le chef qui connaît le règlement | Applique les règles ; refuse (`throw`) si une règle n'est pas respectée |
+| Model | L'archiviste | Le seul qui touche aux armoires : SQL, toujours avec des `?` (protège de l'injection SQL) |
+| MySQL | Les armoires | Les tables (§8) |
 
 Toutes les réponses ont la même forme : `{ status: 'success', data }` ou `{ status: 'error', message }`.
 Une erreur levée par un service (`badRequest`, `notFound`, `conflict`… dans `utils/errors.js`) est
-transformée en réponse par un seul endroit, à la fin de `app.js`.
+transformée en réponse à un seul endroit, à la fin de `app.js`.
 
-### Mini-lexique de syntaxe (on le retrouve partout)
+### Les mots de syntaxe à connaître
 
-| Syntaxe | Exemple du projet | Ce que ça veut dire |
-|---|---|---|
-| `async` / `await` | `const user = await userModel.findUserByEmail(email)` | Attendre la réponse de la base avant de continuer |
-| Déstructuration `{ }` | `const { email, mot_de_passe } = req.body` | Sortir des champs d'un objet en une ligne |
-| Déstructuration `[ ]` | `const [premiere] = await …getEcheancesByInscription(…)` | Prendre le 1er élément d'un tableau |
-| Spread `...` | `{ ...donnees, date_delivrance }` | Copier un objet et ajouter ou remplacer des champs |
-| `?.` | `email?.trim()` | « Si `email` existe, alors `.trim()` », sinon `undefined` sans planter |
-| `??` / `\|\|` | `a?.taux_positif ?? null` | Valeur par défaut (`??` seulement si `null` / `undefined`) |
-| Gabarit `` ` ` `` | `` `Bonjour ${prenom}` `` | Texte avec des variables dedans |
-| `throw` | `throw conflict('Déjà inscrit.')` | Arrêter et renvoyer une erreur HTTP (409 ici) |
-| `try / catch / finally` | `apiRequest`, `avecTransaction` | Attraper une erreur ; `finally` s'exécute toujours |
-| `Promise.all([...])` | `contenuVitrine` | Lancer plusieurs requêtes **en même temps** |
-| `.map` / `.filter` / `.reduce` | `inscriptions.reduce((s, i) => s + i.montant, 0)` | Transformer / trier / additionner un tableau |
-| `new Map()` | `verifierDemande` | Dictionnaire clé → valeur (ici : retire les doublons) |
-| `useState` | `const [vitrine, setVitrine] = useState(null)` | Donnée affichée ; `setVitrine` la change et réaffiche |
-| `useEffect` | chargement au montage | Lancer du code quand la page s'ouvre (ou quand une valeur change) |
+| Syntaxe | Ce que ça veut dire |
+|---|---|
+| `async` / `await` | « Attends la réponse (de la base, d'un e-mail…) avant de continuer » |
+| `const { email } = req.body` | Sortir un champ d'un objet en une ligne |
+| `const [premiere] = liste` | Prendre le 1ᵉʳ élément d'une liste |
+| `{ ...donnees, date }` | Copier un objet et y ajouter un champ |
+| `a ? b : c` | Si `a`, alors `b`, sinon `c` |
+| `throw conflict('…')` | Arrêter tout et renvoyer une erreur (ici 409) |
+| `Promise.all([...])` | Lancer plusieurs demandes **en même temps** |
+| `useState` | Donnée affichée à l'écran ; la changer réaffiche la page |
+| `useEffect` | Lancer du code quand la page s'ouvre (ou quand une valeur change) |
 
 ---
 
 ## 4. Le parcours A → Z : de l'inscription à l'attestation
 
-On suit **Andry**, un étudiant. Chaque étape donne la page, le bouton, la route, la chaîne de
-fonctions, puis **la fonction clé expliquée**.
+On suit **Andry**, un étudiant. Chaque étape donne : qui, la page, le bouton, la route, la fonction
+principale **en clair**, et ce qu'il faut savoir pour les scénarios.
 
 ### Étape 1 — Andry découvre les formations (mobile, sans compte)
 
 | | |
 |---|---|
-| **Page** | `mobile/src/app/decouvrir.tsx` (écran « Découvrir ») |
-| **Action** | Ouverture de l'écran |
-| **Route** | `GET /public/vitrine` (publique, sans token) |
-| **Fonctions** | `useVitrine().chargerVitrine` → `vitrineController` → `vitrineService.contenuVitrine` → `vitrineModel.getFormationsPubliques`, `reactionService.avisFormateurs`, `vitrineModel.getModesPaiement`, `parametreModel.getParametre` |
+| **Page** | Mobile, écran **Découvrir** (`decouvrir.tsx`) |
+| **Route** | `GET /public/vitrine` (publique, sans connexion) |
+| **Fonction** | `vitrineService.contenuVitrine` |
 
-**Fonction clé : `contenuVitrine()`** (`services/vitrineService.js`). Elle rassemble tout ce que la vitrine affiche.
+**En clair : `contenuVitrine()`** prépare la vitrine du magasin. Elle va chercher **en même temps** les 5
+premières formations, l'avis des étudiants sur chaque formateur (« Compétent », « Non compétent »,
+« Pas assez d'avis »), les modes de paiement et l'image de fond. *Comme envoyer quatre personnes faire
+quatre courses en parallèle.*
 
-```js
-const [formations, avis, modesPaiement, fond] = await Promise.all([
-  vitrineModel.getFormationsPubliques(),
-  reactionService.avisFormateurs(),
-  vitrineModel.getModesPaiement(),
-  parametreModel.getParametre(FOND_VITRINE),
-]);
-```
-- `Promise.all` lance les **4 requêtes en même temps**, au lieu de les attendre l'une après l'autre.
-- `[formations, avis, …]` range chaque résultat dans sa variable, **dans le même ordre**.
-- Ensuite, `formations.map(f => ({ ...f, tarif: Number(f.tarif) }))` ajoute à chaque formation l'avis
-  sur son formateur. `Number()` convertit le `DECIMAL` de MySQL (renvoyé en texte) en nombre.
-
-**Contacts** (section « Nous contacter ») : boutons Site web, Facebook, E-mail (et WhatsApp si un numéro est
-renseigné), lus dans `config/vitrine.js` (`CONTACTS`) : `https://www.imtechinfo.com/`, la page Facebook
-d'IMTECH et `im.techinfo.mdg@gmail.com`. Le `.env` peut les remplacer (§2).
+À savoir :
+- Les carrousels chargent la suite **5 par 5** en glissant (`GET /public/formations?page=2`).
+- Section « Nous contacter » : site web, Facebook, e-mail d'IMTECH (`config/vitrine.js`).
 
 ### Étape 2 — Andry s'inscrit en ligne
 
 | | |
 |---|---|
-| **Page** | `decouvrir.tsx` → il coche des formations → bouton du bas → fenêtre `components/vitrine/inscription-modal.tsx` |
-| **Bouton** | **« Envoyer mon inscription (n) »** → fonction `envoyer()` |
-| **Paramètres envoyés** | `{ nom, prenom, email, telephone, mot_de_passe, formations: [{ id_formation, nombre_tranches }], id_mode_paiement, reference_virement }` |
-| **Route** | `POST /public/inscriptions` (publique, **5 par heure** par appareil : `limiteInscription`) |
-| **Fonctions** | `useVitrine().inscrire` → `inscriptionEnLigneController` → `vitrineService.inscriptionEnLigne` → `verifierDemande`, `etudiantModel.insertUtilisateurEtEtudiant`, `inscriptionService.creerInscriptionDans` → `echeanceService.genererEcheancier`, `paiementModel.insererPaiement`, puis `notifService.notifierPersonnel` |
-| **Tables** | utilisateur, etudiant, inscription, echeance, paiement (`en_attente`), notification_inapp |
+| **Page** | Découvrir → il coche des formations → fenêtre d'inscription |
+| **Bouton** | **« Envoyer mon inscription (n) »** (actif seulement si les Conditions sont acceptées) |
+| **Envoyé** | Nom, prénom, e-mail, téléphone, mot de passe (deux fois), formations + nombre de tranches, mode de paiement, référence |
+| **Route** | `POST /public/inscriptions` (publique, **5 par heure** par appareil) |
+| **Fonction** | `vitrineService.inscriptionEnLigne` |
+| **Tables remplies** | utilisateur, etudiant, inscription, echeance, paiement (`en_attente`), notification |
 
-**Fonction clé : `inscriptionEnLigne(demande)`.** Elle crée le compte, les inscriptions, l'échéancier et le
-1ᵉʳ paiement, **tout ou rien**.
+**En clair : `inscriptionEnLigne(demande)`** fait toute l'inscription, **tout ou rien**.
+1. Contrôle le formulaire : champs remplis, mots de passe identiques, 1 à 4 tranches par formation.
+2. **Hache** le mot de passe (`bcrypt`) : la base garde une empreinte, jamais le mot de passe.
+   *Comme une empreinte digitale : on vérifie qu'elle correspond, on ne retrouve pas le doigt.*
+3. Dans **une transaction** : crée le compte + le dossier, puis pour **chaque** formation : l'inscription,
+   ses tranches, et le 1ᵉʳ paiement « en attente » (l'Accueil vérifiera l'argent).
+   *Une transaction, c'est comme un virement bancaire : soit tout passe, soit rien.*
+4. **Après** seulement : notification à l'Accueil, e-mail d'accusé de réception à Andry. Gmail en
+   panne → l'inscription reste faite.
 
+**Le code, ligne par ligne :**
 ```js
+// avecTransaction(...) ouvre une transaction et nous donne `connection`.
+// Tout ce qui est fait avec `connection` est validé ENSEMBLE à la fin, ou annulé ensemble.
 const resultat = await avecTransaction(async (connection) => {
+
+  // 1. Crée la ligne `utilisateur` (le compte) et la ligne `etudiant` (le dossier).
   const id_etudiant = await etudiantModel.insertUtilisateurEtEtudiant(connection, { … });
+
+  // 2. « Pour chaque formation cochée » ; on sort directement ses deux champs.
   for (const { id_formation, nombre_tranches } of formations) {
+
+    // Crée l'inscription + ses tranches. `origine: 'en_ligne'` = l'Accueil saura qu'elle vient du mobile.
     const id_inscription = await inscriptionService.creerInscriptionDans(connection, { … origine: 'en_ligne' });
+
+    // Relit les tranches créées ; `[premiere]` garde seulement la 1ʳᵉ.
     const [premiere] = await echeanceModel.getEcheancesByInscription(id_inscription, connection);
+
+    // Le 1er paiement déclaré par l'étudiant, EN ATTENTE de vérification par l'Accueil.
     await paiementModel.insererPaiement({ id_echeance: premiere.id_echeance, statut: EN_ATTENTE, … }, connection);
   }
+
   return { id_etudiant, id_utilisateur, inscriptions };
 });
+// Si une ligne au-dessus lève une erreur (ex. déjà inscrit à une formation), RIEN n'est enregistré.
 ```
-- `avecTransaction(fn)` (`utils/transaction.js`) ouvre une **transaction** : si une seule requête échoue,
-  `rollback` annule tout, donc pas de compte sans inscription. Toutes les requêtes reçoivent la même `connection`.
-- `for (const { id_formation, nombre_tranches } of formations)` parcourt le tableau en **déstructurant chaque élément**.
-- Le mot de passe est haché **avant** (`bcrypt.hash(mot_de_passe, 10)`) : la base ne garde jamais le mot de passe en clair.
-- Les notifications partent **après** la transaction, dans un `try/catch` : un e-mail en panne n'annule pas l'inscription.
-- Le formulaire demande le mot de passe **deux fois** (`confirmation_mot_de_passe`, vérifié aussi par le serveur).
-- **Étape 4 du formulaire, « Votre dossier »** : Andry choisit « Les ajouter maintenant » (photos prises ou
-  choisies, envoyées en multipart avec l'inscription) ou « Plus tard » (menu ⋮ > **Mon dossier** après connexion,
-  `mobile/src/app/dossier.tsx`, `GET/PUT /mon-dossier`). Il peut y remplacer une pièce à tout moment ; l'Accueil
-  est notifié. Les 4 pièces obligatoires sont listées dans `backend-imtech/config/dossier.js`.
 
-**Sous-fonction : `calculerEcheancier()`** (`services/echeanceService.js`). Elle divise le tarif en tranches.
-- Le calcul se fait **en centimes** (`Math.round(tarif * 100)`), sur des entiers, pour éviter les erreurs d'arrondi.
-- `Array.from({ length: nb }, (_, index) => …)` fabrique un tableau de `nb` tranches.
-- La **dernière tranche** récupère les centimes restants, pour que le total soit exact.
+**Les tranches : `calculerEcheancier()`** découpe le prix. Exemple : 300 000 Ar, 90 jours, 3 tranches →
+100 000 Ar à J+30, J+60, J+90. Calcul **en centimes** (les ordinateurs se trompent sur les virgules) ; la
+**dernière tranche** prend les centimes qui restent pour que le total tombe juste.
 
-> L'Accueil peut aussi inscrire au guichet (web : **Étudiants → Nouveau dossier**, puis **Inscriptions →
-> Nouvelle inscription**, `POST /etudiants` puis `POST /inscriptions`). Les deux chemins utilisent la même
-> `creerInscriptionDans`. Dans **Nouvelle inscription**, l'étudiant se cherche en tapant son nom, son e-mail
-> ou son téléphone (`ChampRecherche.jsx` : `GET /etudiants?page=1&limite=8&recherche=`, 8 propositions) ;
-> la liste complète des étudiants n'est plus chargée.
+À savoir pour les scénarios :
+- **Le dossier** (4 pièces : 2 photos, CIN, certificat de résidence) : Andry les joint tout de suite ou
+  plus tard depuis **⋮ → Mon dossier**. L'Accueil est prévenu à chaque dépôt.
+- **Au guichet** : l'Accueil fait la même chose sur le web (Étudiants → Nouveau dossier, puis
+  Inscriptions → Nouvelle inscription). Même fonction `creerInscriptionDans`.
+- **Déjà inscrit qui veut une autre formation** : onglet Formations → « Voir plus de formations et
+  s'inscrire ». Seules les formations qu'il ne suit pas sont proposées ; pas de nouveau compte.
 
-**Découvrir, 5 par 5.** `GET /public/vitrine` n'envoie que les 5 premières formations et les 5 premiers
-formateurs compétents, avec leurs totaux (chiffres du bandeau). Les carrousels sont des `FlatList`
-horizontales : arrivé au bout, `onEndReached` appelle `chargerPlusFormations` / `chargerPlusFormateurs`
-(`use-vitrine.ts`), qui demandent `GET /public/formations?page=2` ou `GET /public/formateurs?page=2`.
-Côté serveur : `vitrineService.pageFormations` / `pageFormateurs` (le classement des formateurs est calculé
-sur tous, puis découpé).
-
-**Plus tard, Andry (déjà inscrit) choisit une autre formation.**
+### Étape 3 — L'Accueil valide l'inscription (site web)
 
 | | |
 |---|---|
-| **Page** | Onglet **Formations** → bouton **« Voir plus de formations et s'inscrire »** → `decouvrir.tsx` en mode connecté (`useAuth().user.id_etudiant`) |
-| **Liste** | `useVitrine(etudiantId)` → `GET /etudiants/:id/formations-disponibles?page=` : seulement les formations qu'il ne suit pas encore (`vitrineModel.filtreFormations`, `NOT EXISTS` sur ses inscriptions actives) |
-| **Bouton** | **« Envoyer mon inscription (n) »** dans `inscription-modal.tsx` (prop `etudiantConnecte` : ni identité, ni mot de passe, ni dossier, déjà enregistrés) |
-| **Route** | `POST /etudiants/:id/inscriptions` (Étudiant, `exigerEtudiantProprietaire`) |
-| **Fonctions** | `inscriptionCompteController` → `vitrineService.inscriptionCompteExistant` → `verifierFormations`, `inscrireFormationsDans` (la même boucle que l'inscription en ligne : `creerInscriptionDans` origine `en_ligne` + premier paiement en attente), puis `notifierInscriptionEnLigne` |
+| **Page** | Web, **Inscriptions** (les non validées en premier) |
+| **Bouton** | **« Valider »** → fenêtre de paiement (mode, référence) |
+| **Route** | `POST /inscriptions/:id/valid` (Super Admin, Accueil) |
+| **Fonction** | `inscriptionService.validerInscription` |
 
-- Tout se fait dans **une transaction** : s'il est déjà inscrit à une des formations choisies, `creerInscriptionDans`
-  lève un 409 et rien n'est créé.
-- Son dossier existe déjà : s'il est complet, l'Accueil peut valider tout de suite.
+**En clair : `validerInscription()`** — *un tampon « validé » sur le dossier.*
+1. Vérifie que rien n'est désactivé (étudiant, formation, inscription).
+2. **Inscription en ligne** : refusée (409) tant que le dossier n'a pas ses 4 pièces.
+   **Inscription au guichet** : jamais bloquée, mais la fenêtre prévient « Dossier incomplet (2/4) »
+   et le bouton devient « Valider quand même ».
+3. Tamponne l'inscription « validée ». Le SQL ne change la ligne que si elle n'est **pas encore**
+   validée (`WHERE … AND valide = false`) : un double clic donne 409, jamais deux validations.
+4. Le 1ᵉʳ paiement : déclaré sur le mobile → il est **validé** ; au guichet → il est **créé** « validé ».
+5. Après coup, sans faire attendre l'employé : fiche d'inscription PDF + facture envoyées à Andry.
 
-### Étape 3 — L'accueil valide l'inscription (site web)
-
-| | |
-|---|---|
-| **Page** | `web/src/pages/inscriptions/Inscriptions.jsx` (badge « En ligne ») |
-| **Bouton** | **« Valider »** → `handleAction('validate', row)` → fenêtre de paiement → `handleValidation(payment)` |
-| **Paramètres** | `id` de l'inscription (dans l'URL) + `{ id_mode_paiement, reference_virement }` |
-| **Route** | `POST /inscriptions/:id/valid` (staff : Super Admin, Accueil) |
-| **Fonctions** | `useInscription` → `validerInscriptionController` → `inscriptionService.validerInscription` → `inscriptionModel.setInscriptionValidee`, `paiementModel.getPaiementEnAttenteEcheance`, `validerPaiementDeclare`. Puis, côté web, `useNotifEvent().confirmationInscription` (notification + e-mail) |
-
-**Fonction clé : `validerInscription(id_inscription, id_mode_paiement, reference_virement)`**
-```js
-const validee = await inscriptionModel.setInscriptionValidee(id_inscription, connection);
-if (!validee) throw conflict('Inscription introuvable ou déjà validée.');
-const declare = await paiementModel.getPaiementEnAttenteEcheance(premiereEcheance.id_echeance, connection);
-if (declare) { await paiementModel.validerPaiementDeclare(declare.id_paiement, …); return …; }
-```
-- **Comment le serveur sait que l'inscription vient du mobile** : la colonne `inscription.origine` vaut
-  `'en_ligne'` (posée par `inscriptionEnLigne`) ou `'accueil'`. Pour `'en_ligne'`, `verifierDossierComplet`
-  refuse la validation (409, liste des pièces manquantes) tant que le dossier n'est pas complet. Sur la page,
-  le filtre **Dossier** (Complet / Incomplet) retrouve ces inscriptions (pas de badge dans le tableau), et le
-  **Détail** affiche le badge « Dossier incomplet · 2/4 » à côté du titre et liste les pièces fournies et manquantes.
-  Les inscriptions **pas encore validées s'affichent en premier**.
-- **Inscription faite à l'Accueil, dossier incomplet** : pas de blocage (c'est l'Accueil qui complète le
-  dossier). `validerInscription` renvoie `pieces_manquantes`, le contrôleur ajoute `avertissement`. Dans
-  `PaymentFormModal.jsx`, la fenêtre l'annonce avant (« Dossier incomplet (2/4 pièces) ») et le bouton
-  devient **« Valider quand même »** ; pour une inscription en ligne, le bouton est désactivé.
-- Elle renvoie `false` si l'inscription était **déjà validée** : un double clic ne valide pas deux fois (409).
-- Si Andry avait **déclaré** son 1ᵉʳ paiement, on le **valide**. Sinon (inscription au guichet), on en
-  **crée** un directement « validé ».
-- Dans le controller : `exigerChamps(req.body, ['id_mode_paiement'])` répond 400 si un champ manque, et
-  `req.params.id` est le `:id` de l'adresse.
+**Refuser une inscription ?** Pas de bouton « Refuser » : on la **désactive** (cachée, pas effacée,
+réactivable). Aucun message automatique : l'Accueil prévient l'étudiant par la page Notifications.
 
 ### Étape 4 — Andry se connecte (mobile)
 
 | | |
 |---|---|
-| **Page** | `mobile/src/app/login.tsx` |
-| **Bouton** | **« Se connecter »** → `useAuth().login(email, password)` |
-| **Route** | `POST /auth/login` (limite d'essais ratés par compte et par appareil) |
-| **Fonctions** | `authController.login` → `authService.authentifier` → `userModel.findUserByEmail`, `bcrypt.compare`, `jwt.sign`, `userModel.createSession` |
+| **Page** | Mobile, **Connexion** |
+| **Route** | `POST /auth/login` |
+| **Fonction** | `authService.authentifier`, puis `verifyToken` à chaque requête |
 
-**Fonction clé : `authentifier(email, mot_de_passe, { userAgent, ip })`**
+**En clair : `authentifier()`** — *l'accueil d'un hôtel qui donne une carte-clé.*
+1. Cherche le compte **actif** par e-mail.
+2. Compare le mot de passe à l'empreinte (`bcrypt.compare`). Faux mot de passe ou e-mail inconnu :
+   **même réponse**, pour ne pas dire à un pirate quels e-mails existent.
+3. Fabrique le **token** (`jwt.sign`) : la carte-clé, valable 24 h, signée avec `JWT_SECRET`.
+4. Note une **session** en base : *la carte est inscrite au registre de l'hôtel*, on peut la
+   désactiver à distance (« Se déconnecter partout »).
+5. 5 essais ratés sur un compte (ou 20 depuis un appareil) en 15 min → bloqué 15 min (429).
+
+**Le code, ligne par ligne :**
 ```js
+// Cherche parmi les comptes ACTIFS : un compte désactivé est traité comme un e-mail inconnu.
+const user = await userModel.findUserByEmail(email);
+if (!user) return null;               // null = « identifiants incorrects » (le controller répond 401)
+
+// bcrypt refait l'empreinte du mot de passe tapé et la compare à celle de la base.
 const isMatch = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
-if (!isMatch) return null;
-const token = jwt.sign({ id, role, id_etudiant }, process.env.JWT_SECRET, { expiresIn: '24h' });
+if (!isMatch) return null;            // même réponse que l'e-mail inconnu : aucun indice
+
+// Pour un étudiant, on retient aussi l'id de son dossier (mis dans le token).
+const id_etudiant = user.role_nom === ROLES.ETUDIANT
+  ? await etudiantModel.getIdEtudiantByUtilisateur(user.id_utilisateur)
+  : null;
+
+// Le token contient { qui, quel rôle, quel dossier }, signé avec le secret du .env, valable 24 h.
+const token = jwt.sign(
+  { id: user.id_utilisateur, role: user.role_nom, id_etudiant },
+  process.env.JWT_SECRET,
+  { expiresIn: `${DUREE_SESSION_HEURES}h` }     // `${...}` met la valeur dans le texte : '24h'
+);
+
+// La session en base : appareil, IP, expiration (calculée par MySQL).
 await userModel.createSession(user.id_utilisateur, token, userAgent, ip, DUREE_SESSION_HEURES);
+
+return { token, user: { id: user.id_utilisateur, nom: user.nom, role: user.role_nom, id_etudiant, … } };
 ```
-- `bcrypt.compare` compare le mot de passe tapé au **hash** stocké.
-- `jwt.sign` fabrique le **badge** (token) que l'appli renverra à chaque requête
-  (`Authorization: Bearer <token>`).
-- La **session** en base permet de couper l'accès à distance (« Se déconnecter partout »). Son expiration
-  est calculée par MySQL (`DATE_ADD(NOW(), INTERVAL 24 HOUR)`).
+L'appli garde le token et l'envoie à chaque requête (`Authorization: Bearer <token>`).
 
-**Ensuite, à chaque requête : `verifyToken`** (`middlewares/authMiddleware.js`). Il lit le token, le vérifie
-(`jwt.verify`), contrôle que la session est encore active (`findActiveSession`), puis place l'utilisateur
-dans `req.user`. Pour un étudiant, il **marque aussi sa présence du jour** (utilisé à l'étape 8).
-`checkRole(...)` refuse (403) si le rôle n'est pas autorisé sur la route.
+**Ensuite, à chaque requête : `verifyToken`** — *le lecteur de carte de chaque porte.* Il vérifie la
+signature du token, vérifie au registre que la session est encore active, puis range la personne dans
+`req.user` : le service sait ainsi **qui** demande. `checkRole` refuse (403) un rôle non autorisé.
 
-**Mot de passe oublié** (connexion → « Mot de passe oublié ») :
-1. `POST /auth/forgot-password` envoie par e-mail un code valable 30 min (`userService.demanderReinitialisation`).
-2. `POST /auth/reset-password` change le mot de passe (`reinitialiserMotDePasse`). Le message dit
-   précisément si le code est incorrect, déjà utilisé ou expiré.
+À savoir :
+- **Conditions d'utilisation** : à la 1ʳᵉ connexion, l'étudiant doit les accepter (« Je refuse » =
+  déconnexion). L'accord est gardé sur le téléphone ; relecture : ⋮ → « Conditions et confidentialité ».
+  Texte dans `mobile/src/constants/conditions.ts` : s'il change, augmenter `VERSION_CONDITIONS`
+  (actuellement `'2'`) pour redemander l'accord à tout le monde.
+- **Mot de passe oublié** : un code par e-mail, valable 30 min, utilisable une fois.
 
-### Étape 5 — Andry paie ses tranches, l'accueil valide, la facture part toute seule
+### Étape 5 — Andry paie, l'Accueil valide, la facture part toute seule
 
 | | |
 |---|---|
-| **Page (mobile)** | `mobile/src/app/paiements.tsx` → fenêtre `components/paiement/paiement-modal.tsx` |
-| **Bouton** | **« Payer X Ar »** → choix du mode → `onPayer(mode)` → `usePaiement().payerProchaineEcheance(mode)` |
-| **Paramètres** | `{ id_echeance, id_mode_paiement, reference_virement }`, **sans montant** : c'est le serveur qui l'impose |
-| **Route** | `POST /paiements` |
-| **Fonctions** | `enregistrerPaiementController` → `paiementService.enregistrerPaiement` → `getEcheanceAvecSituation`, `insererPaiement` (`en_attente`), `prevenirPersonnelPaiement` |
-| **Page (web)** | `web/src/pages/paiements/Paiements.jsx`, bouton **« Valider »** → `handleStatut(row, 'valider')` |
-| **Route** | `PUT /paiements/:id/valider` → `paiementService.validerPaiement` → `traiterPaiementEnAttente` |
-| **Facture** | **Automatique** dès que le paiement est validé : `paiementService.envoyerFactureAuto` → `documentService.envoyerFacture` (PDF + notification + e-mail avec le PDF), en arrière-plan. Aussi pour un paiement au guichet et le premier paiement d'une inscription validée. Le bouton **Facture** ne fait plus que l'ouvrir (`POST /factures/:id_paiement/generer`) |
+| **Page (mobile)** | **Paiements** → bouton **« Payer X Ar »** → choix du mode |
+| **Route** | `POST /paiements` (sans montant : c'est le serveur qui le fixe) |
+| **Page (web)** | **Paiements** → **« Valider »** ou **« Refuser »** |
+| **Routes** | `PUT /paiements/:id/valider`, `PUT /paiements/:id/refuser` |
+| **Fonctions** | `paiementService.enregistrerPaiement`, `traiterPaiementEnAttente`, `envoyerFactureAuto` |
 
-**Fonction clé : `enregistrerPaiement({ id_echeance, … }, auteur)`**
+**En clair : `enregistrerPaiement()`** — *la caisse affiche elle-même le montant : le client ne tape pas le prix.*
+1. Vérifie que la tranche est **bien celle de l'étudiant connecté** (sinon 403).
+2. Calcule le **reste à payer** ; déjà réglée → 409.
+3. Un paiement déjà « en attente » sur cette tranche → 409 (pas de double déclaration).
+4. Enregistre le paiement **en attente** et prévient l'Accueil.
+5. Le tout en **verrouillant la tranche** : *comme un ticket de file d'attente, deux paiements
+   simultanés passent l'un après l'autre.*
+
+**Le code, ligne par ligne :**
 ```js
+// MySQL renvoie les montants en texte ('150000.00') : Number(...) les remet en nombres.
+// montant_valide = somme des paiements déjà validés sur cette tranche.
 const resteAPayer = Number(echeance.montant_prevu) - Number(echeance.montant_valide);
-if (resteAPayer <= 0) throw conflict('Cette échéance est déjà réglée.');
-if (Number(echeance.id_etudiant) !== Number(auteur.id_etudiant)) throw forbidden('…');
+if (resteAPayer <= 0) throw conflict('Cette échéance est déjà réglée.');            // 409
+
+// `auteur` = l'étudiant connecté (rempli par verifyToken). `!==` = « différent de ».
+if (Number(echeance.id_etudiant) !== Number(auteur.id_etudiant)) throw forbidden('…'); // 403
+
+// Un paiement de cette tranche attend déjà l'Accueil ?
 if (Number(echeance.nb_en_attente) > 0) throw conflict('Un paiement est déjà en attente…');
+
+// Le montant vient du SERVEUR (resteAPayer), jamais du téléphone : impossible de « payer » 1 Ar.
 await paiementModel.insererPaiement({ id_echeance, montant: resteAPayer, statut: EN_ATTENTE, … });
 ```
-- Le **montant est calculé par le serveur** : un étudiant ne peut pas « payer » 1 Ar.
-- `auteur` est `req.user`, fourni par `verifyToken` : on vérifie que l'échéance est bien la sienne.
-- Le personnel peut aussi encaisser au guichet (web : **Échéances → Payer**). Son paiement est alors
-  « validé » directement, et un paiement partiel est accepté.
-- **Une facture par paiement** (`uq_facture_paiement`) : `creerFacture` renvoie la facture existante au lieu d'en créer une autre.
-- **Facture automatique** : `envoyerFactureAuto(id_paiement)` n'est pas attendue (`.catch` sans `await`) :
-  l'Accueil a sa réponse tout de suite, l'e-mail part ensuite. Si la facture échoue (Gmail en panne…),
-  l'étudiant reçoit quand même « Votre paiement … a été validé » en notification.
 
-**Fonction clé : `traiterPaiementEnAttente(id_paiement, statut)`**
-- Elle appelle `changerStatutPaiementEnAttente`, dont le SQL contient `WHERE statut = 'en_attente'` : un
-  paiement n'est validé **qu'une seule fois**, même si deux employés cliquent en même temps.
-- Puis elle notifie Andry : « Votre paiement … a été validé. »
+**En clair : `traiterPaiementEnAttente()`** (derrière « Valider » et « Refuser »). Le SQL ne change le
+paiement que s'il est encore `en_attente` : *même si deux employés cliquent en même temps, un seul
+passe.* L'agent qui a traité est retenu, et Andry est prévenu.
 
-### Étape 6 — Les rappels (tout seul, chaque heure)
+À savoir pour les scénarios :
+- **Validé** → la **facture part toute seule** (PDF + notification + e-mail), sans faire attendre
+  l'employé. Une facture par paiement ; le bouton **Facture** ne fait plus que l'ouvrir.
+- **Refusé** → Andry reçoit « Votre paiement … a été refusé. Contactez l'accueil. » ; la tranche
+  redevient payable.
+- **Au guichet** (web : Échéances → Payer) : le paiement est validé tout de suite, un paiement partiel
+  est accepté.
+- **Un paiement facturé** ne se désactive plus, son montant et son mode sont figés.
+- **Modifier une échéance** (web : Échéances → **Modifier**, **Super Admin seulement**) : nouvelle date
+  et/ou nouveau montant (`echeanceService.planifierModification`, puis `modifierEcheance`).
+  *Comme décaler un rendez-vous : on peut déplacer ou réduire une tranche, mais le prix total ne change pas.*
+  - La **différence de montant** est reportée sur la **dernière autre échéance non réglée** (la plus
+    lointaine), dans la même transaction : le total dû reste égal au tarif. Ex. 3 × 100 000 Ar, la
+    2ᵉ passe à 80 000 → la 3ᵉ passe à 120 000.
+  - Refusé : échéance **déjà réglée** (validé + en attente ≥ prévu) → 409 ; montant ≤ 0 ou **inférieur à
+    ce que l'étudiant a déjà payé** → 400 ; l'autre échéance tomberait sous 1 Ar (ou sous ce qu'elle a
+    déjà reçu) → 400 avec le **montant maximal** ; aucune autre échéance non réglée → 409 (la date
+    seule reste modifiable).
+  - Les échéances modifiées passent `genere_auto = false`. Andry reçoit une **notification + un e-mail**
+    « Modification de votre échéancier » (ancienne et nouvelle échéance, et le report).
+
+### Étape 6 — Les rappels : le serveur alerte l'Accueil, l'Accueil rappelle l'étudiant
 
 | | |
 |---|---|
-| **Déclenché par** | `app.js` → `alerteService.demarrerAlertesAutomatiques()` (au démarrage, puis toutes les heures) |
-| **Fonctions** | `verifierAlertes` → `alerteModel.getEcheancesARappeler`, `reserverAlerte`, `notifService.notifierPersonnel` |
-| **Page (web)** | `pages/echeances/Echeances.jsx` (vert « À jour », jaune « À rappeler », rouge « En retard »), bouton **« Rappeler »** → `POST /echeances/:id/rappeler` → `echeanceService.rappelerEcheance` (notification + e-mail à Andry) |
+| **Déclenché par** | Le serveur, chaque heure : `alerteService.verifierAlertes` |
+| **Page (web)** | **Échéances** : vert « À jour », jaune « À rappeler » (J-2), rouge « En retard » ; bouton **« Rappeler »** ; bouton **« Modifier »** (Super Admin, étape 5) |
 
-**Fonction clé : `verifierAlertes()`**
-```js
-for (const e of await alerteModel.getEcheancesARappeler()) {
-  if (!(await alerteModel.reserverAlerte(TYPES_ALERTE.ECHEANCE_J2, e.id_echeance))) continue;
-  await notifService.notifierPersonnel(`${e.etudiant_prenom} … doit être rappelé …`);
-}
-```
-- `reserverAlerte` renvoie `false` si l'alerte a **déjà été envoyée**, et `continue` passe alors à la
-  suivante : jamais deux fois la même alerte.
-- La même boucle prévient l'accueil quand une formation est **terminée** (`getFormationsTerminees`),
-  ce qui mène à l'étape 9.
+**En clair : `verifierAlertes()`** — *un réveil qui sonne chaque heure et regarde le calendrier.* Il liste
+les tranches à J-2 pas encore réglées et envoie **une seule** notification groupée à l'Accueil. Chaque
+alerte est notée dans `alerte_envoyee`, où elle est **unique** : jamais envoyée deux fois.
+
+C'est ensuite l'Accueil qui prévient Andry, avec le bouton **« Rappeler »** (notification + e-mail).
+
+**Pourquoi le rappel à l'étudiant n'est pas automatique ?** C'est un choix, pas un oubli. L'Accueil sait
+des choses que le serveur ignore : un paiement en espèces annoncé, un délai accordé, un étudiant déjà
+appelé au téléphone. Un rappel automatique pourrait relancer quelqu'un qui est en règle. Le système
+**détecte et alerte** (notification à J-2, couleur jaune puis rouge), l'humain **décide**.
+
+| Qui | Automatique ? | Quoi |
+|---|---|---|
+| Serveur → Accueil | **Oui**, chaque heure, une seule fois par tranche | « X étudiants doivent être rappelés » |
+| Accueil → étudiant | **Non**, bouton « Rappeler » (une ligne ou plusieurs lignes sélectionnées) | Notification sur le mobile + e-mail |
 
 ### Étape 7 — Le formateur publie un cours, Andry le lit
 
 | | |
 |---|---|
-| **Page (web, formateur)** | `pages/formateur/SupportsFormateur.jsx`, formulaire **« Publier un support »** → `handleUpload` → `useSupport().uploadSupport(formData)` |
-| **Paramètres** | FormData : `id_formation`, `titre`, `contenu`, `fichier`, et `date_envoi_prevue` (facultatif) |
-| **Route** | `POST /supports` (Formateur ; `supportUpload.single('fichier')` enregistre le fichier) |
-| **Fonctions** | `creerSupportController` → `supportService.creerSupports` → `supportModel.createSupport`, `supportProgrammeService.notifierSupportEnvoye` |
-| **Page (mobile)** | Onglet **Formations** → `use-formation` (`GET /etudiants/:id/formations`) → détail `use-doc-detail` : supports `pageSupports` (`GET /formations/:id/supports?limite=5&avant=`) et commentaires `pageCommentairesFormation` (`GET /formations/:id/commentaires?limite=5&avant=`), 5 par 5 avec « Voir plus » → `lecteur.tsx` (`GET /supports/:id`). Onglet **Documents** : `use-document-lists` → `GET /supports?page=&limite=5&recherche=&id_formation=&id_formateur=` |
-| **Page (web, liste)** | `ListeSupports.jsx` → `useSupport().listerSupports` (`GET /supports?page=&limite=5&recherche=&id_formation=&type=&tri=`) ; chaque carte `SupportItem.jsx` → `pageCommentaires` (`GET /supports/:id/commentaires?limite=3&avant=`) |
+| **Page (web, formateur)** | **Supports** → formulaire **« Publier un support »** (titre, texte, un ou plusieurs fichiers, heure d'envoi facultative) |
+| **Route** | `POST /supports` |
+| **Fonction** | `supportService.creerSupports` |
+| **Page (mobile)** | Onglet **Formations** → une formation → ses cours (5 par 5) → lecteur |
 
-**Fonction clé : `creerSupports({ id_formation, titre, contenu, fichiers = [], date_envoi_prevue }, auteur)`**
-- `fichiers = []` est une **valeur par défaut** : sans fichier, on a un tableau vide et non `undefined`.
-- Elle vérifie que la formation est **celle du formateur** (`forbidden` sinon).
-- `const pieces = fichiers.length ? fichiers : [null]` donne un support par fichier, ou un seul support texte.
-- Sans date : les inscrits sont **prévenus tout de suite**. Avec une date : `supportProgrammeService`
-  (vérifié chaque minute) les prévient 1 h avant, puis publie à l'heure.
-- Le texte est nettoyé par `utils/contenuRiche.js` (pas de script caché). Le PDF ou l'image ouvert par
-  Andry porte en filigrane **son nom et son e-mail** (`utils/filigrane.js`).
+**En clair : `creerSupports()`** — *le formateur dépose un cours dans le casier de la classe, tout de
+suite ou à une heure choisie.*
+- Refuse si ce n'est pas **sa** formation (403). Il faut un texte ou un fichier.
+- **Plusieurs fichiers** (10 au plus, choisis ensemble) → **un cours par fichier**, avec le même texte et la
+  même heure d'envoi. Titre : « Titre — nom du fichier » (ou seulement le nom du fichier sans titre).
+  Si la demande est refusée (formation d'un autre, plus de 10 fichiers…), les fichiers reçus sont supprimés.
+- **Sans heure** : les inscrits sont prévenus tout de suite. **Avec une heure** : le serveur (chaque
+  minute) les prévient 1 h avant, puis publie à l'heure. Avant ça, le formateur peut modifier le
+  brouillon ou cliquer « Envoyer maintenant ».
 
-Sur un support, on peut **commenter, répondre, mentionner** avec `@` (`POST /commentaires`) et **réagir**
-(`POST /supports/:id/reactions`). Les réactions servent à l'**avis sur les formateurs** (§5).
+À savoir :
+- Le texte est nettoyé : aucun script caché ne peut passer.
+- Le PDF ou l'image ouvert par Andry porte en **filigrane son nom et son e-mail** (dissuade le partage).
+- Un étudiant ne voit les cours que si son inscription est **validée**.
+- Sur un cours : **commenter**, **répondre**, **réagir** (👍 ❤️ 💡 👎). Le formateur peut **mentionner** un
+  étudiant avec `@`. Les réactions servent à l'avis sur les formateurs.
 
-### Étape 8 — La présence et la note
+### Étape 8 — La présence et la note d'attestation
 
 | | |
 |---|---|
-| **Présence** | Automatique : chaque requête d'Andry passe par `verifyToken`, qui appelle `presenceModel.marquerPresence` (une ligne par jour) |
-| **Page (web, formateur)** | `pages/formateur/AccueilFormateur.jsx` : classement et champ **note de présentation** → `useClassement` |
-| **Routes** | `GET /formations/:id/classement` ; `PUT /inscriptions/:id/note` `{ note_presentation }` |
-| **Fonctions** | `classementService.classementFormation`, `calculerClassement`, `malusPresence`, `malusPaiement`, `definirNote` |
+| **Présence** | Andry est **présent** un jour où il ouvre un cours, réagit ou commente (une ligne par jour). Ouvrir l'appli ne suffit pas |
+| **Page (web, formateur)** | **Accueil formateur** : classement + champ **note de présentation** |
+| **Routes** | `GET /formations/:id/classement` ; `PUT /inscriptions/:id/note` |
+| **Fonctions** | `classementService.calculerClassement`, `definirNote` |
 
-**La note d'attestation sur 20** (commentaire en tête de `classementService.js`) :
-- **note système sur 10** : chaque étudiant part de 10 et perd des points (jamais sous 0) ;
-- **présence** (jours présents / jours de cours du lundi au vendredi déjà passés) : ≥ 90 % → 0,
-  75–90 % → −1, 50–75 % → −2, < 50 % → −4 ;
-- **paiement** (payée le jour de l'échéance → 0) : −1 par échéance payée en retard (réglée le jour
-  suivant), −2 par échéance non réglée (pas réglée le jour suivant, même si payée plus tard), −4 au plus ;
-  c'est la **date du paiement** (envoi Mvola ou guichet) qui compte, pas sa validation par l'Accueil :
-  un paiement en attente compte déjà, seul un paiement refusé est ignoré ;
-- on y ajoute la **présentation**, de 0 à 10, donnée par le formateur.
-- Exemple : présence 80 % (−1) + une échéance payée en retard (−1) → 8/10 ; avec 7 en présentation → 15/20.
+**La note d'attestation sur 20 = note système /10 + présentation /10.**
 
-**Fonction clé : `definirNote(id_inscription, note, auteur)`**
-```js
-valeur = Number(String(note).replace(',', '.'));
-if (!Number.isFinite(valeur) || valeur < 0 || valeur > NOTE_PRESENTATION_MAX) throw badRequest(…);
-valeur = Math.round(valeur * 100) / 100;
-```
-- `String(note).replace(',', '.')` accepte « 7,5 » comme « 7.5 ».
-- `Number.isFinite` refuse « abc », `NaN` et `Infinity`.
-- `Math.round(x * 100) / 100` arrondit à 2 décimales.
+| Partie | Comment |
+|---|---|
+| **Présence** (jours présents / jours de cours lundi-vendredi déjà passés) | ≥ 90 % → 0 · 75-90 % → −1 · 50-75 % → −2 · < 50 % → −4 |
+| **Paiement**, par tranche | payée à la date → 0 · payée en retard → −1 · non réglée → −2 · au plus −4 en tout |
+| **Note système** | 10 moins les malus, jamais sous 0 |
+| **Présentation** | 0 à 10, donnée par le formateur |
+
+Exemple : présence 80 % (−1) + une tranche payée en retard (−1) → 8/10 ; présentation 7 → **15/20**.
+C'est la **date du paiement** qui compte (pas sa validation) ; un paiement refusé est ignoré.
+
+**En clair : `calculerClassement()`** — *le bulletin calculé tout seul* : il applique ces malus à chaque
+étudiant, ajoute la présentation, et trie du meilleur au moins bon.
+
+**En clair : `definirNote()`** — le formateur saisit la présentation : « 7,5 » accepté, hors 0-10 refusé
+(400). Seul le formateur **de cette formation** (ou le Super Admin). Après l'attestation, la note est
+**figée** (409) : *on ne corrige pas un diplôme déjà imprimé.*
+
+### Étape 8b — Andry décroche : l'Accueil le relance
+
+| | |
+|---|---|
+| **Page (web)** | **Tableau de bord**, carte **« Étudiants à risque de décrochage »**, bouton **« Relancer »** ; sélection multiple → « Relancer » groupé (une requête par étudiant, ceux relancés il y a moins de 3 jours ignorés) |
+| **Routes** | `GET /decrochage?page=&limite=10&recherche=&niveau=` (10 par page, les plus urgents d'abord ; filtre à contacter / à surveiller ; compteurs sur toute la liste) ; `POST /inscriptions/:id/relancer` |
+| **Fonctions** | `decrochageService.listerPageARisque` (classe tout, puis filtre par niveau, recherche et découpe), `listerEtudiantsARisque`, `relancer` |
+
+**Score sur 6**, trois critères notés 0, 1 ou 2 :
+
+| Critère | 0 | 1 | 2 |
+|---|---|---|---|
+| Assiduité (10 derniers jours de cours) | ≥ 75 % | 50-74 % | < 50 % |
+| Silence (jours sans ouvrir un cours) | < 7 | — | ≥ 7 |
+| Tranches en retard | 0 | 1 | 2 ou plus |
+
+2-3 = « à surveiller », 4-6 = « à contacter ». Exemple : venu 4 jours sur 10 (2) + rien ouvert depuis 8
+jours (2) = 4 → « à contacter ». *Comme un voyant moteur : il ne juge pas, il prévient qu'il faut regarder.*
+
+À savoir :
+- Ce n'est **pas** la note : la note juge toute la formation, le risque regarde **maintenant**.
+- Jamais montré à l'étudiant, jamais stocké, jamais une sanction. Pas de jugement avant 5 jours de cours.
+- **Pas décrit dans les conditions de l'application**, par choix : la politique de confidentialité dit
+  seulement que l'équipe suit l'activité pour accompagner l'étudiant et peut le contacter. Les critères
+  et les seuils restent internes : un étudiant qui les connaîtrait pourrait ouvrir un cours tous les
+  6 jours juste pour ne pas être repéré. À l'inverse, les règles de la **note** sont détaillées, car
+  elle figure sur l'attestation : l'étudiant doit pouvoir la vérifier.
+- L'Accueil est prévenu une fois (tâche horaire). « Relancer » : au plus une fois tous les 3 jours,
+  message bienveillant sans le mot « risque ».
+
+### Étape 8c — Andry commente son formateur ; la note du formateur
+
+| | |
+|---|---|
+| **Déclenché par** | À partir de **J-2 avant la fin**, Andry est prévenu, puis relancé **chaque jour** |
+| **Page (mobile)** | Onglet **Formations** : carte « à commenter » → écran du commentaire |
+| **Page (web)** | **Formateurs** (SA, Accueil) : ce qui reste, puis noter chaque commentaire sur 10 |
+| **Fonctions** | `formateurNoteService.commenter`, `noterCommentaire`, `classementFormateurs` |
+
+**En clair : `commenter()`** — *la fiche d'évaluation de fin de stage, remise à la direction et pas au
+professeur.* Un seul commentaire par inscription, pas avant J-2. Il va à l'Accueil et au Super Admin,
+**jamais au formateur**. Puis, si tout le reste est prêt, **l'attestation part tout de suite**.
+
+**La note du formateur sur 20** = réactions /10 (% de réactions positives ÷ 10, à partir de 5 réactions)
++ commentaires /10 (moyenne des notes données par l'Accueil). La partie commentaires ne compte que quand
+**tous** les étudiants ont commenté et que **tous** les commentaires sont notés ; sinon le tableau de bord
+affiche « x/y commentés » ou « n à noter ». Exemple : 85 % positives (8,5) + commentaires à 7 → 15,5/20.
+
+Un étudiant qui a abandonné : désactiver son inscription, il n'est plus attendu.
 
 ### Étape 9 — L'attestation
 
 | | |
 |---|---|
-| **Signal** | Étape 6 : « Andry a fini sa formation …, envoyez-lui son attestation. » |
-| **Page (web)** | `pages/inscriptions/Inscriptions.jsx`, bouton **« Attestation »** → `handleAction('attestation', row)` → confirmation → `useDocument().envoyerAttestation(id_inscription)` |
-| **Route** | `POST /attestations/:id_inscription/envoyer` (staff) |
-| **Fonctions** | `envoyerAttestationController` → `documentService.envoyerAttestation` → `creerAttestation` → `classementService.actualiserClassement`, `genererQRCodeBuffer`, `genererAttestationPDF`, `documentModel.insertAttestation` → `notifService.notifierEtudiant` (notification + e-mail avec le PDF) |
-| **Vérification** | Le QR code ouvre `GET /verification/:uuid` (public) → `verifierAuthenticite` (404 = faux document) |
+| **Prête quand** | Formation terminée + tout payé + note de présentation + commentaire sur le formateur |
+| **Automatique** | Envoyée **toute seule** : dès le commentaire d'Andry, ou par la tâche horaire |
+| **À la main (web)** | **Inscriptions** → bouton **« Attestation »** (`POST /attestations/:id_inscription/envoyer`) |
+| **Vérification** | Le QR code ouvre `GET /verification/:uuid` (public) : page « Attestation authentique » ou « Document non reconnu » |
+| **Fonctions** | `documentService.creerAttestation`, `envoyerAttestation`, `verifierAuthenticite` |
 
-**Fonction clé : `creerAttestation(id_inscription)`**
+**En clair : `creerAttestation()`** — *l'imprimerie du diplôme.*
+1. Déjà créée → la renvoie telle quelle (une seule par inscription).
+2. **Recalcule la note juste avant** l'impression.
+3. Sans note de présentation ou sans commentaire → 409.
+4. Tire un identifiant **impossible à deviner** (uuid), en fait un QR code, dessine le PDF.
+   *Comme le numéro de série d'un billet : on vérifie auprès de la banque qu'il existe.*
+
+**Le code, ligne par ligne :**
 ```js
+// Recalcule les notes de toute la formation, pour imprimer la note à jour.
 await classementService.actualiserClassement(inscription.id_formation);
+
+// Lit tout ce qu'il faut imprimer : nom, formation, durée, notes...
 const donnees = await documentModel.findInscriptionPourAttestation(id_inscription);
+
+// `=== null` : case vide en base -> le formateur n'a pas noté -> 409.
 if (donnees.note_presentation === null) throw conflict("Le formateur n'a pas encore attribué la note…");
+
+// Identifiant aléatoire (ex. 'f47ac10b-58cc-4372-a567-0e02b2c3d479') : impossible à deviner.
 const uuid = crypto.randomUUID();
+
+// Image du QR code contenant l'adresse de vérification (URL_BASE vient du .env).
 const qrBuffer = await genererQRCodeBuffer(`${URL_BASE}/verification/${uuid}`);
+
+// Dessine le PDF avec une copie des données + la date du jour. Renvoie 'documents/xxx.pdf'.
 const cheminRelatif = await genererAttestationPDF({ ...donnees, date_delivrance: new Date() }, qrBuffer, nomFichier);
 ```
-- La note est **recalculée juste avant** l'impression : elle est toujours à jour.
-- Pas de note du formateur, pas d'attestation (409).
-- `crypto.randomUUID()` produit un identifiant impossible à deviner ; il est imprimé dans le QR code.
-- `{ ...donnees, date_delivrance }` copie les données et y ajoute la date du jour.
 
-**Fonction clé : `envoyerAttestation(id_inscription)`**
-- `const { cheminRelatif, uuid } = await creerAttestation(id_inscription)` : on récupère deux valeurs du résultat.
-- `notifierEtudiant({ …, pieceJointe })` envoie la notification **dans tous les cas**, puis l'e-mail avec le
-  PDF. Si l'e-mail échoue, elle renvoie `{ emailEnvoye: false }` et la page l'affiche, sans annuler l'attestation.
+**En clair : `envoyerAttestation()`** — crée l'attestation puis prévient Andry : notification **toujours**,
+puis e-mail avec le PDF. Si l'e-mail échoue, l'attestation reste créée et la page affiche « e-mail non envoyé ».
 
-**Inscription « Réussie »** : dès qu'une attestation existe pour l'inscription, celle-ci est
-réussie. Rien n'est enregistré en plus : le statut est **calculé par la requête**
-(`STATUT_INSCRIPTION` dans `inscriptionModel.js` : `'reussi'` si l'`id_inscription` est dans
-`attestation`, sinon `'en_cours'`). Il est renvoyé par `/inscriptions` (filtre `?statut=en_cours|reussi`,
-badge et filtre « Réussie » sur la page Inscriptions), la fiche d'inscription, le dossier étudiant, la
-recherche et l'appli mobile (badge « RÉUSSIE » sur la carte de la formation). Les montants de
-l'inscription restent comptés dans les totaux.
-
-🎓 **Fin du parcours** : Andry reçoit « Votre attestation … est disponible » dans l'appli et le PDF par
-e-mail. N'importe qui peut scanner le QR code pour vérifier qu'elle est authentique.
+À savoir : dès qu'une attestation existe, l'inscription apparaît **« Réussie »** (badge et filtre sur le
+web, badge sur le mobile). Rien n'est enregistré en plus : c'est calculé par la requête.
 
 ### Le parcours en une ligne par étape
 
-| # | Qui | Où | Route | Fonction clé |
-|:-:|---|---|---|---|
-| 1 | Visiteur | Mobile — Découvrir | `GET /public/vitrine` | `contenuVitrine` |
-| 2 | Visiteur | Mobile — Inscription | `POST /public/inscriptions` | `inscriptionEnLigne` (transaction) |
-| 3 | Accueil | Web — Inscriptions « Valider » | `POST /inscriptions/:id/valid` | `validerInscription` |
-| 4 | Étudiant | Mobile — Connexion | `POST /auth/login` | `authentifier` + `verifyToken` |
-| 5 | Étudiant puis Accueil | Mobile — Payer / Web — Paiements « Valider » (facture envoyée seule) | `POST /paiements`, `PUT /paiements/:id/valider` | `enregistrerPaiement`, `traiterPaiementEnAttente`, `envoyerFactureAuto` |
-| 6 | Serveur | Tout seul, chaque heure | — | `verifierAlertes` |
-| 7 | Formateur puis Étudiant | Web — Publier / Mobile — Formations | `POST /supports`, `GET /supports/:id` | `creerSupports` |
-| 8 | Serveur + Formateur | Automatique / Web — note | `PUT /inscriptions/:id/note` | `marquerPresence`, `definirNote` |
-| 9 | Accueil | Web — Inscriptions « Attestation » | `POST /attestations/:id/envoyer` | `creerAttestation`, `envoyerAttestation` |
+| # | Qui | Où | Fonction principale |
+|:-:|---|---|---|
+| 1 | Visiteur | Mobile — Découvrir | `contenuVitrine` |
+| 2 | Visiteur | Mobile — Inscription | `inscriptionEnLigne` (transaction) |
+| 3 | Accueil | Web — Inscriptions « Valider » | `validerInscription` |
+| 4 | Étudiant | Mobile — Connexion | `authentifier` + `verifyToken` |
+| 5 | Étudiant puis Accueil | Mobile — Payer / Web — Paiements « Valider » | `enregistrerPaiement`, `traiterPaiementEnAttente` (facture automatique) |
+| 6 | Serveur | Chaque heure | `verifierAlertes` |
+| 7 | Formateur puis Étudiant | Web — Publier / Mobile — Formations | `creerSupports` |
+| 8 | Serveur + Formateur | Automatique / Web — note | `calculerClassement`, `definirNote` |
+| 8b | Serveur puis Accueil | Tableau de bord « Relancer » | `listerEtudiantsARisque`, `relancer` |
+| 8c | Étudiant puis Accueil | Mobile — Commenter / Web — Formateurs | `commenter`, `noterCommentaire` |
+| 9 | Serveur (ou Accueil) | Automatique / Web — « Attestation » | `creerAttestation`, `envoyerAttestation` |
+
+Cas de refus : inscription → « Désactiver » (étape 3) ; paiement → « Refuser » (étape 5).
 
 ---
 
 ## 5. Les autres modules, en bref
 
-| Module | Page | Routes principales | Fonctions (service) | À savoir |
-|---|---|---|---|---|
-| **Comptes** | Web — Utilisateurs (Super Admin) | `GET/POST /utilisateurs`, `PUT/DELETE /utilisateurs/:id`, `PUT /utilisateurs/:id/reactiver` | `userService.creerUtilisateur`, `modifierUtilisateur`, `supprimerUtilisateur`, `etatService.reactiverUtilisateur` | Seul le Super Admin change un rôle. Désactiver un compte ferme toutes ses sessions ; filtre « État » (actifs par défaut) et colonne Statut : un compte désactivé n'a qu'un bouton « Réactiver » |
-| **Mon profil** | Web — fenêtre Profil ; Mobile — Profil | `GET/PUT /utilisateurs/:id` (soi-même ou SA, multipart `photo`) | `userService.modifierUtilisateur` | Mobile : la photo est envoyée en `File` d'`expo-file-system` |
-| **Dossiers étudiants** | Web — Étudiants (liste, fiche, formulaire) | `GET/POST /etudiants`, `PUT/DELETE /etudiants/:id`, `GET/PUT /mon-dossier` (étudiant) | `etudiantService.creerEtudiant` → `insertUtilisateurEtEtudiant` | Pièces (photos, CIN, certificat) dans `uploads/etudiants` ; « Désactiver » = masqué, pas effacé, réactivable (voir **Éléments désactivés**) ; 4 pièces obligatoires (`config/dossier.js`) : l'étudiant les dépose ou les remplace depuis le mobile (menu ⋮ > Mon dossier), l'Accueil est notifié |
-| **Formations** | Web — Formations | `GET/POST /formations`, `PUT /formations/:id`, `PUT /formations/:id/image` | `formationService.*` | Un formateur ne voit que les siennes ; la couverture est publique (vitrine) et s'affiche aussi dans le tableau et la fiche (`CouvertureFormation.jsx` : initiales si pas d'image) |
-| **Documents** | Web — Documents ; fiche d'inscription | `POST /fiche/:id/generer`, `GET/POST/DELETE /documents` | `documentService.creerFiche`, `creerDocument` | PDF créés par `utils/pdf.js` (pdfkit). « Désactiver » un document ou un support : masqué, réactivable (`PUT /documents/:id/reactiver`, `PUT /supports/:id/reactiver`) |
-| **Commentaires et avis** | Support (web et mobile) ; tableau de bord | `POST /commentaires`, `POST /supports/:id/reactions`, `GET /formateurs/avis` | `commentaireService.creerCommentaire`, `reactionService.avisFormateurs` | Avis « Compétent / Non compétent / Pas assez d'avis » calculé à partir des réactions ; `?debut=&fin=` : seules les réactions données pendant la période |
-| **Notifications** | Cloche et page Notifications (web) ; onglet Notifications (mobile) | `GET /notifications?limite=10&avant=<id>` / `?apres=<id>`, `GET /notifications/compteur`, `PUT /notifications/lu-tout` | `notifService.listerNotifications` | Les 10 dernières, bouton « précédentes », les nouvelles arrivent toutes les **10 s** ; pagination par curseur (id), pas par numéro de page |
-| **Assistance** | Mobile — Assistance ; Web — Assistance | `POST /assistances` (ET), `GET /assistances`, `PUT /assistances/:id/resoudre` | `assistanceService.*` | L'Accueil est prévenu, l'étudiant aussi quand c'est résolu |
-| **Recherche** | En-tête (web et mobile), Ctrl+K sur le web | `GET /recherche?q=` | `rechercheService.rechercher` | Résultats filtrés selon le rôle ; 2 lettres minimum |
-| **Sessions** | Paramètres → Sécurité | `GET /auth/sessions`, `PUT /auth/logout-all`, `PUT /auth/change-password` | `authService.*` | Le site et l'appli revérifient la session chaque minute |
-| **Apparence** | Paramètres → Apparence | `PUT/DELETE /parametres/logo`, `PUT/DELETE /vitrine/fond` (SA), `GET /public/logo` | `vitrineService.modifierLogo`, `modifierFondVitrine` | Thème, couleur, police, menu réduit : propres au navigateur. Écran de moins de 900 px (tablette, téléphone) : menu toujours réduit aux icônes (`usePreferences`). **Logo et fond** : Super Admin seulement, enregistrés sur le serveur, les mêmes pour tous. Mobile : icônes et textes prennent leurs couleurs dans `palette` (jamais en dur) ; en mode sombre, la couleur principale est éclaircie (`ACCENT_SOMBRE` dans `constants/theme.ts`, comme `web/src/utils/theme.js`) et le texte posé dessus devient foncé (`onAccent`) |
-| **Tableau de bord** | Web — Tableau de bord | `GET /dashboard/kpi`, `/evolution`, `/export-csv`, `/inscriptionParMois`, `/topInscription`, `/echeances`, `/formateurs/avis` | `dashboardService.*` (cache d'1 minute par période), `dashboardModel.getSituationEcheances` | **Filtre « Du … au … »** (`FiltreDates.jsx`, `?debut=&fin=` contrôlé par `utils/periode.js`) commun aux indicateurs, inscriptions par mois, formations les plus suivies, paiements à surveiller et avis sur les formateurs. Sous les cartes, barre « Détail du reste à encaisser » : à venir / à valider / en retard, chacun avec son montant et son nombre d'échéances (somme des montants = total). Barres des encaissements : montant au-dessus des barres non vides, libellé sur deux lignes sous l'axe (jour puis mois, ou mois puis année), évolution vs période précédente en vert / rouge ; nombre d'inscriptions sous chaque mois. Paiements à surveiller : retards puis J-2 en tête (5 lignes par couleur demandées au serveur, `?statut=&page=1&limite=5`, totaux de la pagination) ; « Filtres avancés » ouvre Échéances avec la même période. Export CSV |
-| **Supports et commentaires** | Détail d'une formation et d'un support (mobile), onglet Documents (mobile), page Supports du formateur (web) | `?limite=5&avant=<id>` (curseur) ; `GET /supports?page=&limite=5` (recherche, filtres) | `lireCurseur`, `clauseCurseur`, `reponseCurseur` (`utils/pagination.js`) ; `commentaireService.listerFil` | Le serveur n'envoie que 5 éléments à la fois ; « Voir plus » demande la suite. Commentaires : la page compte les commentaires principaux, leurs réponses sont lues en **une** requête (`getReponses`). Un appel unique `GET /formations/:id/commentaires` remplace l'ancien appel par support |
-| **Listes** | Étudiants, Paiements, Inscriptions, Échéances | `?page=&limite=&recherche=` | `utils/pagination.js` | 10 lignes par page (100 max), filtres faits par le serveur. Échéances : statut (à jour / J-2 / en retard) **et** dates « Du … au … » sur la date d'échéance, combinables (ex. en retard du X au Y), période gardée dans l'adresse ; Utilisateurs et Documents encore paginés dans le navigateur ; « Exporter CSV » = la liste filtrée sans `?page=`, plafonnée à 10 000 lignes par le serveur (message si coupée, `BoutonExportCSV.jsx`) ; formulaire Formation : seuls les formateurs sont chargés (`/utilisateurs?role=Formateur`) ; mobile : liste des formations « Voir plus » par 10 dans le téléphone |
-| **Éléments désactivés** | Utilisateurs, Étudiants, Formations, Inscriptions, Échéances, Paiements, Documents (administratifs et supports) : filtre « État » | `?etat=actif\|inactif\|tous`, `DELETE /…/:id` (désactiver), `PUT /…/:id/reactiver` | `etatService.*`, `dependanceService.verifierInscription / verifierEcheance / verifierPaiement` | Actifs par défaut ; une ligne désactivée n'a qu'un bouton « Réactiver » (Super Admin) ; un paiement facturé n'a pas « Désactiver ». Chaque changement est noté dans `historique_etat`. Badge orange (« Étudiant désactivé »…) sur une ligne dont un élément parent est désactivé : toute action dessus renvoie **409** avec ce qu'il faut réactiver. Réactivation refusée tant qu'un parent est désactivé (un support : sa formation ; un formateur ne réactive que ses supports) |
-| **Montants** | Partout (web, mobile, PDF, e-mails, notifications) | — | `formatMontant` | « 3 160 000 Ar » : séparateur de milliers, arrondi à l'ariary ; les exports CSV gardent le nombre brut |
+| Module | Où | Ce qu'il faut savoir |
+|---|---|---|
+| **Comptes** | Web — Utilisateurs (Super Admin) | Seul le SA crée un compte du personnel ou change un rôle. Désactiver un compte ferme toutes ses sessions |
+| **Mon profil** | Web — fenêtre Profil ; mobile — Profil | Nom, téléphone, photo |
+| **Dossiers étudiants** | Web — Étudiants | 4 pièces obligatoires ; l'étudiant les dépose ou remplace depuis le mobile (⋮ → Mon dossier), l'Accueil est prévenu |
+| **Formations** | Web — Formations | Un formateur ne voit que les siennes ; image de couverture visible dans la vitrine, le tableau et la fiche |
+| **Documents** | Web — Documents | Documents administratifs du personnel + fichiers des cours. PDF créés par le serveur (fiche, facture, attestation) |
+| **Commentaires et avis** | Sous chaque cours (web et mobile) | Avis sur un formateur : « Compétent » si ≥ 60 % de réactions positives sur au moins 5 |
+| **Notifications** | Cloche (web), onglet Notifications (mobile) | Les 10 dernières, les nouvelles arrivent toutes les **10 s**, bouton « précédentes » |
+| **Assistance** | Mobile — Assistance ; web — Assistance | L'étudiant écrit, l'Accueil clique « Résoudre », l'étudiant est prévenu |
+| **Recherche** | En-tête (web : Ctrl+K ; mobile : loupe) | 2 lettres minimum ; chacun ne trouve que ce que son rôle a le droit de voir |
+| **Sessions** | Paramètres → Sécurité | Liste des appareils connectés, « Se déconnecter partout », changer le mot de passe. Le site et l'appli revérifient la session chaque minute |
+| **Apparence** | Paramètres → Apparence | Thème, couleur, police : propres au navigateur. **Logo et fond de la vitrine** : Super Admin seulement, les mêmes pour tous. Écran < 900 px : menu réduit aux icônes |
+| **Tableau de bord** | Web — Tableau de bord | 3 parties : **À traiter aujourd'hui** (étudiants à risque), **Activité du centre** (filtre « Du … au … », indicateurs, reste à encaisser, paiements à surveiller, graphiques), **Formateurs** (classement sur 20). Export CSV. Chiffres gardés 1 minute en mémoire |
+| **Risque de décrochage** | Tableau de bord | Voir §4 étape 8b |
+| **Formateurs** | Web — Formateurs (SA, Accueil) | Ce qui reste avant la note de chaque formateur (étudiants pas encore commentés, commentaires à noter), puis la notation sur 10. Ne pas confondre avec `pages/formateur/` (l'espace du formateur) |
+| **Supports et commentaires** | Mobile et web | Chargés **5 par 5** (« Voir plus ») |
+| **Listes** | Étudiants, Paiements, Inscriptions, Échéances | 10 lignes par page, recherche et filtres faits par le serveur. Échéances : filtre couleur **et** dates combinables. Export CSV = la liste filtrée, 10 000 lignes au plus |
+| **Éléments désactivés** | Toutes les listes : filtre « État » | Voir §7 « Suppression ». Badge orange quand un élément parent est désactivé ; toute action dessus → 409 qui dit quoi réactiver |
+| **Montants** | Partout | Toujours « 3 160 000 Ar » (`formatMontant`) ; les exports CSV gardent le nombre brut |
 
 ---
 
 ## 6. Ce que le serveur fait tout seul
 
-| Quand | Quoi | Où |
+| Quand | Quoi | Fonction |
 |---|---|---|
-| À chaque requête d'un étudiant | Le noter présent pour la journée | `verifyToken` → `presenceModel.marquerPresence` |
-| Chaque minute | Annoncer les supports 1 h avant, puis les publier à l'heure | `supportProgrammeService.demarrerEnvoisProgrammes` |
-| Chaque heure | Prévenir l'accueil des échéances à rappeler et des formations terminées (une seule fois chacune) | `alerteService.demarrerAlertesAutomatiques` |
+| Quand un étudiant ouvre un cours, réagit ou commente | Le noter présent pour la journée | `presenceSurCours` → `marquerPresence` |
+| Chaque minute | Annoncer les cours programmés 1 h avant, puis les publier à l'heure | `supportProgrammeService.verifierSupportsProgrammes` |
+| Chaque heure | Rappels J-2 à l'Accueil ; étudiants passés « à contacter » ; demande et relance du commentaire sur le formateur ; envoi des attestations prêtes ; note de présentation manquante signalée au formateur | `alerteService` : `verifierAlertes`, `signalerDecrochages`, `demanderCommentaires`, `verifierAttestations` |
+| Chaque jour | Ménage : sessions expirées depuis plus de 180 jours, codes « mot de passe oublié » périmés, notifications supprimées depuis plus de 30 jours | `purgeService.purger` |
+
+Les tâches démarrent avec le serveur (`app.js`). Une erreur est écrite dans la console mais n'arrête
+jamais le serveur : *comme un employé qui note l'incident dans le cahier et continue sa tournée.*
 
 ---
 
 ## 7. Les règles à connaître avant de modifier le code
 
-- **Droits** : chaque route dit qui y a droit (`roles(...)`, `staff`). Le menu du site (`web/src/utils/navigation.js`)
-  ne fait que **masquer** des liens ; la vraie protection est dans l'API. Un étudiant ne voit que ses
-  données (`exigerEtudiantProprietaire`).
+- **Droits** : chaque route dit qui y a droit. Le menu du site ne fait que **cacher** des liens ; la vraie
+  protection est dans l'API. Un étudiant ne voit que **ses** données.
 - **Argent** : le montant d'un paiement étudiant est **imposé par le serveur**. Un paiement passe
   `en_attente` → `valide` / `refuse` **une seule fois**. Les montants se calculent en centimes.
-- **Dates** : colonnes `DATETIME` en **heure locale de Madagascar** (UTC+3). Une expiration se calcule
-  **dans MySQL** (`NOW()`, `DATE_ADD`), jamais dans Node. Les écrans affichent l'heure locale ; une date à
-  00:00 s'affiche sans heure.
-- **Tout ou rien** : ce qui va ensemble (compte + inscription + échéances + paiement) passe par `avecTransaction`.
-- **Notifications** : toujours **après** l'enregistrement, dans un `try/catch`. Un e-mail en panne n'annule jamais une action.
-- **Suppression** : on désactive (`etat = false`), on n'efface pas, et on peut réactiver (`PUT /…/:id/reactiver`,
-  `services/etatService.js`). Toujours passer par `etatService` / `dependanceModel.changerEtat`, jamais par un
-  `UPDATE … SET etat` direct : la même transaction écrit la ligne de `historique_etat` (quelle table, quel élément,
-  dans quel sens, quand ; pas qui). Les listes ne montrent que les éléments actifs, sauf `?etat=inactif|tous`
-  (personnel seulement : `utils/etat.js`). **Avant une action** sur une inscription, une échéance ou un paiement,
-  appeler `dependanceService.verifierInscription / verifierEcheance / verifierPaiement` : 409 si l'élément, son
-  échéance, son inscription, son étudiant ou sa formation est désactivé, avec un message qui dit quoi réactiver.
-- **Agent d'un paiement** : `paiement.id_utilisateur` retient qui l'a saisi au guichet, validé ou refusé ; toujours
-  transmettre `req.user.id`. `NULL` : ancien paiement ou déclaration pas encore traitée. Corriger une référence ne le change pas.
-- **Note des formateurs (sur 20)** : 10 points de réactions (% positif ÷ 10, à partir de 5 réactions) + 10 points manuels
-  (moyenne des notes données par l'Accueil ou le SA aux commentaires de `formateur_note`). Il faut les deux parties pour
-  avoir une note sur 20. `formateurNoteService.classementFormateurs` sert le tableau de bord ; la vitrine garde `avisFormateurs`.
-- **Commentaire de fin de formation** : ouvert à J-1, un par inscription, rappelé une fois par la tâche horaire
-  (`commentaire_fo`), obligatoire pour l'attestation (`creerAttestation` et `raisonsBlocage`). Le formateur n'y a pas accès.
-- **Attestation** : une seule par inscription (`uq_attestation_inscription`). `creerAttestation` renvoie celle qui existe ;
-  une fois délivrée, la note de présentation ne change plus (`definirNote` : 409).
-- **Paiements facturés** : pas de désactivation, montant et mode figés (`facture_emise` dans les listes : le web
-  masque « Désactiver »). L'application n'a pas d'avoir : une erreur sur un paiement facturé se règle hors application.
-- **Paiements** : toute opération qui dépend du reste à payer se fait dans une transaction, avec
-  `paiementModel.verrouillerEcheance` en **première** requête (`SELECT … FOR UPDATE` : sinon la transaction
-  relit une ancienne image de la base). Pas d'appel à une requête sur `db` pendant ce verrou (risque de bloquer
-  le pool) : contrôles avant la transaction, notification et facture après.
-- **Montants** : toujours affichés avec `formatMontant` (« 3 160 000 Ar ») : `web/src/utils/format.js`,
-  `mobile/src/utils/format.ts`, `backend-imtech/utils/format.js` (PDF, e-mails, notifications). Jamais « MGA »,
-  jamais de `toLocaleString` à la main.
-- **Icônes, pas d'emoji** : aucun emoji dans l'interface (web, mobile, PDF, e-mails, notifications), sauf les
-  réactions 👍 ❤️ 💡 👎. Web : composant `web/src/components/icon/Icon.jsx` (`<Icon name="check" />` ; ajouter un
-  tracé SVG si l'icône manque ; `className="icon-inline"` = icône à la taille du texte, dans une phrase ou un
-  bouton). Mobile : `lucide-react-native` (`<Star size={11} color={palette.success} />`).
-- **Couleurs (mobile)** : pas de couleur en dur pour une icône ou un texte : `palette.heading`, `textMuted`,
-  `success`, `danger`, `warning`, `onAccent` (`const { palette } = useSettings()`), sinon invisible en mode sombre.
-- **Retours à l'utilisateur (web)** : confirmation par `useRetour().confirmer({ titre, message, bouton, danger })`,
-  jamais `window.confirm` ; réussite par `notifier('Étudiant ajouté')` (bandeau vert en bas de l'écran).
-  Après une désactivation : `notifier('Étudiant désactivé', { annuler: () => reactiver(ligne) })` affiche
-  un bouton **Annuler** pendant 7 s.
-  Le message dit **sur quoi** porte l'action (nom de l'étudiant, de la formation…), avec des mots de tous
-  les jours. Composants dans `web/src/components/retour/`, fournis à toute l'appli par `main.jsx`.
-- **Fichiers** : servis par l'API avec contrôle des droits (`middlewares/fichierMiddleware.js`). Seuls
-  `formations/` et `vitrine/` sont publics.
+  Toute opération qui dépend du reste à payer **verrouille la tranche** (`verrouillerEcheance`) dans une transaction.
+- **Agent d'un paiement** : `paiement.id_utilisateur` retient qui l'a saisi, validé ou refusé.
+- **Paiements facturés** : pas de désactivation, montant et mode figés. Pas d'avoir : une erreur sur un
+  paiement facturé se règle hors application.
+- **Dates** : heure de Madagascar. Une expiration se calcule **dans MySQL** (`NOW()`), jamais dans Node.
+- **Tout ou rien** : ce qui va ensemble (compte + inscription + tranches + paiement) passe par `avecTransaction`.
+- **Notifications** : toujours **après** l'enregistrement ; un e-mail en panne n'annule jamais une action.
+- **Suppression** : on **désactive** (`etat = false`), on n'efface pas, on peut réactiver. Toujours
+  passer par `etatService` : il écrit aussi la ligne de `historique_etat`. Avant une action sur une
+  inscription, une tranche ou un paiement : `dependanceService.verifier…` (409 si un parent est désactivé).
+  Réactivation refusée tant qu'un parent est désactivé.
+- **Attestation** : une seule par inscription ; après elle, la note de présentation ne change plus.
+- **Commentaire de fin de formation** : ouvert à J-2, un par inscription, obligatoire pour l'attestation,
+  jamais visible par le formateur.
+- **Risque de décrochage** : ne pas le confondre avec la note (§4 étape 8b). Seuils dans `REGLES` (`decrochageService.js`).
+- **Montants affichés** : toujours `formatMontant` (« 3 160 000 Ar »), jamais « MGA ».
+- **Icônes, pas d'emoji** : aucun emoji dans l'interface, sauf les réactions 👍 ❤️ 💡 👎. Web : `<Icon name="…" />` ;
+  mobile : `lucide-react-native`.
+- **Couleurs (mobile)** : jamais de couleur en dur, toujours `palette.…` (sinon invisible en mode sombre).
+- **Web** : confirmation par `useRetour().confirmer(…)` (jamais `window.confirm`) ; réussite par `notifier('…')`
+  (bandeau vert, avec « Annuler » après une désactivation).
+- **Fichiers** : servis par l'API avec contrôle des droits ; seuls `formations/` et `vitrine/` sont publics.
 - **Schéma SQL** : modifier `alter.sql` (rejouable) **et** `base.sql`, puis exécuter `alter.sql`.
-- **Tests** : `npm test` dans `backend-imtech` (`node --test`, `mock.method` pour simuler la base). Ajouter un
-  test quand on touche une règle.
+- **Tests** : `npm test` dans `backend-imtech` ; ajouter un test quand on touche une règle.
 
-**Codes d'erreur** (`utils/errors.js`) :
+**Codes d'erreur** :
 
 | Code | Sens | Exemple |
 |---|---|---|
-| 400 | Demande mal remplie | Champ manquant, montant négatif, fichier trop lourd |
+| 400 | Demande mal remplie | Champ manquant, note hors 0-10, fichier trop lourd |
 | 401 | Pas connecté | Token absent ou expiré, session fermée |
 | 403 | Pas le droit | Mauvais rôle, données de quelqu'un d'autre |
 | 404 | Introuvable | Paiement ou étudiant inexistant |
-| 409 | Déjà fait, ou impossible dans l'état actuel | E-mail déjà utilisé, échéance déjà payée, inscription déjà validée, étudiant / formation / inscription désactivé |
-| 429 | Trop d'essais | Connexions ratées, demandes de mot de passe, inscriptions en ligne |
-| 500 | Imprévu | Message général ; le détail reste dans la console du serveur |
+| 409 | Déjà fait, ou impossible maintenant | E-mail déjà utilisé, tranche déjà payée, inscription déjà validée, élément désactivé |
+| 429 | Trop d'essais | Connexions ratées, mots de passe oubliés, inscriptions en ligne |
+| 500 | Imprévu | Message général ; le détail est dans la console du serveur |
 
 ---
 
@@ -620,12 +684,12 @@ ALERTE_ENVOYEE (id_alerte, type, id_reference, date_envoi)
 RESET_PASSWORD (id_reset, #id_utilisateur, token, date_expiration, utilise, date_creation)
 PARAMETRE_APPLICATION (cle, valeur, modifie_le)        -- fond_vitrine, logo
 FORMATEUR_NOTE (id_note, #id_utilisateur, #id_etudiant, #id_inscription, note, commentaire, date_commentaire)
-HISTORIQUE_ETAT (id_historique, table_origine, id_origine, actif, date_action)  -- id_origine sans clé étrangère : pointe vers 8 tables
+HISTORIQUE_ETAT (id_historique, table_origine, id_origine, actif, date_action)
 ```
 
-La base refuse aussi certains doublons : une réaction par personne et par support, une présence par
-personne et par jour, une alerte par sujet, une facture par paiement, une attestation par inscription, un commentaire de
-fin de formation par inscription.
+La base refuse elle-même certains doublons : une réaction par personne et par cours, une présence par
+personne et par jour, une alerte par sujet, une facture par paiement, une attestation par inscription,
+un commentaire de fin de formation par inscription.
 
 ---
 
@@ -633,27 +697,26 @@ fin de formation par inscription.
 
 | Piège | Ce qui a été fait |
 |---|---|
-| Une heure calculée par Node et comparée par MySQL : code ou session expiré dès sa création | Expirations calculées dans MySQL |
-| Le site affichait les heures en UTC (3 h de retard) | Affichage dans le fuseau local (`web/src/utils/time.js`, `mobile/src/utils/format.ts`) |
-| Une fonction du hook dans les dépendances d'un `useEffect` : rechargement à chaque frappe, saisie effacée | Dépendre de l'**id**, pas de la fonction (`ProfileModal.jsx`) |
-| Mobile : `{ uri, name, type }` dans un FormData → « Unsupported FormDataPart implementation » | Envoyer un `File` d'`expo-file-system` |
-| Pagination par OFFSET sur une liste qui reçoit des lignes en direct → doublons | Curseur par id (`avant` / `apres`) pour les notifications, puis pour les supports et commentaires |
-| Supports et commentaires chargés en entier (le mobile faisait **un appel par support** pour les commentaires d'une formation) : de plus en plus lent avec le volume | Pagination par le serveur, 5 par 5 : curseur `(date, id)` + index `idx_support_formation_fil` et `idx_commentaire_fil` ; une seule route `GET /formations/:id/commentaires` |
-| Page Échéances : la somme des paiements recalculée pour **toutes** les échéances avant de garder une page de 10 ; filtre couleur et alerte J-2 (`DATEDIFF`) sans index → toute la table lue à chaque affichage et chaque heure | Les 10 lignes de la page sont choisies d'abord (sous-requête `page`), les montants calculés ensuite ; filtres ROUGE / JAUNE / VERT et alerte écrits sur `date_echeance` seule ; index `idx_echeance_date` et `idx_paiement_echeance_somme` (somme lue dans l'index) — aucune colonne ajoutée |
-| Tableau de bord sans période : les échéances relues 4 fois (reste, retards, détail) et toutes les sommes de paiements recalculées à chaque ouverture, pour chaque membre du personnel | Une seule lecture des échéances (`getSituationEcheances`) ; index `idx_paiement_encaisse`, `idx_inscription_date`, `idx_inscription_formation_date` (calculs faits dans l'index) ; résultats gardés 1 minute par période (`dashboardService`, demandes simultanées partagées) — chiffres identiques, vérifiés sur 5 périodes |
-| Listes chargées en entier dans le navigateur : menu déroulant de **tous** les étudiants (Nouvelle inscription), de **tous** les comptes pour choisir un formateur, **toutes** les échéances de la période pour 5 lignes du tableau de bord, exports CSV sans limite | Recherche au serveur (`ChampRecherche.jsx`), `?role=Formateur`, 5 lignes par couleur + totaux, listes sans `?page=` plafonnées à 10 000 lignes (`clauseLimite` / `reponseListe`, `tronque: true`) |
-| Barre d'onglets mobile à hauteur fixe : libellés coupés sous la barre système | Hauteur + marge du téléphone (`useSafeAreaInsets`) |
-| Double clic ou deux employés en même temps | `UPDATE … WHERE statut = 'en_attente'` et contraintes d'unicité |
-| L'adresse d'un fichier se confondait avec celle d'un support (`/api/supports/cours.pdf`) | Le serveur regarde d'abord si le fichier existe |
-| Erreurs techniques montrées à l'utilisateur (« Failed to fetch », « Network request failed », « Erreur 500 », page HTML) | `apiRequest` (web et mobile) les remplace par une phrase en français |
-| Boîte `window.confirm` du navigateur (« localhost:5173 indique… ») | Fenêtre de l'application : `useRetour().confirmer` |
-| Montants bruts (« 3160000.02 ») et mélange « MGA » / « Ar » | `formatMontant` partout (§7) |
-| PDF : `toLocaleString('fr-FR')` sépare les milliers par une espace fine que la police des PDF (Helvetica) n'affiche pas | Espace ordinaire dans `backend-imtech/utils/format.js` |
-| Mobile : icônes bleu marine en dur, invisibles en mode sombre ; couleur principale foncée illisible sur fond sombre | Couleurs de `palette` ; `accentSombre()` dans `constants/theme.ts` |
-| Formations : filtre « Inactif » toujours vide (l'API ne renvoyait que les formations actives) | Filtre « État » envoyé au serveur (`?etat=`) |
-| `base.sql` échouait sur une base neuve (table `sessions` créée avant `utilisateur`, colonne `etat` ajoutée deux fois) : les dernières tables n'étaient jamais créées | `SET FOREIGN_KEY_CHECKS = 0` le temps de la création, doublon retiré ; vérifié sur une base vide le 26/10 |
-| Accents abîmés (« envoy├® ») en chargeant un `.sql` avec le client `mysql` de XAMPP | `SET NAMES utf8mb4;` en tête de `donneesTest.sql`, ou `--default-character-set=utf8mb4` |
-| Remplacement automatique dans plusieurs fichiers : des `import './X.css'` supprimés, pages sans style | Après un remplacement en masse : relire `git diff`, puis `npx vite build` |
+| QR code de l'attestation sans réponse au scan (`URL_BASE` en `localhost` ou sans `/api`) | `URL_BASE` = adresse du PC sur le réseau **avec `/api`** ; une attestation déjà imprimée garde l'ancien lien |
+| Heure calculée par Node et comparée par MySQL : code ou session expiré dès sa création | Expirations calculées dans MySQL |
+| Le site affichait les heures en UTC (3 h de retard) | Affichage dans l'heure locale |
+| Double clic, ou deux employés en même temps | `UPDATE … WHERE statut = 'en_attente'` et contraintes d'unicité |
+| Listes chargées en entier (lent avec le volume) | Pagination par le serveur, recherche au serveur, exports plafonnés à 10 000 lignes |
+| Listes qui reçoivent des lignes en direct : doublons en paginant | Pagination « les suivants après tel id » (curseur) pour les notifications, cours, commentaires |
+| Erreurs techniques montrées à l'utilisateur (« Failed to fetch », « Erreur 500 ») | `apiRequest` les remplace par une phrase en français |
+| Montants bruts (« 3160000.02 ») et mélange « MGA » / « Ar » | `formatMontant` partout |
+| Mobile : icônes invisibles en mode sombre | Couleurs de `palette` |
+| Accents abîmés en chargeant un `.sql` avec XAMPP | `--default-character-set=utf8mb4` |
+| `base.sql` échouait sur une base neuve | Corrigé et vérifié sur une base vide le 26/10 |
+| Mobile : photo envoyée en `{ uri, name, type }` → « Unsupported FormDataPart » | Envoyer un `File` d'`expo-file-system` |
+| Remplacement automatique dans plusieurs fichiers : des `import './X.css'` supprimés | Après un remplacement en masse : relire `git diff`, puis `npx vite build` |
+| Audit Lighthouse lancé sur `npm run dev` (port 5173) : performance à 18, code non compressé | Toujours mesurer le build : `npm run build` puis `npm run preview` (port 4173), et comparer les mêmes pages |
+| Tableau de bord qui « saute » au chargement (CLS 0,38) : « Chargement... » ajouté puis retiré en haut, cartes qui grandissent à l'arrivée des données | « Chargement... » en pastille fixe en bas à droite (`.dashboard-chargement`) ; place réservée dans les cartes en cours de chargement (`.carte-chargement`, 220 px) |
+| Police chargée chez Google Fonts : la page attendait ce fichier externe avant de s'afficher | Police Inter fournie par le paquet `@fontsource/inter`, importée dans `web/src/main.jsx` |
+| Texte secondaire gris clair illisible (contraste 3:1) | `--text-muted` à `#5b6f80` en thème clair (5,2:1, minimum 4,5:1) |
+| `npm test` ne se terminait jamais : `tests/fichiers.test.js` laissait une connexion ouverte (tous les tests passaient pourtant) | Option `--test-force-exit` dans le script `test` de `backend-imtech/package.json` |
+| Lint mobile : « Cannot access refs during render » dans `use-notification.ts` (`listeRef.current = notifications` écrit pendant le rendu) | Écrire une ref dans un `useEffect`, jamais directement dans le corps du composant ou du hook |
+| Photos de profil de plusieurs Mo affichées en avatars de 30 px | Réduites à 400 px à l'upload (`reduirePhoto`) ; anciennes photos : `node scripts/reduirePhotos.js` (copie de `uploads/` avant) |
 
 ---
 
@@ -661,11 +724,116 @@ fin de formation par inscription.
 
 | Priorité | Manque | Piste |
 |---|---|---|
-| Haute | Vrai paiement en ligne | **MVola Merchant Pay** : plan détaillé dans [`paiement Mvola.md`](paiement%20Mvola.md) |
-| Moyenne | Lecture des supports sans internet | Garder les supports sur le téléphone, protégés |
-| Moyenne | Inscription en ligne sans vérifier l'e-mail | Code par e-mail (les pièces, elles, sont exigées avant la validation) |
-| Moyenne | Mobile : logo intégré à l'appli (pas le logo choisi par le Super Admin) | Lire `GET /public/logo` comme le site |
+| Haute | Vrai paiement en ligne | **MVola Merchant Pay** : plan dans [`paiement Mvola.md`](paiement%20Mvola.md) |
+| Moyenne | Lecture des cours sans internet | Garder les cours sur le téléphone, protégés |
+| Moyenne | Inscription en ligne sans vérifier l'e-mail | Code par e-mail |
+| Moyenne | Mobile : logo intégré à l'appli (pas celui choisi par le SA) | Lire `GET /public/logo` comme le site |
 | Basse | Pas de notification quand l'appli est fermée | Notifications « push » |
-| Basse | Présence = « a ouvert l'appli ce jour-là » ; jours fériés comptés | QR code en classe ; liste des jours fériés |
-| Basse | L'accueil ne peut pas répondre par écrit à une demande d'aide | Réponse visible sur le téléphone |
-| Basse | Installation à la main sur un seul serveur | Mise en ligne en HTTPS, vérifications automatiques à chaque modification |
+| Basse | Présence = « a ouvert un cours ce jour-là » ; jours fériés comptés | QR code en classe ; liste des jours fériés |
+| Basse | L'Accueil ne peut pas répondre par écrit à une demande d'aide | Réponse visible sur le téléphone |
+| Basse | Installation à la main sur un seul serveur | Mise en ligne en HTTPS, vérifications automatiques |
+
+---
+
+## 11. Dictionnaire des fonctions principales
+
+À ne pas lire de haut en bas : on y cherche une fonction (Ctrl+F) quand on la rencontre. Les `models/`
+(le SQL) et les `controllers/` (qui ne font que relayer vers le service du même nom) ne sont pas listés.
+
+**Mots qui reviennent :** `auteur` = la personne connectée (`req.user`) ; `id_auteur` = son id (il signe
+l'e-mail) ; `connection` = la transaction en cours.
+
+### Services (les règles)
+
+| Fonction | Ce qu'elle fait |
+|---|---|
+| **Inscription** | |
+| `vitrineService.contenuVitrine` | Tout l'écran Découvrir en une fois |
+| `vitrineService.inscriptionEnLigne` | Compte + dossier + inscriptions + tranches + 1ᵉʳ paiement en attente, tout ou rien |
+| `vitrineService.inscriptionCompteExistant` | Un étudiant déjà inscrit choisit d'autres formations |
+| `inscriptionService.creerInscriptionDans` | Une inscription + ses tranches ; 409 si déjà inscrit. Utilisée par le mobile **et** l'Accueil |
+| `inscriptionService.validerInscription` | Tampon « validé », 1ᵉʳ paiement validé, fiche PDF et facture envoyées |
+| `echeanceService.calculerEcheancier` | Découpe le prix en tranches et en dates |
+| `echeanceService.rappelerEcheance` | Bouton « Rappeler » : notification + e-mail à l'étudiant |
+| `etudiantService.deposerPieces` | L'étudiant dépose ou remplace une pièce du dossier ; l'Accueil est prévenu |
+| **Paiement** | |
+| `paiementService.enregistrerPaiement` | Étudiant : paiement en attente, montant imposé. Guichet : validé tout de suite |
+| `paiementService.traiterPaiementEnAttente` | « Valider » / « Refuser », une seule fois, prévient l'étudiant |
+| `paiementService.envoyerFactureAuto` | Après validation : facture envoyée sans faire attendre l'employé |
+| `paiementService.modifierPaiement` | Corrige un paiement ; figé s'il est facturé |
+| `paiementService.dashboardPaiementEtudiant` | Carte du mobile : prochaine tranche, total dû, payé, reste |
+| **Documents** | |
+| `documentService.creerFacture` / `envoyerFacture` | Facture `FAC-2026-0042`, une par paiement, envoyée par e-mail |
+| `documentService.creerAttestation` / `envoyerAttestation` | Attestation avec QR code, puis envoi |
+| `documentService.verifierAuthenticite` | Scan du QR code : authentique ou non |
+| `attestationService.raisonsBlocage` | Ce qui manque avant l'attestation (vide = prête) |
+| `attestationService.envoyerSiPrete` | Envoie l'attestation si elle est prête (appelée après le commentaire) |
+| **Notes** | |
+| `classementService.calculerClassement` | Note système + présentation, trié |
+| `classementService.definirNote` | Le formateur saisit la présentation sur 10 |
+| `decrochageService.evaluerInscription` | Score de risque sur 6 d'un étudiant, avec les raisons |
+| `decrochageService.relancer` | Bouton « Relancer », au plus tous les 3 jours |
+| `formateurNoteService.commenter` | Commentaire de fin de formation, puis attestation si prête |
+| `formateurNoteService.noterCommentaire` | L'Accueil note un commentaire sur 10 |
+| `formateurNoteService.classementFormateurs` | Note des formateurs sur 20, ou ce qui manque |
+| `reactionService.avisFormateurs` | « Compétent » / « Non compétent » / « Pas assez d'avis » |
+| **Cours** | |
+| `supportService.creerSupports` | Publie un cours maintenant ou à une heure choisie |
+| `supportService.envoyerMaintenant` | Publie un cours programmé sans attendre |
+| `supportProgrammeService.verifierSupportsProgrammes` | Chaque minute : annonce 1 h avant, publie à l'heure |
+| `commentaireService.creerCommentaire` | Commentaire ou réponse ; prévient les mentionnés, l'auteur, le formateur |
+| **Comptes** | |
+| `authService.authentifier` | Connexion : token + session |
+| `authService.changerMotDePasse` | Change le mot de passe, déconnecte les **autres** appareils |
+| `authService.deconnecter` | Ferme la session : le token ne marche plus |
+| `userService.demanderReinitialisation` / `reinitialiserMotDePasse` | Mot de passe oublié : code de 30 min, utilisable une fois |
+| **Désactivation** | |
+| `etatService.desactiverX` / `reactiverX` | Désactive / réactive (et écrit l'historique) ; réactivation refusée si un parent est désactivé |
+| `dependanceService.verifierInscription` / `verifierEcheance` / `verifierPaiement` | Avant une action : 409 si un élément ou un parent est désactivé |
+| **Notifications** | |
+| `notifService.notifierPersonnel` | Notification à tout l'Accueil et au SA |
+| `notifService.notifierEtudiant` | Notification **toujours**, puis e-mail ; dit si l'e-mail a échoué |
+| **Tâches automatiques** | |
+| `alerteService.verifierAlertes` | Chaque heure : rappels J-2 groupés à l'Accueil |
+| `alerteService.demanderCommentaires` | Chaque heure : demande / relance du commentaire à partir de J-2 |
+| `alerteService.verifierAttestations` | Chaque heure : envoie les attestations prêtes |
+| `purgeService.purger` | Chaque jour : le ménage |
+
+### Middlewares (les vigiles)
+
+| Fonction | Ce qu'elle fait |
+|---|---|
+| `verifyToken` | Badge valide + session active → `req.user` ; sinon 401 |
+| `checkRole(...)` | Seuls les rôles listés passent ; sinon 403 |
+| `exigerEtudiantProprietaire` | Un étudiant ne passe que pour **ses** données |
+| `exigerAccesFormation` / `exigerAccesSupport` | Un étudiant ne voit une formation que si son inscription est validée |
+| `servirFichiers` | Sert un fichier : connecté ? a le droit ? puis filigrane |
+| `limiteRequetes` | Trop d'essais → 429 |
+| `presenceSurCours` | Ouvrir un cours, réagir, commenter = présent ce jour-là |
+| `reduirePhoto` | Après l'upload : la photo de profil (champ `photo`) est réduite à 400 px, même fichier, même format ; les pièces du dossier ne sont pas touchées |
+
+### Utils (les outils)
+
+| Fonction | Ce qu'elle fait |
+|---|---|
+| `avecTransaction` | Le « tout ou rien » |
+| `badRequest`, `forbidden`, `notFound`, `conflict` | Fabriquent une erreur 400 / 403 / 404 / 409 |
+| `formatMontant` | 3160000.02 → « 3 160 000 Ar » |
+| `genererFacturePDF`, `genererAttestationPDF` | Dessinent les PDF |
+| `filigraner` | Écrit le nom de l'étudiant en travers d'un PDF ou d'une image |
+| `nettoyerContenu` | Retire tout script caché du texte d'un cours |
+| `envoyerEmail` | Envoie par Gmail, au nom de l'employé qui a agi |
+
+### Web et mobile (les hooks)
+
+Un hook = *le coursier d'une page* : il appelle l'API et garde les données pour l'affichage.
+Nom du hook = nom du menu : `useInscription` (web) ↔ page Inscriptions ; `use-paiement` (mobile) ↔ écran
+Paiements. Les plus utiles à connaître :
+
+| Hook | Rôle |
+|---|---|
+| `useAuth` / `use-auth` | Connexion, déconnexion, mots de passe, sessions |
+| `useListePaginee` (web) | Une liste paginée par le serveur (Étudiants, Paiements, Inscriptions, Échéances) |
+| `use-vitrine` (mobile) | Découvrir et inscription en ligne |
+| `use-dossier` (mobile) | Mon dossier (les 4 pièces) |
+| `useNotification` / `use-notification` | La cloche, rafraîchie toutes les 10 s |

@@ -5,6 +5,7 @@ const { badRequest } = require('../utils/errors');
 const { lireEtat } = require('../utils/etat');
 const { STAFF } = require('../config/roles');
 const { lirePagination, texteRecherche, reponsePaginee } = require('../utils/pagination');
+const { pageAuthentique, pageNonReconnue } = require('../utils/pageVerification');
 
 const TYPES_DOCUMENT = ['Administratif', 'Support'];
 
@@ -46,11 +47,24 @@ async function envoyerAttestationController(req, res) {
 }
 
 // GET /verification/:uuid (public) : page ouverte en scannant le QR code de l'attestation
+// GET /verification/:uuid (public, lien du QR code de l'attestation).
+// Navigateur (QR code scanné) : page web lisible, « Attestation authentique » avec le nom de l'étudiant,
+// ou « Document non reconnu » (404). Autres appels (Accept: application/json, */*) : JSON comme avant.
 async function verifierDocumentController(req, res) {
-  const attestation = await documentService.verifierAuthenticite(req.params.uuid);
+  const enPage = req.accepts(['json', 'html']) === 'html';
+  let attestation;
+  try {
+    attestation = await documentService.verifierAuthenticite(req.params.uuid);
+  } catch (error) {
+    if (!enPage || error.status !== 404) throw error;
+    return res.status(404).type('html').send(pageNonReconnue());
+  }
+  if (enPage) return res.type('html').send(pageAuthentique(attestation, req.params.uuid));
+
   res.json({
     status: 'success',
     message: 'Document authentique',
+    etudiant: `${attestation.prenom} ${attestation.nom}`,
     formation: attestation.formation_nom,
     date_delivrance: attestation.date_delivrance,
   });

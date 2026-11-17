@@ -3,6 +3,7 @@ const { test, afterEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const formateurNoteModel = require('../models/formateurNoteModel');
 const notifService = require('../services/notifService');
+const attestationService = require('../services/attestationService');
 const service = require('../services/formateurNoteService');
 
 afterEach(() => mock.restoreAll());
@@ -21,11 +22,38 @@ test("l'étudiant commente son formateur : enregistré pour le formateur de la f
   mock.method(formateurNoteModel, 'getInscriptionACommenter', async () => inscription());
   const inserer = mock.method(formateurNoteModel, 'insererCommentaire', async () => 1);
   const prevenir = mock.method(notifService, 'notifierPersonnel', async () => 2);
+  mock.method(attestationService, 'envoyerSiPrete', async () => false); // formation pas encore terminée
 
   await service.commenter(3, '  Très clair  ', etudiant);
 
   assert.deepEqual(inserer.mock.calls[0].arguments[0], { id_utilisateur: 5, id_etudiant: 7, id_inscription: 3, commentaire: 'Très clair' });
-  assert.match(prevenir.mock.calls[0].arguments[0], /Rova Rakoto a commenté Aina Rabe \(Web\)/);
+  assert.match(prevenir.mock.calls[0].arguments[0], /Le commentaire formateur de Rova Rakoto a été envoyé \(Web, formateur Aina Rabe\)/);
+  assert.doesNotMatch(prevenir.mock.calls[0].arguments[0], /attestation/);
+});
+
+test("commentaire écrit après la fin : l'attestation prête part tout de suite", async () => {
+  mock.method(formateurNoteModel, 'getInscriptionACommenter', async () => inscription());
+  mock.method(formateurNoteModel, 'insererCommentaire', async () => 1);
+  const prevenir = mock.method(notifService, 'notifierPersonnel', async () => 2);
+  const envoyer = mock.method(attestationService, 'envoyerSiPrete', async () => true);
+
+  await service.commenter(3, 'Très clair', etudiant);
+
+  assert.deepEqual(envoyer.mock.calls[0].arguments, [3]);
+  assert.match(prevenir.mock.calls[0].arguments[0], /Son attestation lui a été envoyée\./);
+});
+
+test("échec de l'envoi de l'attestation : le commentaire reste enregistré", async () => {
+  mock.method(formateurNoteModel, 'getInscriptionACommenter', async () => inscription());
+  const inserer = mock.method(formateurNoteModel, 'insererCommentaire', async () => 1);
+  const prevenir = mock.method(notifService, 'notifierPersonnel', async () => 2);
+  mock.method(attestationService, 'envoyerSiPrete', async () => { throw new Error('SMTP en panne'); });
+  mock.method(console, 'warn', () => {});
+
+  await service.commenter(3, 'Très clair', etudiant);
+
+  assert.equal(inserer.mock.callCount(), 1);
+  assert.doesNotMatch(prevenir.mock.calls[0].arguments[0], /attestation/);
 });
 
 test('commentaire refusé : vide, trop long, autre étudiant, trop tôt ou déjà écrit', async () => {
@@ -37,7 +65,7 @@ test('commentaire refusé : vide, trop long, autre étudiant, trop tôt ou déj�
   await assert.rejects(service.commenter(3, 'Bien', { id_etudiant: 99 }), (err) => err.status === 403);
 
   lire.mock.mockImplementation(async () => inscription({ ouvert: 0 }));
-  await assert.rejects(service.commenter(3, 'Bien', etudiant), (err) => err.status === 409 && /veille/.test(err.message));
+  await assert.rejects(service.commenter(3, 'Bien', etudiant), (err) => err.status === 409 && /2 jours avant la fin/.test(err.message));
   lire.mock.mockImplementation(async () => inscription({ commentaire_existe: 1 }));
   await assert.rejects(service.commenter(3, 'Bien', etudiant), (err) => err.status === 409 && /déjà/.test(err.message));
   lire.mock.mockImplementation(async () => null);
@@ -77,7 +105,7 @@ test('classement : 10 points de réactions + 10 de commentaires, les notes incom
   ];
   const moyennes = [
     { id_utilisateur: 1, note_commentaires: '6.0000', nb_commentaires: 2, nb_notes: 2 },
-    { id_utilisateur: 2, note_commentaires: '9.0000', nb_commentaires: 3, nb_notes: 1 },
+    { id_utilisateur: 2, note_commentaires: '9.0000', nb_commentaires: 3, nb_notes: 3 },
     { id_utilisateur: 3, note_commentaires: null, nb_commentaires: 1, nb_notes: 0 },
     { id_utilisateur: 4, note_commentaires: '8.0000', nb_commentaires: 1, nb_notes: 1 },
   ];
@@ -87,8 +115,37 @@ test('classement : 10 points de réactions + 10 de commentaires, les notes incom
   assert.deepEqual(classement.map((f) => f.id_utilisateur), [2, 1, 3, 4]);
   assert.deepEqual(classement[0], {
     id_utilisateur: 2, total_reactions: 10, taux_positif: 70,
-    note_reactions: 7, note_commentaires: 9, nb_commentaires: 3, note_finale: 16,
+    note_reactions: 7, note_commentaires: 9, nb_commentaires: 3, nb_notes: 3, nb_attendus: 3,
+    etudiants_manquants: [], note_finale: 16,
   });
   assert.equal(classement[2].note_finale, null);
   assert.equal(classement[3].note_reactions, null);
+});
+
+test("classement : pas de note des commentaires tant qu'un étudiant n'a pas commenté ou qu'un commentaire n'est pas noté", () => {
+  const avis = [
+    { id_utilisateur: 1, total_reactions: 10, taux_positif: 80 }, // un étudiant n'a pas encore commenté
+    { id_utilisateur: 2, total_reactions: 10, taux_positif: 70 }, // un commentaire sur deux noté
+    { id_utilisateur: 3, total_reactions: 10, taux_positif: 60 }, // tout est commenté et noté
+  ];
+  const moyennes = [
+    { id_utilisateur: 1, note_commentaires: '6.0000', nb_commentaires: 2, nb_notes: 2 },
+    { id_utilisateur: 2, note_commentaires: '9.0000', nb_commentaires: 2, nb_notes: 1 },
+    { id_utilisateur: 3, note_commentaires: '5.0000', nb_commentaires: 1, nb_notes: 1 },
+  ];
+  const manquant = { id_inscription: 8, etudiant_prenom: 'Rova', etudiant_nom: 'Rakoto', formation_nom: 'Web', date_fin: '2026-11-01' };
+  const manquants = [{ id_utilisateur: 1, ...manquant }];
+
+  const classement = service.classerFormateurs(avis, moyennes, manquants);
+  const parId = Object.fromEntries(classement.map((f) => [f.id_utilisateur, f]));
+
+  assert.deepEqual(classement.map((f) => f.id_utilisateur), [3, 1, 2]);
+  assert.equal(parId[1].note_commentaires, null);
+  assert.equal(parId[1].note_finale, null);
+  assert.equal(parId[1].nb_attendus, 3);
+  assert.deepEqual(parId[1].etudiants_manquants, [manquant]);
+  assert.deepEqual(parId[3].etudiants_manquants, []);
+  assert.equal(parId[2].note_commentaires, null);
+  assert.equal(parId[2].nb_notes, 1);
+  assert.equal(parId[3].note_finale, 11);
 });

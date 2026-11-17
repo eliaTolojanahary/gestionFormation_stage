@@ -59,32 +59,35 @@ export function FormationDetailModal({
               <Text style={styles.detailBandeauTexte}>{formation.nom}</Text>
             </ImageBackground>
 
-            <View style={styles.detailLigne}>
-              <Users size={16} color={palette.textMuted} />
-              <Text style={styles.detailTexte}>
-                Formateur : {formateur}
-                {formation.nb_inscrits > 0 ? ` · ${formation.nb_inscrits} inscrit(s)` : ''}
-              </Text>
-            </View>
-            {competent ? (
+            {/* Informations clés regroupées dans une carte, séparées de la description */}
+            <View style={styles.detailInfos}>
               <View style={styles.detailLigne}>
-                <BadgeCheck size={16} color={palette.success} />
-                <Text style={[styles.detailTexte, { color: palette.success, fontWeight: '700' }]}>
-                  Formateur compétent · {formation.taux_positif} % d’avis positifs des étudiants
+                <Users size={18} color={palette.accent} />
+                <Text style={styles.detailTexte}>
+                  Formateur : {formateur}
+                  {formation.nb_inscrits > 0 ? ` · ${formation.nb_inscrits} inscrit(s)` : ''}
                 </Text>
               </View>
-            ) : null}
-            <View style={styles.detailLigne}>
-              <Clock size={16} color={palette.textMuted} />
-              <Text style={styles.detailTexte}>
-                Durée : {formation.duree ? `${formation.duree} mois` : `${formation.duree_jours} jours`}
-              </Text>
-            </View>
-            <View style={styles.detailLigne}>
-              <Wallet size={16} color={palette.textMuted} />
-              <Text style={styles.detailTexte}>
-                {formatAriary(formation.tarif)} · paiement possible en 1 à 4 tranches
-              </Text>
+              {competent ? (
+                <View style={styles.detailLigne}>
+                  <BadgeCheck size={18} color={palette.success} />
+                  <Text style={[styles.detailTexte, { color: palette.success, fontWeight: '700' }]}>
+                    Formateur compétent · {formation.taux_positif} % d’avis positifs des étudiants
+                  </Text>
+                </View>
+              ) : null}
+              <View style={styles.detailLigne}>
+                <Clock size={18} color={palette.accent} />
+                <Text style={styles.detailTexte}>
+                  Durée : {formation.duree ? `${formation.duree} mois` : `${formation.duree_jours} jours`}
+                </Text>
+              </View>
+              <View style={styles.detailLigne}>
+                <Wallet size={18} color={palette.accent} />
+                <Text style={styles.detailTexte}>
+                  {formatAriary(formation.tarif)} · paiement possible en 1 à 4 tranches
+                </Text>
+              </View>
             </View>
 
             {formation.description ? (
@@ -96,7 +99,7 @@ export function FormationDetailModal({
 
             <Text style={styles.detailTitre}>Engagement du formateur</Text>
             <View style={styles.detailLigne}>
-              <CalendarClock size={16} color={palette.textMuted} />
+              <CalendarClock size={18} color={palette.accent} />
               <Text style={styles.detailTexte}>{formation.engagement_formateur}</Text>
             </View>
 

@@ -163,7 +163,7 @@ export function useSupport() {
       return await apiRequest('/supports', {
         method: 'POST',
         body: formData,
-        // ⚠️ NE PAS mettre Content-Type ici : fetch le définit tout seul
+        // NE PAS mettre Content-Type ici : fetch le définit tout seul
         //    avec le boundary multipart correct
         headers: {}, // laisse fetch gérer le Content-Type
       });

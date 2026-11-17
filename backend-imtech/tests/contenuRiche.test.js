@@ -91,3 +91,34 @@ test("brouillon sans fichier : on ne peut pas lui retirer son texte", async () =
   );
   assert.equal(maj.mock.callCount(), 0);
 });
+
+test('plusieurs fichiers : un support par fichier, titre « titre — nom du fichier »', async () => {
+  const creation = simulerCreation();
+  const fichiers = [
+    { originalname: 'cours.pdf', filename: '1-cours.pdf' },
+    { originalname: 'schema.png', filename: '2-schema.png' },
+  ];
+
+  const { ids } = await supportService.creerSupports(
+    { id_formation: 4, titre: 'Chapitre 2', contenu: '<p>À lire</p>', fichiers },
+    FORMATEUR
+  );
+
+  assert.deepEqual(ids, [10, 10]);
+  const crees = creation.mock.calls.map((c) => c.arguments[0]);
+  assert.deepEqual(crees.map((s) => s.titre), ['Chapitre 2 — cours.pdf', 'Chapitre 2 — schema.png']);
+  assert.deepEqual(crees.map((s) => s.fichier), ['supports/1-cours.pdf', 'supports/2-schema.png']);
+  assert.ok(crees.every((s) => s.contenu === '<p>À lire</p>'), 'le texte va avec chaque fichier');
+  // Envoi immédiat : les inscrits sont prévenus pour chaque support
+  assert.equal(supportProgrammeService.notifierSupportEnvoye.mock.callCount(), 2);
+});
+
+test('un seul fichier : le titre reste tel quel, ou le nom du fichier sans titre', async () => {
+  const creation = simulerCreation();
+  const fichier = { originalname: 'cours.pdf', filename: '1-cours.pdf' };
+
+  await supportService.creerSupports({ id_formation: 4, titre: 'Chapitre 2', fichiers: [fichier] }, FORMATEUR);
+  await supportService.creerSupports({ id_formation: 4, titre: ' ', fichiers: [fichier] }, FORMATEUR);
+
+  assert.deepEqual(creation.mock.calls.map((c) => c.arguments[0].titre), ['Chapitre 2', 'cours.pdf']);
+});

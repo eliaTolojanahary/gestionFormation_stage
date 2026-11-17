@@ -68,27 +68,27 @@ function formation(nom) {
 // Signature : la personne qui a fait l'action (ou le contact de l'Accueil pour un envoi automatique)
 function signature(expediteur) {
   if (!expediteur?.email) {
-    return `<p style="margin:28px 0 0;">Cordialement,<br><strong>L'équipe IMTECH INFO</strong></p>`;
+    return `<p style="margin:28px 0 0;">Cordialement,<br><strong>L'équipe Imteaching Formation</strong></p>`;
   }
   const telephone = formaterTelephone(expediteur.telephone);
-  const fonction = FONCTIONS[expediteur.role] || 'IMTECH INFO';
+  const fonction = FONCTIONS[expediteur.role] || 'Imteaching Formation';
   return `<p style="margin:28px 0 6px;">Cordialement,</p>
       <table role="presentation" cellspacing="0" cellpadding="0" style="border-top:2px solid ${BLEU};padding-top:10px;font-size:14px;line-height:1.6;">
         <tr><td style="padding-top:10px;">
           <strong style="font-size:15px;color:${BLEU};">${nomComplet(expediteur.prenom, expediteur.nom)}</strong><br>
-          <span style="color:#475569;">${fonction} — <strong>IMTECH INFO</strong></span><br>
+          <span style="color:#475569;">${fonction} — <strong>Imteaching Formation</strong></span><br>
           E-mail : <a href="mailto:${expediteur.email}" style="color:${BLEU};font-weight:bold;">${expediteur.email}</a><br>
           ${telephone ? `Téléphone : <strong>${telephone}</strong>` : ''}
         </td></tr>
       </table>`;
 }
 
-// Encadre le contenu : bandeau IMTECH INFO, texte, signature et mention « message automatique ».
+// Encadre le contenu : bandeau IMTEACHING FORMATION, texte, signature et mention « message automatique ».
 function miseEnPage(contenuHtml, expediteur = null) {
   return `<div style="margin:0;padding:24px 0;background:#eef2f6;font-family:Arial,Helvetica,sans-serif;">
   <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
     <div style="padding:18px 28px;background:${BLEU};color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:2px;">
-      IMTECH INFO
+      IMTEACHING FORMATION
       <div style="font-size:12px;font-weight:normal;letter-spacing:0.5px;opacity:0.85;">Centre de formation en informatique</div>
     </div>
     <div style="padding:28px;color:#1e293b;font-size:15px;line-height:1.6;">
@@ -96,7 +96,7 @@ function miseEnPage(contenuHtml, expediteur = null) {
       ${signature(expediteur)}
     </div>
     <div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;line-height:1.5;">
-      Ce message vous a été envoyé par la plateforme <strong>IMTECH INFO</strong>.
+      Ce message vous a été envoyé par la plateforme <strong>Imteaching Formation</strong>.
       ${expediteur?.email
         ? 'Vous pouvez y répondre directement : votre réponse parviendra à votre interlocuteur.'
         : "Pour toute question, contactez l'Accueil ou utilisez l'assistance de l'application mobile."}

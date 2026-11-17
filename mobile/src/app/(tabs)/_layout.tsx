@@ -1,10 +1,12 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { Redirect, Tabs } from 'expo-router';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, BookOpen, FileText, Bell, User } from 'lucide-react-native';
 import { useSettings } from '@/context/SettingsContext';
+import { useAuth } from '@/context/AuthContext';
 import { libelleBadge, rafraichirCloche, useNombreNonLues } from '@/hooks/use-notification';
+import { useConditionsAcceptees } from '@/utils/conditions';
 
 // Barre d'onglets du bas : Accueil, Formations, Documents, Notifications, Profil
 export default function TabLayout() {
@@ -14,6 +16,25 @@ export default function TabLayout() {
   // Zone système du bas (barre de gestes / boutons Android, indicateur iPhone) : la barre
   // s'arrête au-dessus. Avec une hauteur fixe, cette marge mangeait la place des libellés.
   const { bottom } = useSafeAreaInsets();
+
+  // Accord aux conditions (présence, paiement, note, attestation, confidentialité) :
+  // tant que la version actuelle n'est pas acceptée, on reste sur l'écran Conditions.
+  // Seuls les étudiants sont concernés : pour un administrateur, pas d'id → rien à demander.
+  const { user, isEtudiant } = useAuth();
+  // (l'e-mail sert à reconnaître l'accord donné par la case à cocher de l'inscription en ligne)
+  const acceptees = useConditionsAcceptees(
+    isEtudiant ? (user?.id ?? user?.id_utilisateur) : null,
+    user?.email
+  );
+
+  if (acceptees === null) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={palette.heading} />
+      </View>
+    );
+  }
+  if (!acceptees) return <Redirect href={'/conditions' as any} />;
 
   return (
     <Tabs

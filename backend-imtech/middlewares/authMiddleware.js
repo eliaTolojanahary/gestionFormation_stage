@@ -2,7 +2,6 @@
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
 const etudiantModel = require('../models/etudiantModel');
-const presenceModel = require('../models/presenceModel');
 const { ROLES } = require('../config/roles');
 const { unauthorized, forbidden } = require('../utils/errors');
 
@@ -49,13 +48,8 @@ async function authentifier(req, token) {
     decoded.id_etudiant = await etudiantModel.getIdEtudiantByUtilisateur(decoded.id);
   }
 
-  // Présence automatique : un étudiant qui utilise l'application est présent ce jour-là.
-  // Sans attendre : une erreur d'écriture ne doit pas bloquer la requête.
-  if (decoded.role === ROLES.ETUDIANT) {
-    presenceModel.marquerPresence(decoded.id).catch((err) => {
-      console.error('Présence non enregistrée :', err.message);
-    });
-  }
+  // La présence n'est plus marquée ici (n'importe quelle requête, même automatique, comptait) :
+  // seulement quand l'étudiant consulte ou travaille un cours (middlewares/presence.js).
 
   req.user = decoded;
   req.token = token;
